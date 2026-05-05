@@ -1,0 +1,29 @@
+# Secrets
+*.pem
+*.key
+*.crt
+*.env
+.env
+id_rsa
+id_rsa.pub
+
+# Terraform sensitive/state files
+terraform/.terraform/
+terraform.tfstate
+terraform.tfstate.*
+*.tfvars
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log
+logs/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/

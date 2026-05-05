@@ -1,0 +1,8 @@
+#!/bin/sh
+
+ip addr flush dev eth0
+ip addr add 172.16.50.10/24 dev eth0
+ip route replace default via 172.16.50.1
+
+ip addr
+ip route
