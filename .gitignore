@@ -1,11 +1,14 @@
+# Environment files
+*.env
+.env
+
 # Secrets
 *.pem
 *.key
 *.crt
-*.env
-.env
 id_rsa
 id_rsa.pub
+secrets/*.secret
 
 # Terraform sensitive/state files
 terraform/.terraform/

@@ -5,6 +5,8 @@
 # eth1 -> Dist-OVS-1
 # eth2 -> Dist-OVS-2
 
+set -e
+
 ovs-vsctl --if-exists del-br br0
 ovs-vsctl add-br br0
 ovs-vsctl set bridge br0 rstp_enable=true

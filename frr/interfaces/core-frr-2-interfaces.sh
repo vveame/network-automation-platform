@@ -10,6 +10,8 @@
 # Core-FRR-2 <-> Dist-FRR-2  : 10.0.22.0/30
 # Core-FRR-2 <-> EdgeRouter  : 10.0.101.0/30
 
+set -e
+
 # Bring physical interfaces up
 ip link set eth0 up
 ip link set eth1 up

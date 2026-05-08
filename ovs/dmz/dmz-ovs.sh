@@ -5,6 +5,8 @@
 # eth1 -> DNS Server
 # eth2 -> EdgeRouter
 
+set -e
+
 ovs-vsctl --if-exists del-br br0
 ovs-vsctl add-br br0
 
