@@ -1,0 +1,4 @@
+ROUTER_NAME=dist-frr-2
+ROUTER_HOSTNAME=Dist-FRR-2
+ROUTER_ROLE=distribution
+ENABLE_NAT=false
