@@ -5,31 +5,8 @@ set -e
 REPO="/home/gns3/pfe-repo"
 PUBKEY_FILE="$REPO/devops.pub"
 
-find_container_any_state() {
-  docker ps -a --format '{{.Names}}' | grep "$1" | head -n 1
-}
-
-mount_src() {
-  CONTAINER="$1"
-  DEST="$2"
-
-  docker inspect -f '{{range .Mounts}}{{if eq .Destination "'"$DEST"'"}}{{.Source}}{{end}}{{end}}' "$CONTAINER"
-}
-
-require_mount() {
-  CONTAINER="$1"
-  DEST="$2"
-
-  SRC="$(mount_src "$CONTAINER" "$DEST")"
-
-  if [ -z "$SRC" ]; then
-    echo "[ERROR] Persistent directory not found for $CONTAINER:$DEST"
-    echo "[INFO] Available mounts are:"
-    docker inspect -f '{{range .Mounts}}{{.Destination}} -> {{.Source}}{{println}}{{end}}' "$CONTAINER"
-    exit 1
-  fi
-
-  echo "$SRC"
+find_container() {
+  docker ps --format '{{.Names}}' | grep "$1" | head -n 1
 }
 
 require_file() {
@@ -41,42 +18,32 @@ require_file() {
   fi
 }
 
-install_file() {
-  SRC="$1"
-  DEST="$2"
-  MODE="$3"
+write_file() {
+  CONTAINER="$1"
+  SRC="$2"
+  DEST="$3"
+  MODE="$4"
 
   require_file "$SRC"
 
-  echo "[INFO] Installing $SRC -> $DEST"
-  sudo install -D -m "$MODE" "$SRC" "$DEST"
+  echo "[INFO] Writing $SRC -> $CONTAINER:$DEST"
+
+  docker exec "$CONTAINER" sh -c "mkdir -p \"$(dirname "$DEST")\""
+  docker exec -i "$CONTAINER" sh -c "cat > \"$DEST\"" < "$SRC"
+  docker exec "$CONTAINER" sh -c "chmod $MODE \"$DEST\""
 }
 
-prepare_frr_common() {
-  LOCAL_DIR="$1"
-  SSH_DIR="$2"
+prepare_container() {
+  CONTAINER="$1"
 
-  sudo mkdir -p "$LOCAL_DIR/security"
-  sudo mkdir -p "$SSH_DIR"
+  docker exec "$CONTAINER" sh -c 'mkdir -p /etc/local/security /etc/frr /root/.ssh'
 
   if [ -f "$PUBKEY_FILE" ]; then
-    install_file "$PUBKEY_FILE" "$SSH_DIR/authorized_keys" "600"
+    echo "[INFO] Installing DevOps SSH public key in $CONTAINER"
+    docker exec -i "$CONTAINER" sh -c 'cat > /root/.ssh/authorized_keys' < "$PUBKEY_FILE"
+    docker exec "$CONTAINER" sh -c 'chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys'
   else
-    echo "[WARN] devops.pub not found. SSH public key will not be installed."
-  fi
-}
-
-prepare_ovs_common() {
-  LOCAL_DIR="$1"
-  ROOT_DIR="$2"
-
-  sudo mkdir -p "$LOCAL_DIR/security"
-  sudo mkdir -p "$ROOT_DIR/.ssh"
-
-  if [ -f "$PUBKEY_FILE" ]; then
-    install_file "$PUBKEY_FILE" "$ROOT_DIR/.ssh/authorized_keys" "600"
-  else
-    echo "[WARN] devops.pub not found. SSH public key will not be installed."
+    echo "[WARN] devops.pub not found. SSH public key will not be copied."
   fi
 }
 
@@ -87,37 +54,33 @@ deploy_frr() {
   FRR_CONF="$4"
   EXTRA_SECURITY="$5"
 
-  CONTAINER="$(find_container_any_state "$NODE_NAME")"
+  CONTAINER="$(find_container "$NODE_NAME")"
 
   if [ -z "$CONTAINER" ]; then
-    echo "[ERROR] Container not found for $NODE_NAME"
-    echo "[INFO] Start the node once from GNS3 so its container/persistent dirs are created."
+    echo "[ERROR] Running container not found for $NODE_NAME"
+    echo "[INFO] Start this node from GNS3 first, then rerun bootstrap."
     exit 1
   fi
 
-  echo "[INFO] Deploying FRR persistent config to $NODE_NAME -> $CONTAINER"
+  echo "[INFO] Deploying FRR config to $NODE_NAME -> $CONTAINER"
 
-  LOCAL_DIR="$(require_mount "$CONTAINER" "/gns3volumes/etc/local")"
-  FRR_DIR="$(require_mount "$CONTAINER" "/gns3volumes/etc/frr")"
-  SSH_DIR="$(require_mount "$CONTAINER" "/gns3volumes/root/.ssh")"
+  prepare_container "$CONTAINER"
 
-  prepare_frr_common "$LOCAL_DIR" "$SSH_DIR"
+  write_file "$CONTAINER" "$REPO/$ROUTER_ENV" "/etc/local/router.env" "644"
+  write_file "$CONTAINER" "$REPO/$INTERFACES_FILE" "/etc/local/interfaces.sh" "755"
+  write_file "$CONTAINER" "$REPO/$FRR_CONF" "/etc/frr/frr.conf" "644"
 
-  install_file "$REPO/$ROUTER_ENV" "$LOCAL_DIR/router.env" "644"
-  install_file "$REPO/$INTERFACES_FILE" "$LOCAL_DIR/interfaces.sh" "755"
-  install_file "$REPO/$FRR_CONF" "$FRR_DIR/frr.conf" "644"
-
-  install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
-  install_file "$REPO/security/ospf-auth.sh" "$LOCAL_DIR/security/ospf-auth.sh" "755"
+  write_file "$CONTAINER" "$REPO/security/admin-access-control.sh" "/etc/local/security/admin-access-control.sh" "755"
+  write_file "$CONTAINER" "$REPO/security/ospf-auth.sh" "/etc/local/security/ospf-auth.sh" "755"
 
   if [ -f "$REPO/secrets/ospf.env" ]; then
-    install_file "$REPO/secrets/ospf.env" "$LOCAL_DIR/ospf.env" "600"
+    write_file "$CONTAINER" "$REPO/secrets/ospf.env" "/etc/local/ospf.env" "600"
   else
     echo "[WARN] $REPO/secrets/ospf.env not found. OSPF auth will be skipped."
   fi
 
   for SEC in $EXTRA_SECURITY; do
-    install_file "$REPO/security/$SEC" "$LOCAL_DIR/security/$SEC" "755"
+    write_file "$CONTAINER" "$REPO/security/$SEC" "/etc/local/security/$SEC" "755"
   done
 }
 
@@ -126,42 +89,46 @@ deploy_ovs() {
   OVS_CONFIG="$2"
   OVS_MGMT="$3"
 
-  CONTAINER="$(find_container_any_state "$NODE_NAME")"
+  CONTAINER="$(find_container "$NODE_NAME")"
 
   if [ -z "$CONTAINER" ]; then
-    echo "[ERROR] Container not found for $NODE_NAME"
-    echo "[INFO] Start the node once from GNS3 so its container/persistent dirs are created."
+    echo "[ERROR] Running container not found for $NODE_NAME"
+    echo "[INFO] Start this node from GNS3 first, then rerun bootstrap."
     exit 1
   fi
 
-  echo "[INFO] Deploying OVS persistent config to $NODE_NAME -> $CONTAINER"
+  echo "[INFO] Deploying OVS config to $NODE_NAME -> $CONTAINER"
 
-  LOCAL_DIR="$(require_mount "$CONTAINER" "/gns3volumes/etc/local")"
-  ROOT_DIR="$(require_mount "$CONTAINER" "/gns3volumes/root")"
+  prepare_container "$CONTAINER"
 
-  prepare_ovs_common "$LOCAL_DIR" "$ROOT_DIR"
-
-  install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
-  install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
-  install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
+  write_file "$CONTAINER" "$REPO/$OVS_CONFIG" "/etc/local/ovs-config.sh" "755"
+  write_file "$CONTAINER" "$REPO/$OVS_MGMT" "/etc/local/ovs-mgmt.sh" "755"
+  write_file "$CONTAINER" "$REPO/security/admin-access-control.sh" "/etc/local/security/admin-access-control.sh" "755"
 }
 
-echo "[INFO] Starting persistent-volume GNS3 bootstrap..."
-echo "[INFO] This version works even if containers are stopped or exited."
+deploy_ovs_simple() {
+  NODE_NAME="$1"
+  OVS_CONFIG="$2"
 
-echo "[INFO] Checking GNS3 VM VLAN support..."
+  CONTAINER="$(find_container "$NODE_NAME")"
 
-if ! lsmod | grep -q '^8021q'; then
-  echo "[INFO] 8021q is not loaded. Loading it now..."
-  sudo modprobe 8021q
-fi
+  if [ -z "$CONTAINER" ]; then
+    echo "[WARN] Running container not found for $NODE_NAME, skipping."
+    return 0
+  fi
 
-if ! lsmod | grep -q '^8021q'; then
-  echo "[ERROR] Failed to load 8021q. Dist-FRR VLAN subinterfaces will fail."
-  exit 1
-fi
+  echo "[INFO] Deploying simple OVS config to $NODE_NAME -> $CONTAINER"
 
-echo "[OK] 8021q is loaded."
+  docker exec "$CONTAINER" sh -c 'mkdir -p /etc/local'
+
+  write_file "$CONTAINER" "$REPO/$OVS_CONFIG" "/etc/local/ovs-config.sh" "755"
+
+  echo "[INFO] Applying OVS config on $NODE_NAME..."
+  docker exec "$CONTAINER" sh -c "/etc/local/ovs-config.sh"
+}
+
+echo "[INFO] Starting running-container GNS3 bootstrap..."
+echo "[INFO] Make sure all GNS3 Docker nodes are currently started."
 
 echo "[INFO] Deploying FRR nodes..."
 
@@ -227,5 +194,9 @@ deploy_ovs \
   "ovs/distribution/dist-ovs-2.sh" \
   "ovs/management/dist-ovs-2-mgmt.sh"
 
-echo "[OK] Persistent bootstrap completed."
-echo "[INFO] You can now start/restart nodes from GNS3."
+deploy_ovs_simple \
+  "DMZ-OVS" \
+  "ovs/dmz/dmz-ovs.sh"
+
+echo "[OK] Bootstrap completed."
+echo "[IMPORTANT] Stop all nodes, then start them again from GNS3."

@@ -58,17 +58,17 @@ ip link set eth0.99 up
 
 # Create VRRP macvlan interfaces.
 # Same virtual IPs and same virtual MACs as Dist-FRR-1.
-ip link add vrrp10 link eth0.10 addrgenmode random type macvlan mode bridge
+ip link add vrrp10 link eth0.10 type macvlan mode bridge
 ip link set dev vrrp10 address 00:00:5e:00:01:0a
 ip addr add 192.168.10.1/24 dev vrrp10
 ip link set dev vrrp10 up
 
-ip link add vrrp20 link eth0.20 addrgenmode random type macvlan mode bridge
+ip link add vrrp20 link eth0.20 type macvlan mode bridge
 ip link set dev vrrp20 address 00:00:5e:00:01:14
 ip addr add 192.168.20.1/24 dev vrrp20
 ip link set dev vrrp20 up
 
-ip link add vrrp99 link eth0.99 addrgenmode random type macvlan mode bridge
+ip link add vrrp99 link eth0.99 type macvlan mode bridge
 ip link set dev vrrp99 address 00:00:5e:00:01:63
 ip addr add 192.168.99.1/24 dev vrrp99
 ip link set dev vrrp99 up
