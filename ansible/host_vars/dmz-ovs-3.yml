@@ -1,0 +1,32 @@
+---
+node_name: "DMZ-OVS-3"
+node_type: "openvswitch"
+switch_role: "dmz"
+management_ip: "172.16.50.3"
+management_mac: "02:50:00:00:00:03"
+management_gateway: "172.16.50.1"
+management_path: "routed-through-edge-router"
+
+bridge: "br0"
+
+expected_ports:
+  eth0: "dmz_web_server"
+  eth1: "dmz_dns_server"
+  eth2: "dmz_edge_router"
+  mgmt0: "dmz_management_interface"
+
+expected_checks:
+  - bridge_exists
+  - dmz_ports
+  - dmz_management_ip
+  - fdb_table
+  - ssh_from_devops_only
+
+security_policy:
+  allowed_admin_source: "192.168.99.10"
+  allowed_admin_protocols:
+    - "tcp/22"
+    - "icmp"
+  denied_by_default:
+    - "other_internal_to_dmz"
+    - "dmz_to_internal"

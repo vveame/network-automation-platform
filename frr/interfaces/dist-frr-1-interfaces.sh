@@ -80,6 +80,9 @@ ip link set dev vrrp99 up
 ip addr add 10.0.11.2/30 dev eth1
 ip addr add 10.0.12.2/30 dev eth2
 
+# Assign loopback management IP
+ip addr add 10.255.0.21/32 dev lo 2>/dev/null || true
+
 # Enable IPv4 forwarding
 sysctl -w net.ipv4.ip_forward=1
 

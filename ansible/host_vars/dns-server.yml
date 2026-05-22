@@ -1,0 +1,16 @@
+---
+node_name: "DNS-1"
+node_type: "dmz-service"
+service_type: "dns"
+ssh_required: false
+
+ip: "172.16.50.20"
+gateway: "172.16.50.1"
+
+health_checks:
+  - name: "dns_web_record"
+    domain: "web.pfe.local"
+    expected_answer: "172.16.50.10"
+  - name: "dns_dns_record"
+    domain: "dns.pfe.local"
+    expected_answer: "172.16.50.20"

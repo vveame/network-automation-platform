@@ -106,9 +106,10 @@ deploy_ovs() {
   write_file "$CONTAINER" "$REPO/security/admin-access-control.sh" "/etc/local/security/admin-access-control.sh" "755"
 }
 
-deploy_ovs_simple() {
+deploy_dmz_ovs() {
   NODE_NAME="$1"
   OVS_CONFIG="$2"
+  OVS_MGMT="$3"
 
   CONTAINER="$(find_container "$NODE_NAME")"
 
@@ -117,14 +118,30 @@ deploy_ovs_simple() {
     return 0
   fi
 
-  echo "[INFO] Deploying simple OVS config to $NODE_NAME -> $CONTAINER"
+  echo "[INFO] Deploying DMZ OVS config to $NODE_NAME -> $CONTAINER"
 
-  docker exec "$CONTAINER" sh -c 'mkdir -p /etc/local'
+  docker exec "$CONTAINER" sh -c 'mkdir -p /etc/local/security /root/.ssh'
+
+  if [ -f "$PUBKEY_FILE" ]; then
+    echo "[INFO] Installing DevOps SSH public key in $CONTAINER"
+    docker exec -i "$CONTAINER" sh -c 'cat > /root/.ssh/authorized_keys' < "$PUBKEY_FILE"
+    docker exec "$CONTAINER" sh -c 'chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys'
+  else
+    echo "[WARN] devops.pub not found. SSH public key will not be copied."
+  fi
 
   write_file "$CONTAINER" "$REPO/$OVS_CONFIG" "/etc/local/ovs-config.sh" "755"
+  write_file "$CONTAINER" "$REPO/$OVS_MGMT" "/etc/local/ovs-mgmt.sh" "755"
+  write_file "$CONTAINER" "$REPO/security/admin-access-control.sh" "/etc/local/security/admin-access-control.sh" "755"
 
-  echo "[INFO] Applying OVS config on $NODE_NAME..."
+  echo "[INFO] Applying DMZ OVS bridge config on $NODE_NAME..."
   docker exec "$CONTAINER" sh -c "/etc/local/ovs-config.sh"
+
+  echo "[INFO] Applying DMZ OVS management config on $NODE_NAME..."
+  docker exec "$CONTAINER" sh -c "/etc/local/ovs-mgmt.sh"
+
+  echo "[INFO] Applying admin access control on $NODE_NAME..."
+  docker exec "$CONTAINER" sh -c "/etc/local/security/admin-access-control.sh" || true
 }
 
 echo "[INFO] Starting running-container GNS3 bootstrap..."
@@ -194,9 +211,10 @@ deploy_ovs \
   "ovs/distribution/dist-ovs-2.sh" \
   "ovs/management/dist-ovs-2-mgmt.sh"
 
-deploy_ovs_simple \
-  "DMZ-OVS" \
-  "ovs/dmz/dmz-ovs.sh"
+deploy_dmz_ovs \
+  "DMZ-OVS-3" \
+  "ovs/dmz/dmz-ovs.sh" \
+  "ovs/management/dmz-ovs-3-mgmt.sh"
 
 echo "[OK] Bootstrap completed."
 echo "[IMPORTANT] Stop all nodes, then start them again from GNS3."

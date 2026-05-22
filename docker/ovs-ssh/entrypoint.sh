@@ -83,7 +83,31 @@ else
   echo "[BOOT] admin-access-control.sh not found, skipping."
 fi
 
-# 6. Start SSH daemon
+# 6. Announce management reachability to DevOps server
+
+if [ -x /etc/local/management-announce.sh ]; then
+  echo "[BOOT] Running management announce..."
+  DEVOPS_SERVER="${DEVOPS_SERVER:-192.168.99.10}" \
+  ANNOUNCE_DELAY="${ANNOUNCE_DELAY:-10}" \
+  ANNOUNCE_COUNT="${ANNOUNCE_COUNT:-10}" \
+  /etc/local/management-announce.sh || true
+else
+  echo "[BOOT] management-announce.sh not found, skipping."
+fi
+
+# 7. Ensure root can use key-only SSH
+
+echo "[BOOT] Ensuring root account is usable for key-only SSH..."
+
+if command -v passwd >/dev/null 2>&1; then
+  passwd -d root 2>/dev/null || true
+fi
+
+if [ -f /etc/shadow ]; then
+  sed -i 's/^root:[!*][^:]*:/root::/' /etc/shadow
+fi
+
+# 8. Start SSH daemon
 
 if command -v sshd >/dev/null 2>&1; then
   echo "[BOOT] Starting SSH daemon..."

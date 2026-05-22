@@ -38,6 +38,9 @@ ip addr add 203.0.113.2/30 dev eth3
 # Default route toward Internet/cloud gateway
 ip route replace default via 203.0.113.1 dev eth3
 
+# Assign loopback management IP
+ip addr add 10.255.0.30/32 dev lo 2>/dev/null || true
+
 # Enable IPv4 forwarding
 sysctl -w net.ipv4.ip_forward=1
 

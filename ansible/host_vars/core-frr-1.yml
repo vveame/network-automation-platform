@@ -1,0 +1,33 @@
+---
+node_name: "Core-FRR-1"
+node_type: "frr-router"
+router_role: "core"
+
+management:
+  type: "routed-loopback"
+  ip: "10.255.0.11/32"
+  ansible_host: "10.255.0.11"
+  advertised_by: "ospf"
+
+router_id: "1.1.1.1"
+
+interfaces:
+  lo:
+    description: "routed-management-loopback"
+    ip: "10.255.0.11/32"
+  eth0:
+    description: "link-to-dist-frr-1"
+    ip: "10.0.11.1/30"
+  eth1:
+    description: "link-to-dist-frr-2"
+    ip: "10.0.21.1/30"
+  eth2:
+    description: "link-to-edge-router"
+    ip: "10.0.100.1/30"
+
+expected_checks:
+  - loopback_management_ip
+  - ospf_neighbors
+  - ospf_routes
+  - routing_table
+  - ssh_from_devops_only

@@ -146,47 +146,40 @@ deploy_ovs() {
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
 }
 
-deploy_ovs_simple_persistent() {
+deploy_dmz_ovs_persistent() {
   NODE_NAME="$1"
   OVS_CONFIG="$2"
+  OVS_MGMT="$3"
 
   CONTAINER="$(find_container_any_state "$NODE_NAME")"
 
   if [ -z "$CONTAINER" ]; then
     echo "[WARN] Container not found for $NODE_NAME, skipping."
+    echo "[INFO] Start the node once from GNS3 so its container/persistent dirs are created."
     return 0
   fi
 
-  echo "[INFO] Deploying simple OVS persistent config to $NODE_NAME -> $CONTAINER"
+  echo "[INFO] Deploying DMZ OVS persistent config to $NODE_NAME -> $CONTAINER"
 
-  LOCAL_DIR="$(mount_src "$CONTAINER" "/gns3volumes/etc/local")"
+  LOCAL_DIR="$(require_mount "$CONTAINER" "/gns3volumes/etc/local")"
+  ROOT_DIR="$(require_mount "$CONTAINER" "/gns3volumes/root")"
 
-  if [ -z "$LOCAL_DIR" ]; then
-    echo "[WARN] $NODE_NAME has no /gns3volumes/etc/local persistent directory."
-    echo "[WARN] Skipping persistent DMZ OVS config."
-    return 0
+  sudo mkdir -p "$LOCAL_DIR/security"
+  sudo mkdir -p "$ROOT_DIR/.ssh"
+
+  if [ -f "$PUBKEY_FILE" ]; then
+    install_file "$PUBKEY_FILE" "$ROOT_DIR/.ssh/authorized_keys" "600"
+  else
+    echo "[WARN] devops.pub not found. SSH public key will not be installed."
   fi
 
-  sudo mkdir -p "$LOCAL_DIR"
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
+  install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
+  install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
 }
 
 echo "[INFO] Starting persistent-volume GNS3 bootstrap..."
 echo "[INFO] This version works even if containers are stopped or exited."
-
-echo "[INFO] Checking GNS3 VM VLAN support..."
-
-if ! lsmod | grep -q '^8021q'; then
-  echo "[INFO] 8021q is not loaded. Loading it now..."
-  sudo modprobe 8021q
-fi
-
-if ! lsmod | grep -q '^8021q'; then
-  echo "[ERROR] Failed to load 8021q. Dist-FRR VLAN subinterfaces will fail."
-  exit 1
-fi
-
-echo "[OK] 8021q is loaded."
 
 echo "[INFO] Deploying FRR nodes..."
 
@@ -252,9 +245,10 @@ deploy_ovs \
   "ovs/distribution/dist-ovs-2.sh" \
   "ovs/management/dist-ovs-2-mgmt.sh"
 
-deploy_ovs_simple_persistent \
-  "DMZ-OVS" \
-  "ovs/dmz/dmz-ovs.sh"
+deploy_dmz_ovs_persistent \
+  "DMZ-OVS-3" \
+  "ovs/dmz/dmz-ovs.sh" \
+  "ovs/management/dmz-ovs-3-mgmt.sh"s
 
 echo "[OK] Persistent bootstrap completed."
 echo "[INFO] You can now start/restart nodes from GNS3."

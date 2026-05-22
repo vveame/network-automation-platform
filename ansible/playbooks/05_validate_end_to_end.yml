@@ -1,0 +1,82 @@
+---
+- name: Validate end-to-end topology connectivity
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    gateway_targets:
+      - "192.168.10.1"
+      - "192.168.20.1"
+      - "192.168.99.1"
+
+    infrastructure_management_tests:
+      - name: "dmz-ovs-ssh-through-edge"
+        command: "nc -zv -w 3 172.16.50.3 22"
+
+    dmz_allowed_tests:
+      - name: "web-http"
+        command: "curl -s --connect-timeout 5 http://172.16.50.10"
+      - name: "dns-query"
+        command: "nslookup web.pfe.local 172.16.50.20"
+
+  tasks:
+    - name: Ping VLAN gateways
+      ansible.builtin.command: "ping -c 2 -W 2 {{ item }}"
+      loop: "{{ gateway_targets }}"
+      changed_when: false
+      register: gateway_ping
+      failed_when: false
+
+    - name: Run infrastructure management tests
+      ansible.builtin.command: "{{ item.command }}"
+      loop: "{{ infrastructure_management_tests }}"
+      changed_when: false
+      register: infra_mgmt
+      failed_when: false
+
+    - name: Run allowed DMZ service tests
+      ansible.builtin.command: "{{ item.command }}"
+      loop: "{{ dmz_allowed_tests }}"
+      changed_when: false
+      register: dmz_allowed
+      failed_when: false
+
+    - name: Save end-to-end validation output
+      ansible.builtin.copy:
+        dest: "../outputs/end-to-end-validation.txt"
+        content: |
+          === VLAN GATEWAY TESTS ===
+          {% for result in gateway_ping.results %}
+          TARGET: {{ result.item }}
+          RC: {{ result.rc }}
+          {{ result.stdout }}
+
+          --------------------------------------------------
+          {% endfor %}
+
+          === INFRASTRUCTURE MANAGEMENT TESTS ===
+          {% for result in infra_mgmt.results %}
+          TEST: {{ result.item.name }}
+          COMMAND: {{ result.item.command }}
+          RC: {{ result.rc }}
+          STDOUT:
+          {{ result.stdout }}
+
+          STDERR:
+          {{ result.stderr }}
+          --------------------------------------------------
+          {% endfor %}
+
+          === DMZ ALLOWED SERVICE TESTS ===
+          {% for result in dmz_allowed.results %}
+          TEST: {{ result.item.name }}
+          COMMAND: {{ result.item.command }}
+          RC: {{ result.rc }}
+          STDOUT:
+          {{ result.stdout }}
+
+          STDERR:
+          {{ result.stderr }}
+          --------------------------------------------------
+          {% endfor %}

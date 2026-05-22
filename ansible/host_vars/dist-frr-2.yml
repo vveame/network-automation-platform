@@ -1,0 +1,47 @@
+---
+node_name: "Dist-FRR-2"
+node_type: "frr-router"
+router_role: "distribution"
+
+management:
+  type: "routed-loopback"
+  ip: "10.255.0.22/32"
+  ansible_host: "10.255.0.22"
+  advertised_by: "ospf"
+
+interfaces:
+  lo:
+    description: "routed-management-loopback"
+    ip: "10.255.0.22/32"
+  eth0.10:
+    description: "vlan-10-gateway-physical"
+    ip: "192.168.10.3/24"
+  eth0.20:
+    description: "vlan-20-gateway-physical"
+    ip: "192.168.20.3/24"
+  eth0.99:
+    description: "management-vlan-physical"
+    ip: "192.168.99.3/24"
+  vrrp10:
+    description: "vlan-10-vrrp-gateway"
+    ip: "192.168.10.1/24"
+  vrrp20:
+    description: "vlan-20-vrrp-gateway"
+    ip: "192.168.20.1/24"
+  vrrp99:
+    description: "management-vlan-vrrp-gateway"
+    ip: "192.168.99.1/24"
+  eth1:
+    description: "link-to-core-frr-1"
+    ip: "10.0.21.2/30"
+  eth2:
+    description: "link-to-core-frr-2"
+    ip: "10.0.22.2/30"
+
+expected_checks:
+  - loopback_management_ip
+  - vlan_interfaces
+  - vrrp_state
+  - ospf_neighbors
+  - management_vlan_protection
+  - ssh_from_devops_only

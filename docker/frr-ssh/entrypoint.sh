@@ -174,7 +174,20 @@ else
   echo "[BOOT] admin-access-control.sh not found, skipping."
 fi
 
-# 8. Start SSH daemon
+# 8. Unlock root for key-only SSH access.
+# Some base images keep root locked in /etc/shadow.
+# OpenSSH rejects locked accounts before checking authorized_keys.
+echo "[BOOT] Ensuring root account is usable for key-only SSH..."
+
+if command -v passwd >/dev/null 2>&1; then
+  passwd -d root 2>/dev/null || true
+fi
+
+if [ -f /etc/shadow ]; then
+  sed -i 's/^root:[!*][^:]*:/root::/' /etc/shadow
+fi
+
+# 9. Start SSH daemon
 
 if command -v sshd >/dev/null 2>&1; then
   echo "[BOOT] Starting SSH daemon..."

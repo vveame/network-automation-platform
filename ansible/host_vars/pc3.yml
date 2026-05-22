@@ -1,0 +1,12 @@
+---
+node_name: "PC3"
+node_type: "vpcs-endpoint"
+ssh_required: false
+
+ip: "192.168.20.13"
+gateway: "192.168.20.1"
+vlan: 20
+
+expected_connectivity:
+  gateway: "192.168.20.1"
+  inter_vlan_peer: "192.168.10.11"

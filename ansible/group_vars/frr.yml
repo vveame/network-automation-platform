@@ -1,0 +1,47 @@
+---
+node_family: "frr-router"
+access_method: "ssh"
+python_required: false
+ansible_module_preference: "raw"
+
+frr_management:
+  type: "routed-loopback"
+  prefix: "10.255.0.0/24"
+  routing_protocol: "ospf"
+  ssh_source_allowed: "192.168.99.10"
+
+frr_expected_daemons:
+  - zebra
+  - ospfd
+  - staticd
+  - vrrpd
+
+frr_common_validation_commands:
+  - 'hostname'
+  - 'ip addr'
+  - 'ip route'
+  - 'vtysh -c "show running-config"'
+  - 'vtysh -c "show ip route"'
+
+frr_ospf_validation_commands:
+  - 'vtysh -c "show ip ospf neighbor"'
+  - 'vtysh -c "show ip route ospf"'
+
+frr_management_validation_commands:
+  - 'ip addr show lo'
+  - 'vtysh -c "show ip route 10.255.0.0/24"'
+
+frr_security_validation_commands:
+  - 'iptables -L INPUT -v -n --line-numbers'
+  - 'iptables -L FORWARD -v -n --line-numbers'
+  - 'iptables -t nat -L -v -n --line-numbers'
+
+expected_ospf_state: "Full"
+
+frr_roles:
+  core:
+    expected_neighbors_min: 2
+  distribution:
+    expected_neighbors_min: 2
+  edge:
+    expected_neighbors_min: 2

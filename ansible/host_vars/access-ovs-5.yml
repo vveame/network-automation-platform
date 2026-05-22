@@ -1,0 +1,20 @@
+---
+node_name: "Access-OVS-5"
+node_type: "openvswitch"
+switch_role: "access"
+management_ip: "192.168.99.45"
+management_mac: "02:99:00:00:00:45"
+
+bridge: "br0"
+
+expected_ports:
+  eth0: "access_vlan_10"
+  eth1: "trunk_10_20_99"
+  eth2: "trunk_10_20_99"
+  mgmt0: "access_vlan_99"
+
+expected_checks:
+  - bridge_exists
+  - access_ports
+  - trunk_ports
+  - management_ip

@@ -1,0 +1,7 @@
+---
+- name: Validate all FRRouting nodes
+  hosts: frr
+  gather_facts: false
+
+  roles:
+    - frr_validate

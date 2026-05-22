@@ -1,0 +1,30 @@
+---
+node_family: "vpcs-endpoint"
+access_method: "connectivity-test"
+ssh_required: false
+
+vpcs_expected:
+  pc1:
+    ip: "192.168.10.11"
+    subnet: "192.168.10.0/24"
+    gateway: "192.168.10.1"
+    vlan: 10
+
+  pc2:
+    ip: "192.168.10.12"
+    subnet: "192.168.10.0/24"
+    gateway: "192.168.10.1"
+    vlan: 10
+
+  pc3:
+    ip: "192.168.20.13"
+    subnet: "192.168.20.0/24"
+    gateway: "192.168.20.1"
+    vlan: 20
+
+endpoint_connectivity_expectations:
+  vlan10_gateway: "192.168.10.1"
+  vlan20_gateway: "192.168.20.1"
+  management_gateway: "192.168.99.1"
+  dmz_web: "172.16.50.10"
+  dmz_dns: "172.16.50.20"

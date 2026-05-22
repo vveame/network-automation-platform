@@ -1,0 +1,8 @@
+---
+- name: Validate DMZ Web and DNS services
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  roles:
+    - dmz_validate

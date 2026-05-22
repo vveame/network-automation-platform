@@ -19,40 +19,43 @@ This folder defines custom Docker images that provide:
 
 | Image | Purpose |
 |---|---|
-| `pfe/frr-ssh:latest` | FRRouting router image with SSH, FRR startup automation, OSPF and VRRP support |
-| `pfe/ovs-ssh:latest` | Open vSwitch image with SSH, OVS startup automation and management access |
+| `vviam/pfe-frr-ssh:latest` | FRRouting router image with SSH and FRR startup automation |
+| `vviam/pfe-ovs-ssh:latest` | Open vSwitch image with SSH, OVS startup automation and management access |
+| `vviam/pfe-web-nginx:latest` | DMZ Web server image running Nginx |
+| `vviam/pfe-dns:latest` | DMZ DNS server image running BIND for `pfe.local` |
 
 ## FRR Image
 
 The FRR image is used for:
 
-- Dist-FRR-1
-- Dist-FRR-2
-- Core-FRR-1
-- Core-FRR-2
-- EdgeRouter-VPNGateway
+- `Dist-FRR-1`
+- `Dist-FRR-2`
+- `Core-FRR-1`
+- `Core-FRR-2`
+- `EdgeRouter-VPNGateway`
 
 At startup, the FRR container:
 
-1. Initializes `/etc/frr` if required.
-2. Enables FRR daemons such as `zebra`, `ospfd` and `vrrpd`.
-3. Loads the router environment file if present.
+1. Loads `/etc/local/router.env` if present.
+2. Sets the Linux hostname.
+3. Enables FRR daemons such as `zebra`, `ospfd`, `staticd` and `vrrpd`.
 4. Applies the Linux interface configuration from `/etc/local/interfaces.sh`.
 5. Starts FRR daemons.
-6. Applies OSPF authentication if the script and secret file are present.
-7. Applies role-specific security rules depending on the router role.
+6. Applies OSPF authentication if `/etc/local/ospf.env` exists.
+7. Applies role-specific security scripts.
 8. Applies SSH/admin access restriction.
-9. Starts the SSH daemon for DevOps automation.
+9. Starts SSH for Ansible access.
 
 ## OVS Image
 
 The OVS image is used for:
 
-- Access-OVS-4
-- Access-OVS-5
-- Access-OVS-6
-- Dist-OVS-1
-- Dist-OVS-2
+- `Access-OVS-4`
+- `Access-OVS-5`
+- `Access-OVS-6`
+- `Dist-OVS-1`
+- `Dist-OVS-2`
+- `DMZ-OVS-3`
 
 At startup, the OVS container:
 
@@ -60,22 +63,35 @@ At startup, the OVS container:
 2. Applies the bridge, VLAN and trunk configuration from `/etc/local/ovs-config.sh`.
 3. Applies the management IP configuration from `/etc/local/ovs-mgmt.sh`.
 4. Applies SSH/admin access restriction.
-5. Starts the SSH daemon for DevOps automation.
+5. Starts SSH for Ansible access.
+
+Internal OVS nodes use VLAN 99 management IPs. `DMZ-OVS-3` uses `172.16.50.3/24` inside the DMZ and is reached through EdgeRouter firewall rules.
+
+## Web and DNS Images
+
+The Web and DNS containers are service nodes, not SSH-managed infrastructure nodes.
+
+| Service | IP | Validation method |
+|---|---|---|
+| Web | `172.16.50.10` | `curl http://172.16.50.10` |
+| DNS | `172.16.50.20` | `nslookup web.pfe.local 172.16.50.20` |
+
+The host IP scripts are copied into `/opt/pfe/host-ip.sh` inside the service images so GNS3 persistent directories do not hide them.
 
 ## Build Commands
 
 Run from the repository root:
 
 ```bash
-docker build -t pfe/frr-ssh:latest docker/frr-ssh/
-docker build -t pfe/ovs-ssh:latest docker/ovs-ssh/
+docker build -t vviam/pfe-frr-ssh:latest docker/frr-ssh/
+docker build -t vviam/pfe-ovs-ssh:latest docker/ovs-ssh/
+docker build -f docker/web-nginx/Dockerfile -t vviam/pfe-web-nginx:latest .
+docker build -f docker/dns/Dockerfile -t vviam/pfe-dns:latest .
 ```
 
-## Expected Local Files in FRR Containers
+## Expected Files in FRR Containers
 
-Each FRR container should receive the correct node-specific files:
-
-```bash
+```text
 /etc/local/router.env
 /etc/local/interfaces.sh
 /etc/frr/frr.conf
@@ -86,13 +102,13 @@ Each FRR container should receive the correct node-specific files:
 
 Distribution routers also use:
 
-```bash
+```text
 /etc/local/security/management-vlan-protection.sh
 ```
 
 The EdgeRouter also uses:
 
-```bash
+```text
 /etc/local/security/dmz-isolation.sh
 /etc/local/security/nat-control.sh
 ```
@@ -101,16 +117,8 @@ The EdgeRouter also uses:
 
 Each OVS container should receive:
 
-```bash
+```text
 /etc/local/ovs-config.sh
 /etc/local/ovs-mgmt.sh
 /etc/local/security/admin-access-control.sh
-```
-
-The content of these files differs per node, but the local filenames stay the same.
-For example:
-
-```bash
-ovs/access/access-ovs-4.sh              -> /etc/local/ovs-config.sh
-ovs/management/access-ovs-4-mgmt.sh     -> /etc/local/ovs-mgmt.sh
 ```

@@ -1,0 +1,41 @@
+---
+node_family: "openvswitch"
+access_method: "ssh"
+python_required: false
+ansible_module_preference: "raw"
+
+ovs_bridge: "br0"
+ovs_management_interface: "mgmt0"
+
+ovs_common_validation_commands:
+  - "hostname"
+  - "ip addr"
+  - "ip route"
+  - "ovs-vsctl show"
+  - "ovs-appctl fdb/show br0"
+
+expected_ovs_nodes:
+  access-ovs-4:
+    mgmt_ip: "192.168.99.44"
+    mgmt_mac: "02:99:00:00:00:44"
+
+  access-ovs-5:
+    mgmt_ip: "192.168.99.45"
+    mgmt_mac: "02:99:00:00:00:45"
+
+  access-ovs-6:
+    mgmt_ip: "192.168.99.46"
+    mgmt_mac: "02:99:00:00:00:46"
+
+  dist-ovs-1:
+    mgmt_ip: "192.168.99.31"
+    mgmt_mac: "02:99:00:00:00:31"
+
+  dist-ovs-2:
+    mgmt_ip: "192.168.99.32"
+    mgmt_mac: "02:99:00:00:00:32"
+
+  dmz-ovs-3:
+    mgmt_ip: "172.16.50.3"
+    mgmt_mac: "02:50:00:00:00:03"
+    management_path: "routed-through-edge-router"

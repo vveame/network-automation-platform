@@ -1,0 +1,102 @@
+---
+- name: Show hostname
+  ansible.builtin.raw: hostname
+  register: frr_hostname
+  changed_when: false
+
+- name: Show IP configuration
+  ansible.builtin.raw: "ip addr"
+  register: frr_ip
+  changed_when: false
+
+- name: Show loopback configuration
+  ansible.builtin.raw: "ip addr show lo"
+  register: frr_loopback
+  changed_when: false
+
+- name: Show routing table
+  ansible.builtin.raw: "ip route"
+  register: frr_route
+  changed_when: false
+
+- name: Show OSPF neighbors
+  ansible.builtin.raw: 'vtysh -c "show ip ospf neighbor"'
+  register: frr_ospf_neighbors
+  changed_when: false
+  failed_when: false
+
+- name: Show OSPF routes
+  ansible.builtin.raw: 'vtysh -c "show ip route ospf"'
+  register: frr_ospf_routes
+  changed_when: false
+  failed_when: false
+
+- name: Show route to routed management prefix
+  ansible.builtin.raw: 'vtysh -c "show ip route 10.255.0.0/24"'
+  register: frr_mgmt_route
+  changed_when: false
+  failed_when: false
+
+- name: Show VRRP state
+  ansible.builtin.raw: 'vtysh -c "show vrrp"'
+  register: frr_vrrp
+  changed_when: false
+  failed_when: false
+
+- name: Show INPUT firewall rules
+  ansible.builtin.raw: "iptables -L INPUT -v -n --line-numbers"
+  register: frr_input_rules
+  changed_when: false
+  failed_when: false
+
+- name: Show FORWARD firewall rules
+  ansible.builtin.raw: "iptables -L FORWARD -v -n --line-numbers"
+  register: frr_forward_rules
+  changed_when: false
+  failed_when: false
+
+- name: Show NAT rules
+  ansible.builtin.raw: "iptables -t nat -L -v -n --line-numbers"
+  register: frr_nat_rules
+  changed_when: false
+  failed_when: false
+
+- name: Save FRR validation output locally
+  ansible.builtin.copy:
+    dest: "outputs/{{ inventory_hostname }}-frr.txt"
+    content: |
+      HOST: {{ inventory_hostname }}
+
+      === HOSTNAME ===
+      {{ frr_hostname.stdout }}
+
+      === IP CONFIGURATION ===
+      {{ frr_ip.stdout }}
+
+      === LOOPBACK CONFIGURATION ===
+      {{ frr_loopback.stdout }}
+
+      === ROUTING TABLE ===
+      {{ frr_route.stdout }}
+
+      === OSPF NEIGHBORS ===
+      {{ frr_ospf_neighbors.stdout | default('N/A') }}
+
+      === OSPF ROUTES ===
+      {{ frr_ospf_routes.stdout | default('N/A') }}
+
+      === ROUTED MANAGEMENT ROUTE ===
+      {{ frr_mgmt_route.stdout | default('N/A') }}
+
+      === VRRP ===
+      {{ frr_vrrp.stdout | default('N/A') }}
+
+      === INPUT RULES ===
+      {{ frr_input_rules.stdout | default('N/A') }}
+
+      === FORWARD RULES ===
+      {{ frr_forward_rules.stdout | default('N/A') }}
+
+      === NAT RULES ===
+      {{ frr_nat_rules.stdout | default('N/A') }}
+  delegate_to: localhost

@@ -1,175 +1,110 @@
 # Security Configuration
 
-This folder contains the versioned security and resilience scripts used in the local GNS3 infrastructure.
+This folder contains the versioned security scripts used in the GNS3 on-premises infrastructure.
 
-## Objectives
+## Security Objectives
 
-The security configuration aims to:
+The security design follows these principles:
 
-- Protect the management VLAN.
-- Restrict administrative access to the DevOps server.
-- Isolate the DMZ from internal networks.
-- Secure OSPF routing exchanges.
-- Control NAT usage.
-- Prepare the infrastructure for future monitoring and automation.
+- Administrative access is limited to the dedicated DevOps server.
+- User VLANs cannot initiate access to the management VLAN.
+- The DMZ is isolated from internal networks except for explicit service and management exceptions.
+- OSPF routing exchanges are authenticated.
+- NAT is enabled only on the EdgeRouter external/cloud-facing interface.
 
-## Active Security Scripts
+## Active Scripts
 
 | File | Applied On | Purpose |
 |---|---|---|
-| `admin-access-control.sh` | All SSH-enabled FRR and OVS nodes | Allows SSH/admin access only from the DevOps server |
-| `management-vlan-protection.sh` | Dist-FRR-1 and Dist-FRR-2 | Blocks user VLANs from initiating access to VLAN 99 |
-| `dmz-isolation.sh` | EdgeRouter-VPNGateway | Isolates the DMZ from internal VLANs and allows only required services |
-| `nat-control.sh` | EdgeRouter-VPNGateway | Enables controlled NAT on the external/cloud-facing interface |
-| `ospf-auth.sh` | All FRR routers participating in OSPF | Applies OSPF message-digest authentication on routed links |
+| `admin-access-control.sh` | All SSH-managed FRR and OVS nodes | Allows SSH only from the DevOps server `192.168.99.10` |
+| `management-vlan-protection.sh` | `Dist-FRR-1`, `Dist-FRR-2` | Blocks user VLANs from initiating traffic to VLAN 99 |
+| `dmz-isolation.sh` | `EdgeRouter-VPNGateway` | Controls internal-to-DMZ, DMZ-to-internal and DevOps-to-DMZ-OVS flows |
+| `nat-control.sh` | `EdgeRouter-VPNGateway` | Applies controlled NAT on the external interface |
+| `ospf-auth.sh` | FRR routers | Applies OSPF message-digest authentication |
 
-## Security Deployment by Node
+## Administrative Access Control
 
-| Node | Scripts |
-|---|---|
-| Dist-FRR-1 | `ospf-auth.sh`, `management-vlan-protection.sh`, `admin-access-control.sh` |
-| Dist-FRR-2 | `ospf-auth.sh`, `management-vlan-protection.sh`, `admin-access-control.sh` |
-| Core-FRR-1 | `ospf-auth.sh`, `admin-access-control.sh` |
-| Core-FRR-2 | `ospf-auth.sh`, `admin-access-control.sh` |
-| EdgeRouter-VPNGateway | `ospf-auth.sh`, `dmz-isolation.sh`, `nat-control.sh`, `admin-access-control.sh` |
-| OVS nodes | `admin-access-control.sh` |
+The DevOps server is the only administrative source:
+
+```text
+DevOps server: 192.168.99.10
+```
+
+Allowed:
+
+```text
+192.168.99.10 -> managed nodes TCP/22
+```
+
+Denied:
+
+```text
+Any other source -> managed nodes TCP/22
+```
+
+`admin-access-control.sh` uses a dedicated `PFE_ADMIN_INPUT` chain to avoid duplicate rules when bootstrap scripts are re-run.
 
 ## Management VLAN Protection
 
-The management VLAN is used for administration and automation.
-It contains the DevOps server and must be protected from direct access by user VLANs.
+VLAN 99 is the management network:
 
-Networks:
-
-| VLAN | Role | Network |
-|---|---|---|
-| VLAN 10 | HR / User VLAN | 192.168.10.0/24 |
-| VLAN 20 | IT / User VLAN | 192.168.20.0/24 |
-| VLAN 99 | Management / DevOps | 192.168.99.0/24 |
+```text
+192.168.99.0/24
+```
 
 Policy:
 
 | Source | Destination | Action |
 |---|---|---|
-| VLAN 10 | VLAN 99 | Deny |
-| VLAN 20 | VLAN 99 | Deny |
-| VLAN 99 | VLAN 10 | Allow |
-| VLAN 99 | VLAN 20 | Allow |
+| VLAN 99 | VLAN 10 / VLAN 20 | Allow |
+| VLAN 10 / VLAN 20 | VLAN 99 | Drop |
 | Established/related traffic | Any | Allow |
 
-The rules are applied on the distribution FRR routers because inter-VLAN routing happens at the distribution layer.
-
-## Administrative Access Control
-
-Administrative access is restricted to the DevOps server.
-
-| Source | Destination | Service | Action |
-|---|---|---|---|
-| DevOps Server `192.168.99.10` | Managed nodes | SSH / TCP 22 | Allow |
-| Other sources | Managed nodes | SSH / TCP 22 | Deny |
-
-This rule is applied on all SSH-enabled FRR and OVS nodes.
+`management-vlan-protection.sh` uses the `PFE_MGMT_FORWARD` chain to keep repeated bootstrap runs clean.
 
 ## DMZ Isolation
 
-The DMZ hosts services exposed to users or external networks, such as the Web server and DNS server.  
-It must be isolated from the internal network in order to limit the impact of a possible compromise of a public-facing service.
+DMZ network:
 
-Networks:
+```text
+172.16.50.0/24
+```
 
-| Zone | Network |
-|---|---|
-| Internal VLANs | 192.168.0.0/16 |
-| DMZ | 172.16.50.0/24 |
+DMZ nodes:
 
-DMZ Services:
-
-| Server | IP Address | Allowed Services |
+| Node | IP | Role |
 |---|---|---|
-| Web Server | 172.16.50.10 | HTTP/HTTPS |
-| DNS Server | 172.16.50.20 | DNS TCP/UDP 53 |
+| `DMZ-OVS-3` | `172.16.50.3` | DMZ switch management IP |
+| Web server | `172.16.50.10` | HTTP service |
+| DNS server | `172.16.50.20` | DNS service |
 
-Policy:
+Allowed internal-to-DMZ flows:
 
-| Source | Destination | Service | Action |
-|---|---|---|---|
-| Internal VLANs | Web Server | HTTP/HTTPS | Allow |
-| Internal VLANs | DNS Server | DNS | Allow |
-| Internal VLANs | DMZ | Other services | Deny |
-| DMZ | Internal VLANs | Any | Deny |
-| Established/related traffic | Any | Any | Allow |
+| Source | Destination | Service |
+|---|---|---|
+| `192.168.0.0/16` | `172.16.50.10` | TCP/80, TCP/443 |
+| `192.168.0.0/16` | `172.16.50.20` | UDP/53, TCP/53 |
+| `192.168.99.10` | `172.16.50.3` | TCP/22 and ICMP |
 
-The rules are applied on the EdgeRouter because it separates the DMZ from the internal network.
+Denied:
 
-## NAT Control
+```text
+DMZ -> internal networks by default
+Internal -> DMZ except explicit allowed services above
+```
 
-NAT is applied only on the EdgeRouter external interface.
+The DMZ switch is not connected directly to VLAN 99. Its management traffic crosses EdgeRouter and is controlled by `dmz-isolation.sh`.
 
-| Interface | Role |
+## FRR Routed Management
+
+FRR routers are managed through loopback IPs advertised by OSPF:
+
+| Router | Management loopback |
 |---|---|
-| eth3 | External/cloud-facing interface |
+| Core-FRR-1 | `10.255.0.11/32` |
+| Core-FRR-2 | `10.255.0.12/32` |
+| Dist-FRR-1 | `10.255.0.21/32` |
+| Dist-FRR-2 | `10.255.0.22/32` |
+| EdgeRouter-VPNGateway | `10.255.0.30/32` |
 
-NAT is used for Internet/external access, updates, repositories and external APIs.
-
-NAT is not the main secure communication mechanism between the on-premise infrastructure and the cloud environment.
-
-Future secure cloud communication should be handled through VPN.
-
-## OSPF Authentication
-
-OSPF authentication protects routing adjacencies between FRR routers. It ensures that only routers configured with the same authentication parameters can exchange OSPF routing information.
-
-The project uses OSPF MD5 message-digest authentication on routed point-to-point links between FRR routers.
-
-The real key is not stored in GitHub. It is loaded from:
-
-```text
-/etc/local/ospf.env
-```
-
-or from a local ignored file:
-
-```text
-secrets/ospf.env
-```
-
-Only the example file is versioned:
-
-```text
-secrets/ospf.env.example
-```
-
-Protected links:
-
-| Link | Router A Interface | Router B Interface | Network |
-|---|---|---|---|
-| Dist-FRR-1 ↔ Core-FRR-1 | Dist-FRR-1 eth1 | Core-FRR-1 eth1 | 10.0.11.0/30 |
-| Dist-FRR-1 ↔ Core-FRR-2 | Dist-FRR-1 eth2 | Core-FRR-2 eth1 | 10.0.12.0/30 |
-| Dist-FRR-2 ↔ Core-FRR-1 | Dist-FRR-2 eth1 | Core-FRR-1 eth2 | 10.0.21.0/30 |
-| Dist-FRR-2 ↔ Core-FRR-2 | Dist-FRR-2 eth2 | Core-FRR-2 eth2 | 10.0.22.0/30 |
-| Core-FRR-1 ↔ EdgeRouter | Core-FRR-1 eth0 | EdgeRouter eth0 | 10.0.100.0/30 |
-| Core-FRR-2 ↔ EdgeRouter | Core-FRR-2 eth0 | EdgeRouter eth1 | 10.0.101.0/30 |
-
-
-## Verification Commands
-
-Firewall Rules:
-
-```bash
-iptables -L INPUT -v -n --line-numbers
-iptables -L FORWARD -v -n --line-numbers
-iptables -t nat -L -v -n --line-numbers
-```
-
-OSPF:
-
-```bash
-vtysh -c "show ip ospf neighbor"
-vtysh -c "show ip route ospf"
-```
-
-VRRP:
-
-```bash
-vtysh -c "show vrrp"
-```
+SSH to these loopbacks is still restricted to `192.168.99.10` by `admin-access-control.sh`.

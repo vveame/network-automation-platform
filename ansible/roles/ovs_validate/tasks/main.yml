@@ -1,0 +1,48 @@
+---
+- name: Show hostname
+  ansible.builtin.raw: hostname
+  register: ovs_hostname
+  changed_when: false
+
+- name: Show IP configuration
+  ansible.builtin.raw: "ip addr"
+  register: ovs_ip
+  changed_when: false
+
+- name: Show routing table
+  ansible.builtin.raw: "ip route"
+  register: ovs_route
+  changed_when: false
+
+- name: Show OVS bridge configuration
+  ansible.builtin.raw: "ovs-vsctl show"
+  register: ovs_bridge_config
+  changed_when: false
+
+- name: Show OVS forwarding database
+  ansible.builtin.raw: "ovs-appctl fdb/show br0"
+  register: ovs_fdb
+  changed_when: false
+  failed_when: false
+
+- name: Save OVS validation output locally
+  ansible.builtin.copy:
+    dest: "outputs/{{ inventory_hostname }}-ovs.txt"
+    content: |
+      HOST: {{ inventory_hostname }}
+
+      === HOSTNAME ===
+      {{ ovs_hostname.stdout }}
+
+      === IP CONFIGURATION ===
+      {{ ovs_ip.stdout }}
+
+      === ROUTING TABLE ===
+      {{ ovs_route.stdout }}
+
+      === OVS CONFIGURATION ===
+      {{ ovs_bridge_config.stdout }}
+
+      === FDB TABLE ===
+      {{ ovs_fdb.stdout | default('N/A') }}
+  delegate_to: localhost

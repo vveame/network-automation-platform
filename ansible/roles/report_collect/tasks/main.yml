@@ -1,0 +1,25 @@
+---
+- name: Create report summary
+  ansible.builtin.copy:
+    dest: "outputs/validation-summary.txt"
+    content: |
+      PFE On-Prem Validation Summary
+      ==============================
+
+      Project: {{ project_name }}
+      Environment: {{ environment }}
+
+      Validation categories:
+      - Management reachability
+      - OVS configuration
+      - FRR routing and security state
+      - DMZ Web/DNS services
+      - Security policy behavior
+      - End-to-end connectivity
+
+      Output files are generated in the ansible/outputs directory.
+
+      Note:
+      Network infrastructure nodes are managed through SSH.
+      Service nodes are validated through health checks.
+      Endpoint/test hosts are validated through connectivity tests.

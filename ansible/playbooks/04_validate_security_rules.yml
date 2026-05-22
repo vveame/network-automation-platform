@@ -1,0 +1,8 @@
+---
+- name: Validate security behavior
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  roles:
+    - security_validate

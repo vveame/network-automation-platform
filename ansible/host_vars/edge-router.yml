@@ -1,0 +1,35 @@
+---
+node_name: "EdgeRouter-VPNGateway"
+node_type: "frr-router"
+router_role: "edge"
+
+management:
+  type: "routed-loopback"
+  ip: "10.255.0.30/32"
+  ansible_host: "10.255.0.30"
+  advertised_by: "ospf"
+
+interfaces:
+  lo:
+    description: "routed-management-loopback"
+    ip: "10.255.0.30/32"
+  eth0:
+    description: "link-to-core-frr-1"
+    ip: "10.0.100.2/30"
+  eth1:
+    description: "link-to-core-frr-2"
+    ip: "10.0.101.2/30"
+  eth2:
+    description: "dmz-gateway"
+    ip: "172.16.50.1/24"
+  eth3:
+    description: "external-or-cloud-link"
+    ip: "203.0.113.2/30"
+
+expected_checks:
+  - loopback_management_ip
+  - ospf_neighbors
+  - dmz_routes
+  - dmz_firewall_rules
+  - nat_rules
+  - ssh_from_devops_only

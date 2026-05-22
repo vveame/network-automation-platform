@@ -1,0 +1,32 @@
+---
+node_family: "dmz-service"
+access_method: "health-check"
+ssh_required: false
+
+dmz_service_checks:
+  web:
+    name: "web-server"
+    ip: "172.16.50.10"
+    port: 80
+    protocol: "http"
+    url: "http://172.16.50.10"
+    expected_content: "DMZ Web Server"
+
+  dns:
+    name: "dns-server"
+    ip: "172.16.50.20"
+    port: 53
+    protocol: "dns"
+    test_domain: "web.pfe.local"
+    expected_answer: "172.16.50.10"
+
+dmz_blocked_tests:
+  web_ssh:
+    ip: "172.16.50.10"
+    port: 22
+    expected: "blocked"
+
+  dns_http:
+    ip: "172.16.50.20"
+    port: 80
+    expected: "blocked"

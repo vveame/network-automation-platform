@@ -1,0 +1,17 @@
+---
+- import_playbook: 00_management_readiness.yml
+- import_playbook: 00b_wait_for_ansible_connection.yml
+
+- import_playbook: 01_validate_ovs.yml
+- import_playbook: 02_validate_frr.yml
+- import_playbook: 03_validate_dmz_services.yml
+- import_playbook: 04_validate_security_rules.yml
+- import_playbook: 05_validate_end_to_end.yml
+
+- name: Collect final validation report
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  roles:
+    - report_collect

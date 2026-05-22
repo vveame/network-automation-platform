@@ -9,6 +9,7 @@ set -e
 
 ovs-vsctl --if-exists del-br br0
 ovs-vsctl add-br br0
+ovs-vsctl set bridge br0 other_config:mac-aging-time=3600
 ovs-vsctl set bridge br0 rstp_enable=true
 
 ovs-vsctl add-port br0 eth0

@@ -1,0 +1,83 @@
+---
+project_name: "pfe-onprem-devops-platform"
+environment: "gns3-onprem-lab"
+
+devops_server:
+  name: "devops-server"
+  management_ip: "192.168.99.10"
+  role: "dedicated-automation-control-node"
+
+control_node:
+  type: "dedicated-ubuntu-vm"
+  internet_interface: "ens33"
+  management_interface: "ens34"
+  management_ip: "192.168.99.10"
+
+management_vlan:
+  id: 99
+  subnet: "192.168.99.0/24"
+  gateway: "192.168.99.1"
+
+vlans:
+  vlan10:
+    name: "users-vlan-10"
+    id: 10
+    subnet: "192.168.10.0/24"
+    gateway: "192.168.10.1"
+
+  vlan20:
+    name: "users-vlan-20"
+    id: 20
+    subnet: "192.168.20.0/24"
+    gateway: "192.168.20.1"
+
+  vlan99:
+    name: "management-vlan"
+    id: 99
+    subnet: "192.168.99.0/24"
+    gateway: "192.168.99.1"
+
+routed_management:
+  description: "FRR routers are managed using loopback addresses advertised through OSPF."
+  subnet: "10.255.0.0/24"
+  access_path: "DevOps server -> management VLAN gateway -> OSPF-routed infrastructure"
+  devops_next_hop: "192.168.99.1"
+  loopbacks:
+    core_frr_1: "10.255.0.11"
+    core_frr_2: "10.255.0.12"
+    dist_frr_1: "10.255.0.21"
+    dist_frr_2: "10.255.0.22"
+    edge_router: "10.255.0.30"
+
+dmz:
+  name: "dmz-network"
+  subnet: "172.16.50.0/24"
+  gateway: "172.16.50.1"
+  dmz_ovs_ip: "172.16.50.3"
+  web_ip: "172.16.50.10"
+  dns_ip: "172.16.50.20"
+
+dmz_management_policy:
+  description: "DMZ-OVS is managed through EdgeRouter."
+  devops_source: "192.168.99.10"
+  managed_node: "172.16.50.3"
+  allowed_protocols:
+    - "tcp/22"
+    - "icmp for controlled warm-up/troubleshooting"
+
+expected_services:
+  web:
+    ip: "172.16.50.10"
+    port: 80
+    url: "http://172.16.50.10"
+
+  dns:
+    ip: "172.16.50.20"
+    port: 53
+    test_domain: "web.pfe.local"
+    expected_answer: "172.16.50.10"
+
+validation:
+  ping_count: 2
+  ping_timeout: 2
+  tcp_timeout: 5

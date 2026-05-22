@@ -1,0 +1,12 @@
+---
+node_name: "PC1"
+node_type: "vpcs-endpoint"
+ssh_required: false
+
+ip: "192.168.10.11"
+gateway: "192.168.10.1"
+vlan: 10
+
+expected_connectivity:
+  gateway: "192.168.10.1"
+  inter_vlan_peer: "192.168.20.13"

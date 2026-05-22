@@ -1,0 +1,21 @@
+---
+node_name: "Dist-OVS-2"
+node_type: "openvswitch"
+switch_role: "distribution"
+management_ip: "192.168.99.32"
+management_mac: "02:99:00:00:00:32"
+
+bridge: "br0"
+
+expected_ports:
+  eth0: "trunk_10_20_99"
+  eth1: "trunk_10_20_99"
+  eth2: "trunk_10_20_99"
+  eth3: "trunk_10_20_99"
+  mgmt0: "access_vlan_99"
+
+expected_checks:
+  - bridge_exists
+  - trunk_ports
+  - management_ip
+  - fdb_table

@@ -1,0 +1,18 @@
+---
+node_name: "Web-Server-Nginx"
+node_type: "dmz-service"
+service_type: "web"
+ssh_required: false
+
+ip: "172.16.50.10"
+gateway: "172.16.50.1"
+
+health_checks:
+  - name: "http_check"
+    url: "http://172.16.50.10"
+    expected_content: "DMZ Web Server"
+    expected_status: 200
+
+blocked_checks:
+  - name: "ssh_should_be_blocked"
+    port: 22

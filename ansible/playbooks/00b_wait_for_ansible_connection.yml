@@ -1,0 +1,11 @@
+---
+- name: Wait for Ansible SSH connection to infrastructure nodes
+  hosts: network_infra
+  gather_facts: false
+
+  tasks:
+    - name: Wait until SSH connection is usable by Ansible
+      ansible.builtin.wait_for_connection:
+        timeout: 45
+        sleep: 3
+        connect_timeout: 5
