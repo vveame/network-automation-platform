@@ -178,6 +178,27 @@ deploy_dmz_ovs_persistent() {
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
 }
 
+deploy_oob_mgmt_persistent() {
+  NODE_NAME="$1"
+  ENV_FILE="$2"
+
+  CONTAINER="$(find_container_any_state "$NODE_NAME")"
+
+  if [ -z "$CONTAINER" ]; then
+    echo "[WARN] Container not found for $NODE_NAME, skipping persistent OOB management."
+    return 0
+  fi
+
+  echo "[INFO] Deploying persistent OOB management to $NODE_NAME -> $CONTAINER"
+
+  LOCAL_DIR="$(require_mount "$CONTAINER" "/gns3volumes/etc/local")"
+
+  sudo mkdir -p "$LOCAL_DIR"
+
+  install_file "$REPO/management/oob-mgmt.sh" "$LOCAL_DIR/oob-mgmt.sh" "755"
+  install_file "$REPO/$ENV_FILE" "$LOCAL_DIR/oob-mgmt.env" "644"
+}
+
 echo "[INFO] Starting persistent-volume GNS3 bootstrap..."
 echo "[INFO] This version works even if containers are stopped or exited."
 
@@ -248,7 +269,22 @@ deploy_ovs \
 deploy_dmz_ovs_persistent \
   "DMZ-OVS-3" \
   "ovs/dmz/dmz-ovs.sh" \
-  "ovs/management/dmz-ovs-3-mgmt.sh"s
+  "ovs/management/dmz-ovs-3-mgmt.sh"
+
+echo "[INFO] Deploying persistent OOB management files..."
+
+deploy_oob_mgmt_persistent "Core-FRR-1" "management/oob/core-frr-1.oob-env"
+deploy_oob_mgmt_persistent "Core-FRR-2" "management/oob/core-frr-2.oob-env"
+deploy_oob_mgmt_persistent "Dist-FRR-1" "management/oob/dist-frr-1.oob-env"
+deploy_oob_mgmt_persistent "Dist-FRR-2" "management/oob/dist-frr-2.oob-env"
+deploy_oob_mgmt_persistent "EdgeRouter-VPNGateway" "management/oob/edge-router.oob-env"
+
+deploy_oob_mgmt_persistent "Dist-OVS-1" "management/oob/dist-ovs-1.oob-env"
+deploy_oob_mgmt_persistent "Dist-OVS-2" "management/oob/dist-ovs-2.oob-env"
+deploy_oob_mgmt_persistent "DMZ-OVS-3" "management/oob/dmz-ovs-3.oob-env"
+deploy_oob_mgmt_persistent "Access-OVS-4" "management/oob/access-ovs-4.oob-env"
+deploy_oob_mgmt_persistent "Access-OVS-5" "management/oob/access-ovs-5.oob-env"
+deploy_oob_mgmt_persistent "Access-OVS-6" "management/oob/access-ovs-6.oob-env"
 
 echo "[OK] Persistent bootstrap completed."
 echo "[INFO] You can now start/restart nodes from GNS3."

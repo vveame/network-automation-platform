@@ -2,6 +2,9 @@
 - name: Validate all FRRouting nodes
   hosts: frr
   gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/frr.yml
 
   roles:
     - frr_validate

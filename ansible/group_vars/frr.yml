@@ -5,10 +5,40 @@ python_required: false
 ansible_module_preference: "raw"
 
 frr_management:
-  type: "routed-loopback"
+  type: "oob"
+  prefix: "10.200.0.0/24"
+  ssh_source_allowed: "10.200.0.10"
+
+frr_loopbacks:
+  description: "Loopbacks are used for OSPF/routing validation, not as the primary SSH control path."
   prefix: "10.255.0.0/24"
   routing_protocol: "ospf"
-  ssh_source_allowed: "192.168.99.10"
+
+expected_frr_nodes:
+  core-frr-1:
+    oob_ip: "10.200.0.11"
+    oob_interface: "eth3"
+    loopback_ip: "10.255.0.11/32"
+
+  core-frr-2:
+    oob_ip: "10.200.0.12"
+    oob_interface: "eth3"
+    loopback_ip: "10.255.0.12/32"
+
+  dist-frr-1:
+    oob_ip: "10.200.0.21"
+    oob_interface: "eth3"
+    loopback_ip: "10.255.0.21/32"
+
+  dist-frr-2:
+    oob_ip: "10.200.0.22"
+    oob_interface: "eth3"
+    loopback_ip: "10.255.0.22/32"
+
+  edge-router:
+    oob_ip: "10.200.0.30"
+    oob_interface: "eth4"
+    loopback_ip: "10.255.0.30/32"
 
 frr_expected_daemons:
   - zebra
@@ -27,7 +57,7 @@ frr_ospf_validation_commands:
   - 'vtysh -c "show ip ospf neighbor"'
   - 'vtysh -c "show ip route ospf"'
 
-frr_management_validation_commands:
+frr_loopback_validation_commands:
   - 'ip addr show lo'
   - 'vtysh -c "show ip route 10.255.0.0/24"'
 

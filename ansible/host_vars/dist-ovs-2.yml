@@ -2,8 +2,23 @@
 node_name: "Dist-OVS-2"
 node_type: "openvswitch"
 switch_role: "distribution"
-management_ip: "192.168.99.32"
-management_mac: "02:99:00:00:00:32"
+
+management:
+  type: "oob"
+  interface: "eth4"
+  ip: "10.200.0.32/24"
+  ansible_host: "10.200.0.32"
+
+oob_management:
+  interface: "eth4"
+  ip: "10.200.0.32/24"
+
+inband_management:
+  interface: "mgmt0"
+  ip: "192.168.99.32/24"
+  mac: "02:99:00:00:00:32"
+  gateway: "192.168.99.1"
+  role: "VLAN 99 in-band management validation"
 
 bridge: "br0"
 
@@ -12,10 +27,12 @@ expected_ports:
   eth1: "trunk_10_20_99"
   eth2: "trunk_10_20_99"
   eth3: "trunk_10_20_99"
+  eth4: "oob_management"
   mgmt0: "access_vlan_99"
 
 expected_checks:
   - bridge_exists
   - trunk_ports
-  - management_ip
+  - oob_management_ip
+  - inband_management_ip
   - fdb_table

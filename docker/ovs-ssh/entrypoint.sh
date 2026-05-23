@@ -74,6 +74,15 @@ else
   echo "[BOOT] No /etc/local/ovs-mgmt.sh found, skipping management IP."
 fi
 
+# Apply OOB management interface configuration
+
+if [ -x /etc/local/oob-mgmt.sh ]; then
+  echo "[BOOT] Applying OOB management configuration..."
+  /etc/local/oob-mgmt.sh || true
+else
+  echo "[BOOT] No /etc/local/oob-mgmt.sh found, skipping OOB management."
+fi
+
 # 5. Apply admin access control
 
 if [ -x /etc/local/security/admin-access-control.sh ]; then

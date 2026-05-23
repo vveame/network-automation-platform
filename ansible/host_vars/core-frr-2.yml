@@ -4,16 +4,24 @@ node_type: "frr-router"
 router_role: "core"
 
 management:
-  type: "routed-loopback"
+  type: "oob"
+  interface: "eth3"
+  ip: "10.200.0.12/24"
+  ansible_host: "10.200.0.12"
+
+oob_management:
+  interface: "eth3"
+  ip: "10.200.0.12/24"
+
+loopback_validation:
   ip: "10.255.0.12/32"
-  ansible_host: "10.255.0.12"
   advertised_by: "ospf"
 
 router_id: "1.1.1.2"
 
 interfaces:
   lo:
-    description: "routed-management-loopback"
+    description: "routed-loopback-for-validation"
     ip: "10.255.0.12/32"
   eth0:
     description: "link-to-dist-frr-1"
@@ -24,10 +32,14 @@ interfaces:
   eth2:
     description: "link-to-edge-router"
     ip: "10.0.101.1/30"
+  eth3:
+    description: "oob-management"
+    ip: "10.200.0.12/24"
 
 expected_checks:
-  - loopback_management_ip
+  - oob_management_ip
+  - loopback_validation_ip
   - ospf_neighbors
   - ospf_routes
   - routing_table
-  - ssh_from_devops_only
+  - ssh_from_devops_oob_only

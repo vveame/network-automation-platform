@@ -3,23 +3,32 @@
   ansible.builtin.command: "curl -s --connect-timeout 5 http://172.16.50.10"
   register: web_http
   changed_when: false
+  retries: 3
+  delay: 2
+  until: web_http.rc == 0 and "DMZ Web Server" in web_http.stdout
   failed_when: web_http.rc != 0 or "DMZ Web Server" not in web_http.stdout
 
 - name: Check DNS web record
   ansible.builtin.command: "nslookup web.pfe.local 172.16.50.20"
   register: dns_web_record
   changed_when: false
+  retries: 3
+  delay: 2
+  until: dns_web_record.rc == 0 and "172.16.50.10" in dns_web_record.stdout
   failed_when: dns_web_record.rc != 0 or "172.16.50.10" not in dns_web_record.stdout
 
 - name: Check DNS server record
   ansible.builtin.command: "nslookup dns.pfe.local 172.16.50.20"
   register: dns_dns_record
   changed_when: false
+  retries: 3
+  delay: 2
+  until: dns_dns_record.rc == 0 and "172.16.50.20" in dns_dns_record.stdout
   failed_when: dns_dns_record.rc != 0 or "172.16.50.20" not in dns_dns_record.stdout
 
 - name: Save DMZ service validation output locally
   ansible.builtin.copy:
-    dest: "outputs/dmz-services.txt"
+    dest: "../outputs/dmz-services.txt"
     content: |
       === WEB HTTP CHECK ===
       {{ web_http.stdout }}
@@ -29,3 +38,4 @@
 
       === DNS DNS RECORD CHECK ===
       {{ dns_dns_record.stdout }}
+  delegate_to: localhost

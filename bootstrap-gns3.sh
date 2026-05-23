@@ -144,6 +144,28 @@ deploy_dmz_ovs() {
   docker exec "$CONTAINER" sh -c "/etc/local/security/admin-access-control.sh" || true
 }
 
+deploy_oob_mgmt() {
+  NODE_NAME="$1"
+  ENV_FILE="$2"
+
+  CONTAINER="$(find_container "$NODE_NAME")"
+
+  if [ -z "$CONTAINER" ]; then
+    echo "[WARN] Running container not found for $NODE_NAME, skipping OOB management."
+    return 0
+  fi
+
+  echo "[INFO] Deploying OOB management to $NODE_NAME -> $CONTAINER"
+
+  docker exec "$CONTAINER" sh -c 'mkdir -p /etc/local'
+
+  write_file "$CONTAINER" "$REPO/management/oob-mgmt.sh" "/etc/local/oob-mgmt.sh" "755"
+  write_file "$CONTAINER" "$REPO/$ENV_FILE" "/etc/local/oob-mgmt.env" "644"
+
+  echo "[INFO] Applying OOB management on $NODE_NAME..."
+  docker exec "$CONTAINER" sh -c "/etc/local/oob-mgmt.sh"
+}
+
 echo "[INFO] Starting running-container GNS3 bootstrap..."
 echo "[INFO] Make sure all GNS3 Docker nodes are currently started."
 
@@ -215,6 +237,21 @@ deploy_dmz_ovs \
   "DMZ-OVS-3" \
   "ovs/dmz/dmz-ovs.sh" \
   "ovs/management/dmz-ovs-3-mgmt.sh"
+
+echo "[INFO] Deploying OOB management interfaces..."
+
+deploy_oob_mgmt "Core-FRR-1" "management/oob/core-frr-1.oob-env"
+deploy_oob_mgmt "Core-FRR-2" "management/oob/core-frr-2.oob-env"
+deploy_oob_mgmt "Dist-FRR-1" "management/oob/dist-frr-1.oob-env"
+deploy_oob_mgmt "Dist-FRR-2" "management/oob/dist-frr-2.oob-env"
+deploy_oob_mgmt "EdgeRouter-VPNGateway" "management/oob/edge-router.oob-env"
+
+deploy_oob_mgmt "Dist-OVS-1" "management/oob/dist-ovs-1.oob-env"
+deploy_oob_mgmt "Dist-OVS-2" "management/oob/dist-ovs-2.oob-env"
+deploy_oob_mgmt "DMZ-OVS-3" "management/oob/dmz-ovs-3.oob-env"
+deploy_oob_mgmt "Access-OVS-4" "management/oob/access-ovs-4.oob-env"
+deploy_oob_mgmt "Access-OVS-5" "management/oob/access-ovs-5.oob-env"
+deploy_oob_mgmt "Access-OVS-6" "management/oob/access-ovs-6.oob-env"
 
 echo "[OK] Bootstrap completed."
 echo "[IMPORTANT] Stop all nodes, then start them again from GNS3."

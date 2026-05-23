@@ -1,4 +1,10 @@
 ---
+- name: Ensure outputs directory exists
+  ansible.builtin.file:
+    path: "outputs"
+    state: directory
+    mode: "0755"
+
 - name: Create report summary
   ansible.builtin.copy:
     dest: "outputs/validation-summary.txt"
@@ -7,10 +13,26 @@
       ==============================
 
       Project: {{ project_name }}
-      Environment: {{ environment }}
+      Environment: {{ lab_environment }}
+
+      Control plane:
+      - DevOps OOB IP: {{ devops_server.oob_ip }}
+      - OOB network: {{ oob_management.network }}
+
+      Production / validation networks:
+      - VLAN 10: {{ vlans.vlan10.subnet }}
+      - VLAN 20: {{ vlans.vlan20.subnet }}
+      - VLAN 99: {{ vlans.vlan99.subnet }}
+      - FRR loopback prefix: {{ routed_management.subnet }}
+      - DMZ subnet: {{ dmz.subnet }}
+
+      DMZ services:
+      - Web server: {{ dmz.web_ip }}
+      - DNS server: {{ dmz.dns_ip }}
 
       Validation categories:
-      - Management reachability
+      - OOB management reachability
+      - Ansible SSH readiness
       - OVS configuration
       - FRR routing and security state
       - DMZ Web/DNS services
@@ -20,6 +42,7 @@
       Output files are generated in the ansible/outputs directory.
 
       Note:
-      Network infrastructure nodes are managed through SSH.
+      Network infrastructure nodes are managed through SSH over OOB.
       Service nodes are validated through health checks.
       Endpoint/test hosts are validated through connectivity tests.
+      VLAN 99 and FRR loopbacks remain production validation targets, not the main Ansible SSH path.

@@ -8,7 +8,7 @@ RUN apk update && apk add --no-cache openssh bash iptables \
     && chmod 700 /root/.ssh
 
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 EXPOSE 22
 

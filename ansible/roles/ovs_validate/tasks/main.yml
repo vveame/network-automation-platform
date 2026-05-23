@@ -9,6 +9,17 @@
   register: ovs_ip
   changed_when: false
 
+- name: Validate OOB interface address
+  ansible.builtin.raw: "ip addr show {{ expected_ovs_nodes[inventory_hostname].oob_interface }} | grep '{{ expected_ovs_nodes[inventory_hostname].oob_ip }}'"
+  register: ovs_oob_check
+  changed_when: false
+
+- name: Validate OOB interface is not part of br0
+  ansible.builtin.raw: "ovs-vsctl list-ports br0 | grep -w '{{ expected_ovs_nodes[inventory_hostname].oob_interface }}'"
+  register: ovs_oob_bridge_check
+  changed_when: false
+  failed_when: ovs_oob_bridge_check.rc == 0
+
 - name: Show routing table
   ansible.builtin.raw: "ip route"
   register: ovs_route
@@ -25,14 +36,33 @@
   changed_when: false
   failed_when: false
 
+- name: Validate in-band management address when defined
+  ansible.builtin.raw: "ip addr | grep '{{ expected_ovs_nodes[inventory_hostname].inband_mgmt_ip | default(expected_ovs_nodes[inventory_hostname].legacy_dmz_mgmt_ip | default('NO_INBAND_EXPECTED')) }}'"
+  register: ovs_inband_check
+  changed_when: false
+  failed_when: false
+
 - name: Save OVS validation output locally
   ansible.builtin.copy:
-    dest: "outputs/{{ inventory_hostname }}-ovs.txt"
+    dest: "../outputs/{{ inventory_hostname }}-ovs.txt"
     content: |
       HOST: {{ inventory_hostname }}
 
       === HOSTNAME ===
       {{ ovs_hostname.stdout }}
+
+      === OOB CHECK ===
+      {{ ovs_oob_check.stdout }}
+
+      === OOB NOT IN br0 CHECK ===
+      rc={{ ovs_oob_bridge_check.rc }}
+      stdout={{ ovs_oob_bridge_check.stdout | default('') }}
+      stderr={{ ovs_oob_bridge_check.stderr | default('') }}
+
+      === IN-BAND CHECK ===
+      rc={{ ovs_inband_check.rc }}
+      stdout={{ ovs_inband_check.stdout | default('') }}
+      stderr={{ ovs_inband_check.stderr | default('') }}
 
       === IP CONFIGURATION ===
       {{ ovs_ip.stdout }}

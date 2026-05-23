@@ -1,65 +1,49 @@
 ---
-- name: Verify management-plane readiness after node-side announce
+- name: Verify OOB management-plane readiness
   hosts: localhost
   connection: local
   gather_facts: false
-
-  vars:
-    ssh_targets:
-      # OVS internal management
-      - name: "dist-ovs-1"
-        ip: "192.168.99.31"
-      - name: "dist-ovs-2"
-        ip: "192.168.99.32"
-      - name: "access-ovs-4"
-        ip: "192.168.99.44"
-      - name: "access-ovs-5"
-        ip: "192.168.99.45"
-      - name: "access-ovs-6"
-        ip: "192.168.99.46"
-
-      # DMZ OVS through EdgeRouter
-      - name: "dmz-ovs-3"
-        ip: "172.16.50.3"
-
-      # FRR routed loopback management
-      - name: "core-frr-1"
-        ip: "10.255.0.11"
-      - name: "core-frr-2"
-        ip: "10.255.0.12"
-      - name: "dist-frr-1"
-        ip: "10.255.0.21"
-      - name: "dist-frr-2"
-        ip: "10.255.0.22"
-      - name: "edge-router"
-        ip: "10.255.0.30"
+  vars_files:
+    - ../group_vars/all.yml
 
   tasks:
-    - name: Warm up management targets with ICMP
-      ansible.builtin.command: "ping -c 2 -W 2 {{ item.ip }}"
-      loop: "{{ ssh_targets }}"
-      changed_when: false
-      failed_when: false
-      register: warmup_ping
+    - name: Ensure outputs directory exists
+      ansible.builtin.file:
+        path: "../outputs"
+        state: directory
+        mode: "0755"
 
-    - name: Wait for SSH port to open
+    - name: Ping OOB management targets
+      ansible.builtin.command: "ping -c 2 -W 2 {{ item.ip }}"
+      loop: "{{ oob_management.targets }}"
+      changed_when: false
+      register: oob_ping
+
+    - name: Wait for SSH port on OOB management targets
       ansible.builtin.wait_for:
         host: "{{ item.ip }}"
         port: 22
         state: started
         delay: 1
-        timeout: 30
+        timeout: 10
         connect_timeout: 3
-      loop: "{{ ssh_targets }}"
-      register: ssh_wait
-      failed_when: false
+      loop: "{{ oob_management.targets }}"
+      register: oob_ssh_wait
 
-    - name: Save management readiness output
+    - name: Save OOB management readiness output
       ansible.builtin.copy:
-        dest: "../outputs/management-readiness.txt"
+        dest: "../outputs/oob-management-readiness.txt"
         content: |
-          === ICMP WARM-UP ===
-          {% for result in warmup_ping.results %}
+          === OOB MANAGEMENT READINESS ===
+
+          DevOps OOB IP:
+            {{ oob_management.devops_ip }}
+
+          OOB network:
+            {{ oob_management.network }}
+
+          === ICMP CHECKS ===
+          {% for result in oob_ping.results %}
           TARGET: {{ result.item.name }} - {{ result.item.ip }}
           RC: {{ result.rc }}
           STDOUT:
@@ -70,8 +54,8 @@
           --------------------------------------------------
           {% endfor %}
 
-          === SSH PORT READINESS ===
-          {% for result in ssh_wait.results %}
+          === SSH PORT CHECKS ===
+          {% for result in oob_ssh_wait.results %}
           TARGET: {{ result.item.name }} - {{ result.item.ip }}:22
           FAILED: {{ result.failed | default(false) }}
           ELAPSED: {{ result.elapsed | default('N/A') }}

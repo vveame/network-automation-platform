@@ -2,6 +2,9 @@
 - name: Validate all Open vSwitch nodes
   hosts: ovs
   gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/ovs.yml
 
   roles:
     - ovs_validate

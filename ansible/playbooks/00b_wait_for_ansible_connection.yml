@@ -1,11 +1,14 @@
 ---
-- name: Wait for Ansible SSH connection to infrastructure nodes
+- name: Verify Ansible raw SSH connection to infrastructure nodes
   hosts: network_infra
   gather_facts: false
 
   tasks:
-    - name: Wait until SSH connection is usable by Ansible
-      ansible.builtin.wait_for_connection:
-        timeout: 45
-        sleep: 3
-        connect_timeout: 5
+    - name: Verify raw SSH command works
+      ansible.builtin.raw: "hostname"
+      register: raw_ssh_test
+      changed_when: false
+
+    - name: Show raw SSH result
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} reachable through Ansible raw SSH as {{ raw_ssh_test.stdout | trim }}"

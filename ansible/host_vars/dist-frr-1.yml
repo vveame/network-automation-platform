@@ -4,14 +4,22 @@ node_type: "frr-router"
 router_role: "distribution"
 
 management:
-  type: "routed-loopback"
+  type: "oob"
+  interface: "eth3"
+  ip: "10.200.0.21/24"
+  ansible_host: "10.200.0.21"
+
+oob_management:
+  interface: "eth3"
+  ip: "10.200.0.21/24"
+
+loopback_validation:
   ip: "10.255.0.21/32"
-  ansible_host: "10.255.0.21"
   advertised_by: "ospf"
 
 interfaces:
   lo:
-    description: "routed-management-loopback"
+    description: "routed-loopback-for-validation"
     ip: "10.255.0.21/32"
   eth0.10:
     description: "vlan-10-gateway-physical"
@@ -37,11 +45,15 @@ interfaces:
   eth2:
     description: "link-to-core-frr-2"
     ip: "10.0.12.2/30"
+  eth3:
+    description: "oob-management"
+    ip: "10.200.0.21/24"
 
 expected_checks:
-  - loopback_management_ip
+  - oob_management_ip
+  - loopback_validation_ip
   - vlan_interfaces
   - vrrp_state
   - ospf_neighbors
   - management_vlan_protection
-  - ssh_from_devops_only
+  - ssh_from_devops_oob_only

@@ -1,34 +1,18 @@
 ---
-- name: Test that DevOps SSH to DMZ-OVS is allowed
-  ansible.builtin.command: "nc -zv -w 3 172.16.50.3 22"
-  register: dmz_ovs_ssh_allowed
-  changed_when: false
-  failed_when: dmz_ovs_ssh_allowed.rc != 0
-
-- name: Test that DevOps SSH to FRR loopbacks is allowed
+- name: Test that DevOps OOB SSH to infrastructure nodes is allowed
   ansible.builtin.command: "nc -zv -w 3 {{ item.ip }} 22"
-  loop:
-    - name: "core-frr-1"
-      ip: "10.255.0.11"
-    - name: "core-frr-2"
-      ip: "10.255.0.12"
-    - name: "dist-frr-1"
-      ip: "10.255.0.21"
-    - name: "dist-frr-2"
-      ip: "10.255.0.22"
-    - name: "edge-router"
-      ip: "10.255.0.30"
-  register: frr_ssh_allowed
+  loop: "{{ oob_management.targets }}"
+  register: oob_ssh_allowed
   changed_when: false
   failed_when: false
 
-- name: Assert DevOps SSH to all FRR loopbacks is allowed
+- name: Assert DevOps OOB SSH to all infrastructure nodes is allowed
   ansible.builtin.assert:
     that:
       - item.rc == 0
-    fail_msg: "SSH to {{ item.item.name }} at {{ item.item.ip }} failed. Check FRR loopback routing, SSH key, or admin firewall rules."
-    success_msg: "SSH to {{ item.item.name }} is reachable."
-  loop: "{{ frr_ssh_allowed.results }}"
+    fail_msg: "OOB SSH to {{ item.item.name }} at {{ item.item.ip }} failed."
+    success_msg: "OOB SSH to {{ item.item.name }} at {{ item.item.ip }} is reachable."
+  loop: "{{ oob_ssh_allowed.results }}"
 
 - name: Test that Web HTTP is allowed
   ansible.builtin.command: "curl -s --connect-timeout 5 http://172.16.50.10"
@@ -56,12 +40,16 @@
 
 - name: Save security validation output locally
   ansible.builtin.copy:
-    dest: "outputs/security-validation.txt"
+    dest: "../outputs/security-validation.txt"
     content: |
-      === DMZ-OVS SSH ALLOWED FROM DEVOPS ===
-      rc={{ dmz_ovs_ssh_allowed.rc }}
-      stdout={{ dmz_ovs_ssh_allowed.stdout }}
-      stderr={{ dmz_ovs_ssh_allowed.stderr }}
+      === OOB SSH ALLOWED FROM DEVOPS ===
+      {% for result in oob_ssh_allowed.results %}
+      TARGET={{ result.item.name }} {{ result.item.ip }}:22
+      rc={{ result.rc }}
+      stdout={{ result.stdout }}
+      stderr={{ result.stderr }}
+      --------------------------------------------------
+      {% endfor %}
 
       === WEB HTTP ALLOWED ===
       rc={{ web_http_allowed.rc }}
@@ -80,12 +68,4 @@
       rc={{ dns_http_blocked.rc }}
       stdout={{ dns_http_blocked.stdout }}
       stderr={{ dns_http_blocked.stderr }}
-
-      === FRR LOOPBACK SSH ALLOWED FROM DEVOPS ===
-      {% for result in frr_ssh_allowed.results %}
-      TARGET={{ result.item.name }} {{ result.item.ip }}
-      rc={{ result.rc }}
-      stdout={{ result.stdout }}
-      stderr={{ result.stderr }}
-      --------------------------------------------------
-      {% endfor %}
+  delegate_to: localhost

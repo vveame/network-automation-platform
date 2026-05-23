@@ -10,9 +10,41 @@
       - "192.168.20.1"
       - "192.168.99.1"
 
-    infrastructure_management_tests:
-      - name: "dmz-ovs-ssh-through-edge"
-        command: "nc -zv -w 3 172.16.50.3 22"
+    oob_management_tests:
+      - name: "core-frr-1-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.11 22"
+      - name: "core-frr-2-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.12 22"
+      - name: "dist-frr-1-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.21 22"
+      - name: "dist-frr-2-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.22 22"
+      - name: "edge-router-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.30 22"
+      - name: "dist-ovs-1-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.31 22"
+      - name: "dist-ovs-2-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.32 22"
+      - name: "dmz-ovs-3-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.33 22"
+      - name: "access-ovs-4-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.44 22"
+      - name: "access-ovs-5-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.45 22"
+      - name: "access-ovs-6-oob-ssh"
+        command: "nc -zv -w 3 10.200.0.46 22"
+
+    frr_loopback_tests:
+      - name: "core-frr-1-loopback"
+        command: "ping -c 2 -W 2 10.255.0.11"
+      - name: "core-frr-2-loopback"
+        command: "ping -c 2 -W 2 10.255.0.12"
+      - name: "dist-frr-1-loopback"
+        command: "ping -c 2 -W 2 10.255.0.21"
+      - name: "dist-frr-2-loopback"
+        command: "ping -c 2 -W 2 10.255.0.22"
+      - name: "edge-router-loopback"
+        command: "ping -c 2 -W 2 10.255.0.30"
 
     dmz_allowed_tests:
       - name: "web-http"
@@ -21,6 +53,12 @@
         command: "nslookup web.pfe.local 172.16.50.20"
 
   tasks:
+    - name: Ensure outputs directory exists
+      ansible.builtin.file:
+        path: "../outputs"
+        state: directory
+        mode: "0755"
+
     - name: Ping VLAN gateways
       ansible.builtin.command: "ping -c 2 -W 2 {{ item }}"
       loop: "{{ gateway_targets }}"
@@ -28,11 +66,18 @@
       register: gateway_ping
       failed_when: false
 
-    - name: Run infrastructure management tests
+    - name: Run OOB management SSH tests
       ansible.builtin.command: "{{ item.command }}"
-      loop: "{{ infrastructure_management_tests }}"
+      loop: "{{ oob_management_tests }}"
       changed_when: false
-      register: infra_mgmt
+      register: oob_mgmt
+      failed_when: false
+
+    - name: Run FRR loopback validation tests
+      ansible.builtin.command: "{{ item.command }}"
+      loop: "{{ frr_loopback_tests }}"
+      changed_when: false
+      register: frr_loopbacks
       failed_when: false
 
     - name: Run allowed DMZ service tests
@@ -55,8 +100,21 @@
           --------------------------------------------------
           {% endfor %}
 
-          === INFRASTRUCTURE MANAGEMENT TESTS ===
-          {% for result in infra_mgmt.results %}
+          === OOB MANAGEMENT SSH TESTS ===
+          {% for result in oob_mgmt.results %}
+          TEST: {{ result.item.name }}
+          COMMAND: {{ result.item.command }}
+          RC: {{ result.rc }}
+          STDOUT:
+          {{ result.stdout }}
+
+          STDERR:
+          {{ result.stderr }}
+          --------------------------------------------------
+          {% endfor %}
+
+          === FRR LOOPBACK VALIDATION TESTS ===
+          {% for result in frr_loopbacks.results %}
           TEST: {{ result.item.name }}
           COMMAND: {{ result.item.command }}
           RC: {{ result.rc }}

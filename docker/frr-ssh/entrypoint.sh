@@ -105,6 +105,15 @@ else
   echo "[BOOT] No /etc/local/interfaces.sh found or not executable."
 fi
 
+# Apply OOB management interface configuration
+
+if [ -x /etc/local/oob-mgmt.sh ]; then
+  echo "[BOOT] Applying OOB management configuration..."
+  /etc/local/oob-mgmt.sh || true
+else
+  echo "[BOOT] No /etc/local/oob-mgmt.sh found, skipping OOB management."
+fi
+
 # 4. Start FRR daemons
 
 echo "[BOOT] Starting FRR daemons..."

@@ -9,6 +9,16 @@
   register: frr_ip
   changed_when: false
 
+- name: Validate FRR OOB interface address
+  ansible.builtin.raw: "ip addr show {{ expected_frr_nodes[inventory_hostname].oob_interface }} | grep '{{ expected_frr_nodes[inventory_hostname].oob_ip }}'"
+  register: frr_oob_check
+  changed_when: false
+
+- name: Validate FRR loopback address
+  ansible.builtin.raw: "ip addr show lo | grep '{{ expected_frr_nodes[inventory_hostname].loopback_ip.split('/')[0] }}'"
+  register: frr_loopback_check
+  changed_when: false
+
 - name: Show loopback configuration
   ansible.builtin.raw: "ip addr show lo"
   register: frr_loopback
@@ -31,7 +41,7 @@
   changed_when: false
   failed_when: false
 
-- name: Show route to routed management prefix
+- name: Show route to FRR loopback prefix
   ansible.builtin.raw: 'vtysh -c "show ip route 10.255.0.0/24"'
   register: frr_mgmt_route
   changed_when: false
@@ -63,12 +73,18 @@
 
 - name: Save FRR validation output locally
   ansible.builtin.copy:
-    dest: "outputs/{{ inventory_hostname }}-frr.txt"
+    dest: "../outputs/{{ inventory_hostname }}-frr.txt"
     content: |
       HOST: {{ inventory_hostname }}
 
       === HOSTNAME ===
       {{ frr_hostname.stdout }}
+
+      === OOB CHECK ===
+      {{ frr_oob_check.stdout }}
+
+      === LOOPBACK CHECK ===
+      {{ frr_loopback_check.stdout }}
 
       === IP CONFIGURATION ===
       {{ frr_ip.stdout }}
@@ -85,7 +101,7 @@
       === OSPF ROUTES ===
       {{ frr_ospf_routes.stdout | default('N/A') }}
 
-      === ROUTED MANAGEMENT ROUTE ===
+      === LOOPBACK PREFIX ROUTE ===
       {{ frr_mgmt_route.stdout | default('N/A') }}
 
       === VRRP ===

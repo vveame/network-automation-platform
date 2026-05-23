@@ -2,8 +2,23 @@
 node_name: "Access-OVS-5"
 node_type: "openvswitch"
 switch_role: "access"
-management_ip: "192.168.99.45"
-management_mac: "02:99:00:00:00:45"
+
+management:
+  type: "oob"
+  interface: "eth3"
+  ip: "10.200.0.45/24"
+  ansible_host: "10.200.0.45"
+
+oob_management:
+  interface: "eth3"
+  ip: "10.200.0.45/24"
+
+inband_management:
+  interface: "mgmt0"
+  ip: "192.168.99.45/24"
+  mac: "02:99:00:00:00:45"
+  gateway: "192.168.99.1"
+  role: "VLAN 99 in-band management validation"
 
 bridge: "br0"
 
@@ -11,10 +26,12 @@ expected_ports:
   eth0: "access_vlan_10"
   eth1: "trunk_10_20_99"
   eth2: "trunk_10_20_99"
+  eth3: "oob_management"
   mgmt0: "access_vlan_99"
 
 expected_checks:
   - bridge_exists
   - access_ports
   - trunk_ports
-  - management_ip
+  - oob_management_ip
+  - inband_management_ip
