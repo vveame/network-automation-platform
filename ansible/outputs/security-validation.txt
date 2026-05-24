@@ -1,0 +1,87 @@
+=== OOB SSH ALLOWED FROM DEVOPS ===
+TARGET=core-frr-1 10.200.0.11:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.11 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=core-frr-2 10.200.0.12:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.12 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=dist-frr-1 10.200.0.21:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.21 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=dist-frr-2 10.200.0.22:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.22 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=edge-router 10.200.0.30:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.30 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=dist-ovs-1 10.200.0.31:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.31 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=dist-ovs-2 10.200.0.32:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.32 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=dmz-ovs-3 10.200.0.33:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.33 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=access-ovs-4 10.200.0.44:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.44 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=access-ovs-5 10.200.0.45:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.45 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+TARGET=access-ovs-6 10.200.0.46:22
+rc=0
+stdout=
+stderr=Connection to 10.200.0.46 22 port [tcp/ssh] succeeded!
+--------------------------------------------------
+
+=== WEB HTTP ALLOWED ===
+rc=0
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Web Server</title>
+</head>
+<body>
+  <h1>DMZ Web Server</h1>
+  <p>Nginx is running inside the DMZ.</p>
+</body>
+</html>
+
+=== DNS QUERY ALLOWED ===
+rc=0
+Server:		172.16.50.20
+Address:	172.16.50.20#53
+
+Name:	web.pfe.local
+Address: 172.16.50.10
+
+=== WEB SSH BLOCKED ===
+rc=1
+stdout=
+stderr=nc: connect to 172.16.50.10 port 22 (tcp) failed: Connection refused
+
+=== DNS HTTP BLOCKED ===
+rc=1
+stdout=
+stderr=nc: connect to 172.16.50.20 port 80 (tcp) failed: Connection refused

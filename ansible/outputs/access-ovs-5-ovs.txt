@@ -1,0 +1,107 @@
+HOST: access-ovs-5
+
+=== HOSTNAME ===
+Access-OVS-5
+
+
+=== OOB CHECK ===
+    inet 10.200.0.45/24 scope global eth3
+
+
+=== OOB NOT IN br0 CHECK ===
+rc=1
+stdout=
+stderr=Shared connection to 10.200.0.45 closed.
+
+
+=== IN-BAND CHECK ===
+rc=0
+stdout=    inet 192.168.99.45/24 scope global mgmt0
+
+stderr=Shared connection to 10.200.0.45 closed.
+
+
+=== IP CONFIGURATION ===
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+5: ovs-system: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN qlen 1000
+    link/ether be:36:61:fe:1f:99 brd ff:ff:ff:ff:ff:ff
+6: br0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN qlen 1000
+    link/ether 12:57:b7:cc:04:44 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::1057:b7ff:fecc:444/64 scope link 
+       valid_lft forever preferred_lft forever
+7: mgmt0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN qlen 1000
+    link/ether 02:99:00:00:00:45 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.45/24 scope global mgmt0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::99:ff:fe00:45/64 scope link 
+       valid_lft forever preferred_lft forever
+107: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel master ovs-system state UNKNOWN qlen 1000
+    link/ether 02:42:45:0b:d2:00 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::42:45ff:fe0b:d200/64 scope link 
+       valid_lft forever preferred_lft forever
+108: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel master ovs-system state UNKNOWN qlen 1000
+    link/ether 02:42:45:0b:d2:01 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::42:45ff:fe0b:d201/64 scope link 
+       valid_lft forever preferred_lft forever
+109: eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel master ovs-system state UNKNOWN qlen 1000
+    link/ether 02:42:45:0b:d2:02 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::42:45ff:fe0b:d202/64 scope link 
+       valid_lft forever preferred_lft forever
+110: eth3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN qlen 1000
+    link/ether 02:20:00:00:00:45 brd ff:ff:ff:ff:ff:ff
+    inet 10.200.0.45/24 scope global eth3
+       valid_lft forever preferred_lft forever
+111: eth4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN qlen 1000
+    link/ether 02:42:45:0b:d2:04 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::42:45ff:fe0b:d204/64 scope link 
+       valid_lft forever preferred_lft forever
+
+
+=== ROUTING TABLE ===
+default via 192.168.99.1 dev mgmt0 
+10.200.0.0/24 dev eth3 scope link  src 10.200.0.45 
+192.168.99.0/24 dev mgmt0 scope link  src 192.168.99.45 
+
+
+=== OVS CONFIGURATION ===
+eeb5c92e-0096-496a-9987-5a19001b5417
+    Bridge br0
+        Port eth0
+            tag: 10
+            Interface eth0
+        Port eth1
+            trunks: [10, 20, 99]
+            Interface eth1
+        Port eth2
+            trunks: [10, 20, 99]
+            Interface eth2
+        Port mgmt0
+            tag: 99
+            Interface mgmt0
+                type: internal
+        Port br0
+            Interface br0
+                type: internal
+
+
+=== FDB TABLE ===
+ port  VLAN  MAC                Age
+    3    99  02:42:bb:da:66:00  2881
+    2    99  02:99:00:00:00:31  2488
+    4    99  02:99:00:00:00:45  2226
+    2    99  02:99:00:00:00:46  2226
+    2    99  02:42:a2:77:d4:00  1964
+    2    20  02:42:a2:77:d4:00  1570
+LOCAL     0  12:57:b7:cc:04:44  1439
+    2    10  02:42:a2:77:d4:00  1308
+    3    10  02:42:bb:da:66:00  653
+    3    99  02:99:00:00:00:32  391
+    3    20  02:42:bb:da:66:00  260
+    2    99  00:00:5e:00:01:63    1
+    2    10  00:00:5e:00:01:0a    1
+    2    20  00:00:5e:00:01:14    1

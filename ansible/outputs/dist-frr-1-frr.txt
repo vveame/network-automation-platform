@@ -1,0 +1,301 @@
+HOST: dist-frr-1
+
+=== HOSTNAME ===
+Dist-FRR-1
+
+
+=== OOB CHECK ===
+    inet 10.200.0.21/24 scope global eth3
+
+
+=== LOOPBACK CHECK ===
+    inet 10.255.0.21/32 scope global lo
+
+
+=== IP CONFIGURATION ===
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet 10.255.0.21/32 scope global lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0.10@eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 02:42:a2:77:d4:00 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.10.2/24 scope global eth0.10
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:a2ff:fe77:d400/64 scope link 
+       valid_lft forever preferred_lft forever
+3: eth0.20@eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 02:42:a2:77:d4:00 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.20.2/24 scope global eth0.20
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:a2ff:fe77:d400/64 scope link 
+       valid_lft forever preferred_lft forever
+4: eth0.99@eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 02:42:a2:77:d4:00 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.2/24 scope global eth0.99
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:a2ff:fe77:d400/64 scope link 
+       valid_lft forever preferred_lft forever
+5: vrrp10@eth0.10: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 00:00:5e:00:01:0a brd ff:ff:ff:ff:ff:ff
+    inet 192.168.10.1/24 scope global vrrp10
+       valid_lft forever preferred_lft forever
+    inet6 fe80::200:5eff:fe00:10a/64 scope link 
+       valid_lft forever preferred_lft forever
+6: vrrp20@eth0.20: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 00:00:5e:00:01:14 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.20.1/24 scope global vrrp20
+       valid_lft forever preferred_lft forever
+    inet6 fe80::200:5eff:fe00:114/64 scope link 
+       valid_lft forever preferred_lft forever
+7: vrrp99@eth0.99: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 00:00:5e:00:01:63 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.99.1/24 scope global vrrp99
+       valid_lft forever preferred_lft forever
+    inet6 fe80::200:5eff:fe00:163/64 scope link 
+       valid_lft forever preferred_lft forever
+79: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+    link/ether 02:42:a2:77:d4:00 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::42:a2ff:fe77:d400/64 scope link 
+       valid_lft forever preferred_lft forever
+80: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+    link/ether 02:42:a2:77:d4:01 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.11.2/30 scope global eth1
+       valid_lft forever preferred_lft forever
+81: eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+    link/ether 02:42:a2:77:d4:02 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.12.2/30 scope global eth2
+       valid_lft forever preferred_lft forever
+84: eth3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+    link/ether 02:20:00:00:00:21 brd ff:ff:ff:ff:ff:ff
+    inet 10.200.0.21/24 scope global eth3
+       valid_lft forever preferred_lft forever
+
+
+=== LOOPBACK CONFIGURATION ===
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet 10.255.0.21/32 scope global lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+
+
+=== ROUTING TABLE ===
+default nhid 62 proto ospf metric 20 
+	nexthop via 10.0.11.1 dev eth1 weight 1 
+	nexthop via 10.0.12.1 dev eth2 weight 1 
+10.0.11.0/30 dev eth1 proto kernel scope link src 10.0.11.2 
+10.0.12.0/30 dev eth2 proto kernel scope link src 10.0.12.2 
+10.0.21.0/30 nhid 55 via 10.0.11.1 dev eth1 proto ospf metric 20 
+10.0.22.0/30 nhid 56 via 10.0.12.1 dev eth2 proto ospf metric 20 
+10.0.100.0/30 nhid 55 via 10.0.11.1 dev eth1 proto ospf metric 20 
+10.0.101.0/30 nhid 56 via 10.0.12.1 dev eth2 proto ospf metric 20 
+10.200.0.0/24 dev eth3 proto kernel scope link src 10.200.0.21 
+10.255.0.11 nhid 55 via 10.0.11.1 dev eth1 proto ospf metric 20 
+10.255.0.12 nhid 56 via 10.0.12.1 dev eth2 proto ospf metric 20 
+10.255.0.22 nhid 62 proto ospf metric 20 
+	nexthop via 10.0.11.1 dev eth1 weight 1 
+	nexthop via 10.0.12.1 dev eth2 weight 1 
+10.255.0.30 nhid 62 proto ospf metric 20 
+	nexthop via 10.0.11.1 dev eth1 weight 1 
+	nexthop via 10.0.12.1 dev eth2 weight 1 
+172.16.50.0/24 nhid 62 proto ospf metric 20 
+	nexthop via 10.0.11.1 dev eth1 weight 1 
+	nexthop via 10.0.12.1 dev eth2 weight 1 
+192.168.10.0/24 dev eth0.10 proto kernel scope link src 192.168.10.2 
+192.168.10.0/24 dev vrrp10 proto kernel scope link src 192.168.10.1 
+192.168.20.0/24 dev eth0.20 proto kernel scope link src 192.168.20.2 
+192.168.20.0/24 dev vrrp20 proto kernel scope link src 192.168.20.1 
+192.168.99.0/24 dev eth0.99 proto kernel scope link src 192.168.99.2 
+192.168.99.0/24 dev vrrp99 proto kernel scope link src 192.168.99.1 
+
+
+=== OSPF NEIGHBORS ===
+
+Neighbor ID     Pri State           Up Time         Dead Time Address         Interface                        RXmtL RqstL DBsmL
+1.1.1.1           1 Full/Backup     4h39m47s          35.507s 10.0.11.1       eth1:10.0.11.2                       0     0     0
+1.1.1.2           1 Full/Backup     4h39m47s          35.509s 10.0.12.1       eth2:10.0.12.2                       0     0     0
+
+
+
+=== OSPF ROUTES ===
+Codes: K - kernel route, C - connected, S - static, R - RIP,
+       O - OSPF, I - IS-IS, B - BGP, E - EIGRP, N - NHRP,
+       T - Table, v - VNC, V - VNC-Direct, A - Babel, F - PBR,
+       f - OpenFabric,
+       > - selected route, * - FIB route, q - queued, r - rejected, b - backup
+       t - trapped, o - offload failure
+
+O>* 0.0.0.0/0 [110/10] via 10.0.11.1, eth1, weight 1, 04:39:33
+  *                    via 10.0.12.1, eth2, weight 1, 04:39:33
+O   10.0.11.0/30 [110/10000] is directly connected, eth1, weight 1, 04:40:28
+O   10.0.12.0/30 [110/10000] is directly connected, eth2, weight 1, 04:40:28
+O>* 10.0.21.0/30 [110/20000] via 10.0.11.1, eth1, weight 1, 04:39:44
+O>* 10.0.22.0/30 [110/20000] via 10.0.12.1, eth2, weight 1, 04:39:44
+O>* 10.0.100.0/30 [110/20000] via 10.0.11.1, eth1, weight 1, 04:39:44
+O>* 10.0.101.0/30 [110/20000] via 10.0.12.1, eth2, weight 1, 04:39:44
+O>* 10.255.0.11/32 [110/10000] via 10.0.11.1, eth1, weight 1, 04:39:44
+O>* 10.255.0.12/32 [110/10000] via 10.0.12.1, eth2, weight 1, 04:39:44
+O   10.255.0.21/32 [110/0] is directly connected, lo, weight 1, 04:40:28
+O>* 10.255.0.22/32 [110/20000] via 10.0.11.1, eth1, weight 1, 04:39:34
+  *                            via 10.0.12.1, eth2, weight 1, 04:39:34
+O>* 10.255.0.30/32 [110/20000] via 10.0.11.1, eth1, weight 1, 04:39:34
+  *                            via 10.0.12.1, eth2, weight 1, 04:39:34
+O>* 172.16.50.0/24 [110/30000] via 10.0.11.1, eth1, weight 1, 04:39:34
+  *                            via 10.0.12.1, eth2, weight 1, 04:39:34
+O   192.168.10.0/24 [110/10000] is directly connected, eth0.10, weight 1, 04:40:28
+O   192.168.20.0/24 [110/10000] is directly connected, eth0.20, weight 1, 04:40:28
+O   192.168.99.0/24 [110/10000] is directly connected, eth0.99, weight 1, 04:40:28
+
+
+=== LOOPBACK PREFIX ROUTE ===
+% Network not in table
+
+
+=== VRRP ===
+
+ Virtual Router ID                       10                  
+ Protocol Version                        3                   
+ Autoconfigured                          No                  
+ Shutdown                                No                  
+ Interface                               eth0.10             
+ VRRP interface (v4)                     vrrp10              
+ VRRP interface (v6)                     None                
+ Primary IP (v4)                         192.168.10.2        
+ Primary IP (v6)                         ::                  
+ Virtual MAC (v4)                        00:00:5e:00:01:0a   
+ Virtual MAC (v6)                        00:00:5e:00:02:0a   
+ Status (v4)                             Master              
+ Status (v6)                             Initialize          
+ Priority                                110                 
+ Effective Priority (v4)                 110                 
+ Effective Priority (v6)                 110                 
+ Preempt Mode                            Yes                 
+ Accept Mode                             Yes                 
+ Advertisement Interval                  1000 ms             
+ Master Advertisement Interval (v4) Rx   1000 ms (stale)     
+ Master Advertisement Interval (v6) Rx   0 ms (stale)        
+ Advertisements Tx (v4)                  16800               
+ Advertisements Tx (v6)                  0                   
+ Advertisements Rx (v4)                  1                   
+ Advertisements Rx (v6)                  0                   
+ Gratuitous ARP Tx (v4)                  1                   
+ Neigh. Adverts Tx (v6)                  0                   
+ State transitions (v4)                  2                   
+ State transitions (v6)                  0                   
+ Skew Time (v4)                          570 ms              
+ Skew Time (v6)                          0 ms                
+ Master Down Interval (v4)               3570 ms             
+ Master Down Interval (v6)               0 ms                
+ IPv4 Addresses                          1                   
+ ..................................      192.168.10.1        
+ IPv6 Addresses                          0                   
+
+
+ Virtual Router ID                       20                  
+ Protocol Version                        3                   
+ Autoconfigured                          No                  
+ Shutdown                                No                  
+ Interface                               eth0.20             
+ VRRP interface (v4)                     vrrp20              
+ VRRP interface (v6)                     None                
+ Primary IP (v4)                         192.168.20.2        
+ Primary IP (v6)                         ::                  
+ Virtual MAC (v4)                        00:00:5e:00:01:14   
+ Virtual MAC (v6)                        00:00:5e:00:02:14   
+ Status (v4)                             Master              
+ Status (v6)                             Initialize          
+ Priority                                110                 
+ Effective Priority (v4)                 110                 
+ Effective Priority (v6)                 110                 
+ Preempt Mode                            Yes                 
+ Accept Mode                             Yes                 
+ Advertisement Interval                  1000 ms             
+ Master Advertisement Interval (v4) Rx   1000 ms (stale)     
+ Master Advertisement Interval (v6) Rx   0 ms (stale)        
+ Advertisements Tx (v4)                  16800               
+ Advertisements Tx (v6)                  0                   
+ Advertisements Rx (v4)                  1                   
+ Advertisements Rx (v6)                  0                   
+ Gratuitous ARP Tx (v4)                  1                   
+ Neigh. Adverts Tx (v6)                  0                   
+ State transitions (v4)                  2                   
+ State transitions (v6)                  0                   
+ Skew Time (v4)                          570 ms              
+ Skew Time (v6)                          0 ms                
+ Master Down Interval (v4)               3570 ms             
+ Master Down Interval (v6)               0 ms                
+ IPv4 Addresses                          1                   
+ ..................................      192.168.20.1        
+ IPv6 Addresses                          0                   
+
+
+ Virtual Router ID                       99                  
+ Protocol Version                        3                   
+ Autoconfigured                          No                  
+ Shutdown                                No                  
+ Interface                               eth0.99             
+ VRRP interface (v4)                     vrrp99              
+ VRRP interface (v6)                     None                
+ Primary IP (v4)                         192.168.99.2        
+ Primary IP (v6)                         ::                  
+ Virtual MAC (v4)                        00:00:5e:00:01:63   
+ Virtual MAC (v6)                        00:00:5e:00:02:63   
+ Status (v4)                             Master              
+ Status (v6)                             Initialize          
+ Priority                                110                 
+ Effective Priority (v4)                 110                 
+ Effective Priority (v6)                 110                 
+ Preempt Mode                            Yes                 
+ Accept Mode                             Yes                 
+ Advertisement Interval                  1000 ms             
+ Master Advertisement Interval (v4) Rx   1000 ms (stale)     
+ Master Advertisement Interval (v6) Rx   0 ms (stale)        
+ Advertisements Tx (v4)                  16800               
+ Advertisements Tx (v6)                  0                   
+ Advertisements Rx (v4)                  1                   
+ Advertisements Rx (v6)                  0                   
+ Gratuitous ARP Tx (v4)                  1                   
+ Neigh. Adverts Tx (v6)                  0                   
+ State transitions (v4)                  2                   
+ State transitions (v6)                  0                   
+ Skew Time (v4)                          570 ms              
+ Skew Time (v6)                          0 ms                
+ Master Down Interval (v4)               3570 ms             
+ Master Down Interval (v6)               0 ms                
+ IPv4 Addresses                          1                   
+ ..................................      192.168.99.1        
+ IPv6 Addresses                          0                   
+
+
+
+=== INPUT RULES ===
+Chain INPUT (policy ACCEPT 3915 packets, 395K bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1     4787  710K PFE_ADMIN_INPUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+
+
+=== FORWARD RULES ===
+Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 PFE_MGMT_FORWARD  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+
+
+=== NAT RULES ===
+Chain PREROUTING (policy ACCEPT 218 packets, 21598 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+Chain INPUT (policy ACCEPT 218 packets, 21598 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 3321 packets, 125K bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+Chain POSTROUTING (policy ACCEPT 3321 packets, 125K bytes)
+num   pkts bytes target     prot opt in     out     source               destination         

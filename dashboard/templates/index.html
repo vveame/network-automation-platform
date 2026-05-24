@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>PFE Validation Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script defer src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</head>
+<body>
+
+<header class="hero">
+  <div>
+    <p class="eyebrow">Intelligent Network Automation Platform</p>
+    <h1>Infrastructure Validation Dashboard</h1>
+    <p class="subtitle">
+      Dynamic visualization generated from Ansible output reports and Ansible variable files.
+    </p>
+  </div>
+
+  <div class="status-pill {{ dashboard.global_status }}">
+    {{ dashboard.global_status | upper }}
+  </div>
+</header>
+
+<section class="context-grid">
+  <div class="context-card">
+    <span>Project</span>
+    <strong>{{ dashboard.project_name }}</strong>
+  </div>
+
+  <div class="context-card">
+    <span>Environment</span>
+    <strong>{{ dashboard.lab_environment }}</strong>
+  </div>
+
+  <div class="context-card">
+    <span>DevOps OOB IP</span>
+    <strong>{{ dashboard.devops_ip }}</strong>
+  </div>
+
+  <div class="context-card">
+    <span>OOB Network</span>
+    <strong>{{ dashboard.oob_network }}</strong>
+  </div>
+</section>
+
+<section class="stats-grid">
+  <div class="stat-card">
+    <span>Total reports</span>
+    <strong>{{ dashboard.total_reports }}</strong>
+  </div>
+
+  <div class="stat-card passed">
+    <span>Passed</span>
+    <strong>{{ dashboard.passed_reports }}</strong>
+  </div>
+
+  <div class="stat-card failed">
+    <span>Failed</span>
+    <strong>{{ dashboard.failed_reports }}</strong>
+  </div>
+
+  <div class="stat-card warning">
+    <span>Missing</span>
+    <strong>{{ dashboard.missing_reports }}</strong>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Validation Domains</h2>
+      <p>Generated automatically from the report files available in ansible/outputs.</p>
+    </div>
+  </div>
+
+  {% if dashboard.domains %}
+    <div class="domain-grid">
+      {% for domain in dashboard.domains %}
+        <article class="domain-card">
+          <div class="domain-title">
+            <h3>{{ domain.name }}</h3>
+            <span class="badge {{ domain.status }}">{{ domain.status }}</span>
+          </div>
+
+          <div class="mini-stats">
+            <span>{{ domain.total }} reports</span>
+            <span>{{ domain.passed }} passed</span>
+            <span>{{ domain.failed }} failed</span>
+            <span>{{ domain.missing }} missing</span>
+          </div>
+
+          <div class="report-list">
+            {% for report in domain.reports %}
+              <a class="report-line" href="{{ url_for('report.report_detail', filename=report.filename) }}">
+                <span>{{ report.title }}</span>
+                <span class="badge {{ report.status }}">{{ report.status }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">No report files found in ansible/outputs.</div>
+  {% endif %}
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Infrastructure Nodes</h2>
+      <p>Loaded dynamically from expected_frr_nodes and expected_ovs_nodes in Ansible variables.</p>
+    </div>
+
+    <input id="nodeSearch" class="search-input" placeholder="Search node, IP, type...">
+  </div>
+
+  {% if dashboard.nodes %}
+    <div class="table-card">
+      <table id="nodesTable">
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th>Type</th>
+            <th>OOB Interface</th>
+            <th>OOB IP</th>
+            <th>Status</th>
+            <th>Report</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for node in dashboard.nodes %}
+            <tr>
+              <td>{{ node.name }}</td>
+              <td>{{ node.node_type }}</td>
+              <td>{{ node.oob_interface }}</td>
+              <td>{{ node.oob_ip }}</td>
+              <td><span class="badge {{ node.validation_status }}">{{ node.validation_status }}</span></td>
+              <td>
+                <a href="{{ url_for('report.report_detail', filename=node.report_file) }}">Open</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">No infrastructure nodes found in Ansible variables.</div>
+  {% endif %}
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Validated Services</h2>
+      <p>Loaded dynamically from expected_services or DMZ variables.</p>
+    </div>
+  </div>
+
+  {% if dashboard.services %}
+    <div class="service-grid">
+      {% for service in dashboard.services %}
+        <article class="service-card">
+          <div class="service-icon">{{ service.name[0] }}</div>
+
+          <div class="service-content">
+            <h3>{{ service.name }}</h3>
+            <p>{{ service.ip }}:{{ service.port }}</p>
+            <p>{{ service.validation_method }}</p>
+          </div>
+
+          <span class="badge {{ service.status }}">{{ service.status }}</span>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">No services found in Ansible variables.</div>
+  {% endif %}
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Readable Report Previews</h2>
+      <p>Generated dynamically from report content.</p>
+    </div>
+  </div>
+
+  {% if dashboard.domains %}
+    <div class="preview-grid">
+      {% for domain in dashboard.domains %}
+        {% for report in domain.reports %}
+          <article class="preview-card">
+            <div class="preview-title">
+              <h3>{{ report.title }}</h3>
+              <span class="badge {{ report.status }}">{{ report.status }}</span>
+            </div>
+
+            <p>{{ report.summary }}</p>
+
+            <div class="report-meta">
+              <span>{{ report.category }}</span>
+              <span>{{ report.size_kb }} KB</span>
+              <span>{{ report.updated_at }}</span>
+            </div>
+
+            <a href="{{ url_for('report.report_detail', filename=report.filename) }}">Open full report</a>
+          </article>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">No report previews available.</div>
+  {% endif %}
+</section>
+
+</body>
+</html>

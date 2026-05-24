@@ -1,0 +1,25 @@
+=== WEB HTTP CHECK ===
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Web Server</title>
+</head>
+<body>
+  <h1>DMZ Web Server</h1>
+  <p>Nginx is running inside the DMZ.</p>
+</body>
+</html>
+
+=== DNS WEB RECORD CHECK ===
+Server:		172.16.50.20
+Address:	172.16.50.20#53
+
+Name:	web.pfe.local
+Address: 172.16.50.10
+
+=== DNS DNS RECORD CHECK ===
+Server:		172.16.50.20
+Address:	172.16.50.20#53
+
+Name:	dns.pfe.local
+Address: 172.16.50.20

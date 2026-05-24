@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="hero">
+  <div>
+    <p class="eyebrow">{{ category }}</p>
+    <h1>{{ title }}</h1>
+    <p class="subtitle">{{ filename }}</p>
+  </div>
+
+  <div class="status-pill {{ status }}">
+    {{ status | upper }}
+  </div>
+</header>
+
+<a class="back-link" href="{{ url_for('dashboard.index') }}">← Back to dashboard</a>
+
+<section class="section">
+  <div class="full-report">
+    <pre>{{ content }}</pre>
+  </div>
+</section>
+
+</body>
+</html>

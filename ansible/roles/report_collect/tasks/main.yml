@@ -7,7 +7,7 @@
 
 - name: Create report summary
   ansible.builtin.copy:
-    dest: "outputs/validation-summary.txt"
+    dest: "../outputs/validation-summary.txt"
     content: |
       PFE On-Prem Validation Summary
       ==============================
