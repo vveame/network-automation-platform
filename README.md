@@ -171,11 +171,18 @@ DevOps VM: 10.200.0.10
 │   └── ansible.cfg
 ├── dashboard/
 │   ├── app.py
+│   ├── config.py
+│   ├── extensions.py
+│   ├── global_error_handler.py
 │   ├── requirements.txt
 │   ├── dto/
-│   ├── repositories/
-│   ├── services/
+│   ├── entity/
+│   ├── mappe/
+│   ├── repository/
+│   ├── security/
+│   ├── service/
 │   ├── templates/
+│   ├── web/
 │   └── static/
 ├── docker/
 │   ├── dns/
@@ -267,7 +274,7 @@ Security includes:
 - Management VLAN protection.
 - DMZ isolation.
 - Controlled DMZ service access.
--NAT control on the EdgeRouter.
+- NAT control on the EdgeRouter.
 - OSPF authentication.
 - Root key-only SSH access on managed infrastructure containers.
 
@@ -340,7 +347,10 @@ The site playbook runs:
 5. DMZ Web/DNS health checks.
 6. Security behavior validation.
 7. End-to-end connectivity validation.
-8. Report summary generation in `ansible/outputs/`. 
+8. Inventory consistency validation
+9. Report artifact validation
+10. Jenkins-ready assertion gates
+11. Report summary generation in `ansible/outputs/`. 
 
 ## Validation Dashboard Microservice
 

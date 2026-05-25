@@ -4,6 +4,9 @@ HOST: dmz-ovs-3
 DMZ-OVS-3
 
 
+=== BRIDGE EXISTS CHECK ===
+rc=0
+
 === OOB CHECK ===
     inet 10.200.0.33/24 scope global eth3
 
@@ -13,6 +16,13 @@ rc=1
 stdout=
 stderr=Shared connection to 10.200.0.33 closed.
 
+
+=== RSTP CHECK ===
+N/A
+
+=== ACCESS PORT CHECKS ===
+
+=== TRUNK PORT CHECKS ===
 
 === IN-BAND CHECK ===
 rc=0
@@ -85,3 +95,6 @@ default via 172.16.50.1 dev mgmt0
 
 === FDB TABLE ===
  port  VLAN  MAC                Age
+    3     0  02:42:9d:bc:80:02   61
+    1     0  02:42:87:7c:04:00   61
+    2     0  02:42:56:65:3f:00   61

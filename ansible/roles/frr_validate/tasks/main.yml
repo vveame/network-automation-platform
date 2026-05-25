@@ -1,4 +1,8 @@
 ---
+- name: Set FRR node validation data
+  ansible.builtin.set_fact:
+    frr_node_validation: "{{ frr_validation.nodes[inventory_hostname] }}"
+
 - name: Show hostname
   ansible.builtin.raw: hostname
   register: frr_hostname
@@ -33,7 +37,17 @@
   ansible.builtin.raw: 'vtysh -c "show ip ospf neighbor"'
   register: frr_ospf_neighbors
   changed_when: false
-  failed_when: false
+
+- name: Count FULL OSPF neighbors
+  ansible.builtin.set_fact:
+    frr_ospf_full_count: "{{ frr_ospf_neighbors.stdout | regex_findall('Full') | length }}"
+
+- name: Assert expected number of FULL OSPF neighbors
+  ansible.builtin.assert:
+    that:
+      - frr_ospf_full_count | int >= frr_node_validation.expected_min_ospf_full_neighbors | int
+    fail_msg: "{{ inventory_hostname }} has {{ frr_ospf_full_count }} FULL OSPF neighbors, expected at least {{ frr_node_validation.expected_min_ospf_full_neighbors }}."
+    success_msg: "{{ inventory_hostname }} has expected FULL OSPF neighbor count."
 
 - name: Show OSPF routes
   ansible.builtin.raw: 'vtysh -c "show ip route ospf"'
@@ -52,6 +66,15 @@
   register: frr_vrrp
   changed_when: false
   failed_when: false
+
+- name: Assert expected VRRP virtual gateways are present
+  ansible.builtin.assert:
+    that:
+      - item in frr_vrrp.stdout
+    fail_msg: "Expected VRRP gateway {{ item }} not found on {{ inventory_hostname }}."
+    success_msg: "Expected VRRP gateway {{ item }} found on {{ inventory_hostname }}."
+  loop: "{{ frr_node_validation.expected_vrrp_gateways }}"
+  when: frr_node_validation.expected_vrrp_gateways | length > 0
 
 - name: Show INPUT firewall rules
   ansible.builtin.raw: "iptables -L INPUT -v -n --line-numbers"
@@ -85,6 +108,10 @@
 
       === LOOPBACK CHECK ===
       {{ frr_loopback_check.stdout }}
+
+      === FULL OSPF NEIGHBOR COUNT ===
+      expected_min={{ frr_node_validation.expected_min_ospf_full_neighbors }}
+      actual={{ frr_ospf_full_count }}
 
       === IP CONFIGURATION ===
       {{ frr_ip.stdout }}

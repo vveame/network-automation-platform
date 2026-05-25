@@ -1,0 +1,19 @@
+Report artifact validation passed.
+
+Expected report files:
+- oob-management-readiness.txt
+- inventory-consistency.txt
+- dmz-services.txt
+- security-validation.txt
+- end-to-end-validation.txt
+- core-frr-1-frr.txt
+- core-frr-2-frr.txt
+- dist-frr-1-frr.txt
+- dist-frr-2-frr.txt
+- edge-router-frr.txt
+- access-ovs-4-ovs.txt
+- access-ovs-5-ovs.txt
+- access-ovs-6-ovs.txt
+- dist-ovs-1-ovs.txt
+- dist-ovs-2-ovs.txt
+- dmz-ovs-3-ovs.txt

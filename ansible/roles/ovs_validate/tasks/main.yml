@@ -1,4 +1,8 @@
 ---
+- name: Set OVS node validation data
+  ansible.builtin.set_fact:
+    ovs_node_validation: "{{ ovs_validation.nodes[inventory_hostname] }}"
+
 - name: Show hostname
   ansible.builtin.raw: hostname
   register: ovs_hostname
@@ -9,16 +13,70 @@
   register: ovs_ip
   changed_when: false
 
+- name: Validate OVS bridge exists
+  ansible.builtin.raw: "ovs-vsctl br-exists {{ ovs_validation.expected_bridge }}"
+  register: ovs_bridge_exists
+  changed_when: false
+
 - name: Validate OOB interface address
   ansible.builtin.raw: "ip addr show {{ expected_ovs_nodes[inventory_hostname].oob_interface }} | grep '{{ expected_ovs_nodes[inventory_hostname].oob_ip }}'"
   register: ovs_oob_check
   changed_when: false
 
 - name: Validate OOB interface is not part of br0
-  ansible.builtin.raw: "ovs-vsctl list-ports br0 | grep -w '{{ expected_ovs_nodes[inventory_hostname].oob_interface }}'"
+  ansible.builtin.raw: "ovs-vsctl list-ports {{ ovs_validation.expected_bridge }} | grep -w '{{ expected_ovs_nodes[inventory_hostname].oob_interface }}'"
   register: ovs_oob_bridge_check
   changed_when: false
   failed_when: ovs_oob_bridge_check.rc == 0
+
+- name: Validate RSTP is enabled when required
+  ansible.builtin.raw: "ovs-vsctl get bridge {{ ovs_validation.expected_bridge }} rstp_enable"
+  register: ovs_rstp_check
+  changed_when: false
+  when: ovs_node_validation.rstp_required | bool
+
+- name: Assert RSTP is enabled when required
+  ansible.builtin.assert:
+    that:
+      - "'true' in ovs_rstp_check.stdout | lower"
+    fail_msg: "RSTP is not enabled on {{ inventory_hostname }}."
+    success_msg: "RSTP is enabled on {{ inventory_hostname }}."
+  when: ovs_node_validation.rstp_required | bool
+
+- name: Validate OVS required ports exist
+  ansible.builtin.raw: "ovs-vsctl list-ports {{ ovs_validation.expected_bridge }} | grep -w '{{ item }}'"
+  loop: "{{ ovs_node_validation.required_ports | default([]) }}"
+  register: ovs_required_ports_check
+  changed_when: false
+  when: ovs_node_validation.required_ports is defined
+
+- name: Validate OVS access port tags
+  ansible.builtin.raw: "ovs-vsctl get port {{ item.key }} tag"
+  loop: "{{ ovs_node_validation.access_ports | dict2items }}"
+  register: ovs_access_tag_results
+  changed_when: false
+
+- name: Assert OVS access port tags
+  ansible.builtin.assert:
+    that:
+      - "(item.stdout | trim) == (item.item.value | string)"
+    fail_msg: "Access port {{ item.item.key }} on {{ inventory_hostname }} has wrong VLAN tag. Expected {{ item.item.value }}, got {{ item.stdout | trim }}."
+    success_msg: "Access port {{ item.item.key }} on {{ inventory_hostname }} has expected VLAN tag {{ item.item.value }}."
+  loop: "{{ ovs_access_tag_results.results | default([]) }}"
+
+- name: Validate OVS trunk port VLANs
+  ansible.builtin.raw: "ovs-vsctl get port {{ item.key }} trunks"
+  loop: "{{ ovs_node_validation.trunk_ports | dict2items }}"
+  register: ovs_trunk_results
+  changed_when: false
+
+- name: Assert OVS trunk port VLANs
+  ansible.builtin.assert:
+    that:
+      - item.item.value | map('string') | list | difference(item.stdout | regex_findall('[0-9]+')) | length == 0
+    fail_msg: "Trunk port {{ item.item.key }} on {{ inventory_hostname }} does not include expected VLANs {{ item.item.value }}. Got {{ item.stdout | trim }}."
+    success_msg: "Trunk port {{ item.item.key }} on {{ inventory_hostname }} includes expected VLANs {{ item.item.value }}."
+  loop: "{{ ovs_trunk_results.results | default([]) }}"
 
 - name: Show routing table
   ansible.builtin.raw: "ip route"
@@ -31,7 +89,7 @@
   changed_when: false
 
 - name: Show OVS forwarding database
-  ansible.builtin.raw: "ovs-appctl fdb/show br0"
+  ansible.builtin.raw: "ovs-appctl fdb/show {{ ovs_validation.expected_bridge }}"
   register: ovs_fdb
   changed_when: false
   failed_when: false
@@ -51,6 +109,9 @@
       === HOSTNAME ===
       {{ ovs_hostname.stdout }}
 
+      === BRIDGE EXISTS CHECK ===
+      rc={{ ovs_bridge_exists.rc }}
+
       === OOB CHECK ===
       {{ ovs_oob_check.stdout }}
 
@@ -58,6 +119,23 @@
       rc={{ ovs_oob_bridge_check.rc }}
       stdout={{ ovs_oob_bridge_check.stdout | default('') }}
       stderr={{ ovs_oob_bridge_check.stderr | default('') }}
+
+      === RSTP CHECK ===
+      {% if ovs_rstp_check is defined %}
+      {{ ovs_rstp_check.stdout | default('N/A') }}
+      {% else %}
+      RSTP not required for this node.
+      {% endif %}
+
+      === ACCESS PORT CHECKS ===
+      {% for result in ovs_access_tag_results.results | default([]) %}
+      {{ result.item.key }} expected={{ result.item.value }} actual={{ result.stdout | trim }}
+      {% endfor %}
+
+      === TRUNK PORT CHECKS ===
+      {% for result in ovs_trunk_results.results | default([]) %}
+      {{ result.item.key }} expected={{ result.item.value }} actual={{ result.stdout | trim }}
+      {% endfor %}
 
       === IN-BAND CHECK ===
       rc={{ ovs_inband_check.rc }}

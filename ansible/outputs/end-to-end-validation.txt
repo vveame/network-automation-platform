@@ -1,32 +1,30 @@
-=== VLAN GATEWAY TESTS ===
-TARGET: 192.168.10.1
-RC: 1
-PING 192.168.10.1 (192.168.10.1) 56(84) bytes of data.
+=== END-TO-END VALIDATION SUMMARY ===
 
---- 192.168.10.1 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1003ms
+This validation is executed from the DevOps VM over the OOB management plane.
 
---------------------------------------------------
-TARGET: 192.168.20.1
-RC: 1
-PING 192.168.20.1 (192.168.20.1) 56(84) bytes of data.
+Strictly validated from DevOps:
+- OOB SSH reachability to all infrastructure nodes
+- DMZ Web HTTP health check
+- DMZ DNS resolution check
 
---- 192.168.20.1 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1017ms
+Production-plane elements documented here are validated in their dedicated roles:
+- VLAN gateways are validated through FRR/VRRP checks and endpoint-side tests.
+- FRR loopbacks are validated in the FRR validation role through local interface checks, OSPF neighbor checks and routing state checks.
 
---------------------------------------------------
-TARGET: 192.168.99.1
-RC: 1
-PING 192.168.99.1 (192.168.99.1) 56(84) bytes of data.
+=== DOCUMENTED PRODUCTION VLAN GATEWAYS ===
+- 192.168.10.1
+- 192.168.20.1
+- 192.168.99.1
 
---- 192.168.99.1 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1019ms
-
---------------------------------------------------
+=== DOCUMENTED FRR LOOPBACKS ===
+- core-frr-1: 10.255.0.11/32
+- core-frr-2: 10.255.0.12/32
+- dist-frr-1: 10.255.0.21/32
+- dist-frr-2: 10.255.0.22/32
+- edge-router: 10.255.0.30/32
 
 === OOB MANAGEMENT SSH TESTS ===
-TEST: core-frr-1-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.11 22
+TARGET: core-frr-1 - 10.200.0.11:22
 RC: 0
 STDOUT:
 
@@ -34,8 +32,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.11 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: core-frr-2-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.12 22
+TARGET: core-frr-2 - 10.200.0.12:22
 RC: 0
 STDOUT:
 
@@ -43,8 +40,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.12 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: dist-frr-1-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.21 22
+TARGET: dist-frr-1 - 10.200.0.21:22
 RC: 0
 STDOUT:
 
@@ -52,8 +48,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.21 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: dist-frr-2-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.22 22
+TARGET: dist-frr-2 - 10.200.0.22:22
 RC: 0
 STDOUT:
 
@@ -61,8 +56,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.22 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: edge-router-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.30 22
+TARGET: edge-router - 10.200.0.30:22
 RC: 0
 STDOUT:
 
@@ -70,8 +64,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.30 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: dist-ovs-1-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.31 22
+TARGET: dist-ovs-1 - 10.200.0.31:22
 RC: 0
 STDOUT:
 
@@ -79,8 +72,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.31 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: dist-ovs-2-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.32 22
+TARGET: dist-ovs-2 - 10.200.0.32:22
 RC: 0
 STDOUT:
 
@@ -88,8 +80,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.32 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: dmz-ovs-3-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.33 22
+TARGET: dmz-ovs-3 - 10.200.0.33:22
 RC: 0
 STDOUT:
 
@@ -97,8 +88,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.33 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: access-ovs-4-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.44 22
+TARGET: access-ovs-4 - 10.200.0.44:22
 RC: 0
 STDOUT:
 
@@ -106,8 +96,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.44 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: access-ovs-5-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.45 22
+TARGET: access-ovs-5 - 10.200.0.45:22
 RC: 0
 STDOUT:
 
@@ -115,8 +104,7 @@ STDOUT:
 STDERR:
 Connection to 10.200.0.45 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
-TEST: access-ovs-6-oob-ssh
-COMMAND: nc -zv -w 3 10.200.0.46 22
+TARGET: access-ovs-6 - 10.200.0.46:22
 RC: 0
 STDOUT:
 
@@ -125,71 +113,8 @@ STDERR:
 Connection to 10.200.0.46 22 port [tcp/ssh] succeeded!
 --------------------------------------------------
 
-=== FRR LOOPBACK VALIDATION TESTS ===
-TEST: core-frr-1-loopback
-COMMAND: ping -c 2 -W 2 10.255.0.11
-RC: 1
-STDOUT:
-PING 10.255.0.11 (10.255.0.11) 56(84) bytes of data.
-
---- 10.255.0.11 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1049ms
-
-STDERR:
-
---------------------------------------------------
-TEST: core-frr-2-loopback
-COMMAND: ping -c 2 -W 2 10.255.0.12
-RC: 1
-STDOUT:
-PING 10.255.0.12 (10.255.0.12) 56(84) bytes of data.
-
---- 10.255.0.12 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1055ms
-
-STDERR:
-
---------------------------------------------------
-TEST: dist-frr-1-loopback
-COMMAND: ping -c 2 -W 2 10.255.0.21
-RC: 1
-STDOUT:
-PING 10.255.0.21 (10.255.0.21) 56(84) bytes of data.
-
---- 10.255.0.21 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1015ms
-
-STDERR:
-
---------------------------------------------------
-TEST: dist-frr-2-loopback
-COMMAND: ping -c 2 -W 2 10.255.0.22
-RC: 1
-STDOUT:
-PING 10.255.0.22 (10.255.0.22) 56(84) bytes of data.
-
---- 10.255.0.22 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1016ms
-
-STDERR:
-
---------------------------------------------------
-TEST: edge-router-loopback
-COMMAND: ping -c 2 -W 2 10.255.0.30
-RC: 1
-STDOUT:
-PING 10.255.0.30 (10.255.0.30) 56(84) bytes of data.
-
---- 10.255.0.30 ping statistics ---
-2 packets transmitted, 0 received, 100% packet loss, time 1018ms
-
-STDERR:
-
---------------------------------------------------
-
-=== DMZ ALLOWED SERVICE TESTS ===
-TEST: web-http
-COMMAND: curl -s --connect-timeout 5 http://172.16.50.10
+=== DMZ WEB SERVICE TEST ===
+URL: http://172.16.50.10
 RC: 0
 STDOUT:
 <!DOCTYPE html>
@@ -206,8 +131,11 @@ STDOUT:
 STDERR:
 
 --------------------------------------------------
-TEST: dns-query
-COMMAND: nslookup web.pfe.local 172.16.50.20
+
+=== DMZ DNS SERVICE TEST ===
+DOMAIN: web.pfe.local
+DNS SERVER: 172.16.50.20
+EXPECTED ANSWER: 172.16.50.10
 RC: 0
 STDOUT:
 Server:		172.16.50.20
@@ -219,3 +147,5 @@ Address: 172.16.50.10
 STDERR:
 
 --------------------------------------------------
+
+End-to-end validation passed.

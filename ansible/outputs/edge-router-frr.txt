@@ -12,6 +12,10 @@ EdgeRouter-VPNGateway
     inet 10.255.0.30/32 scope global lo
 
 
+=== FULL OSPF NEIGHBOR COUNT ===
+expected_min=2
+actual=2
+
 === IP CONFIGURATION ===
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
@@ -87,8 +91,8 @@ default via 203.0.113.1 dev eth3
 === OSPF NEIGHBORS ===
 
 Neighbor ID     Pri State           Up Time         Dead Time Address         Interface                        RXmtL RqstL DBsmL
-1.1.1.1           1 Full/Backup     4h39m44s          35.526s 10.0.100.1      eth0:10.0.100.2                      0     0     0
-1.1.1.2           1 Full/Backup     4h39m49s          35.526s 10.0.101.1      eth1:10.0.101.2                      0     0     0
+1.1.1.1           1 Full/Backup     13h53m22s         37.563s 10.0.100.1      eth0:10.0.100.2                      0     0     0
+1.1.1.2           1 Full/Backup     13h53m27s         37.555s 10.0.101.1      eth1:10.0.101.2                      0     0     0
 
 
 
@@ -100,26 +104,26 @@ Codes: K - kernel route, C - connected, S - static, R - RIP,
        > - selected route, * - FIB route, q - queued, r - rejected, b - backup
        t - trapped, o - offload failure
 
-O>* 10.0.11.0/30 [110/20000] via 10.0.100.1, eth0, weight 1, 04:39:34
-O>* 10.0.12.0/30 [110/20000] via 10.0.101.1, eth1, weight 1, 04:39:48
-O>* 10.0.21.0/30 [110/20000] via 10.0.100.1, eth0, weight 1, 04:39:34
-O>* 10.0.22.0/30 [110/20000] via 10.0.101.1, eth1, weight 1, 04:39:42
-O   10.0.100.0/30 [110/10000] is directly connected, eth0, weight 1, 04:40:29
-O   10.0.101.0/30 [110/10000] is directly connected, eth1, weight 1, 04:40:29
-O>* 10.255.0.11/32 [110/10000] via 10.0.100.1, eth0, weight 1, 04:39:34
-O>* 10.255.0.12/32 [110/10000] via 10.0.101.1, eth1, weight 1, 04:39:48
-O>* 10.255.0.21/32 [110/20000] via 10.0.100.1, eth0, weight 1, 04:39:34
-  *                            via 10.0.101.1, eth1, weight 1, 04:39:34
-O>* 10.255.0.22/32 [110/20000] via 10.0.100.1, eth0, weight 1, 04:39:34
-  *                            via 10.0.101.1, eth1, weight 1, 04:39:34
-O   10.255.0.30/32 [110/0] is directly connected, lo, weight 1, 04:40:29
-O   172.16.50.0/24 [110/10000] is directly connected, eth2, weight 1, 04:40:29
-O>* 192.168.10.0/24 [110/30000] via 10.0.100.1, eth0, weight 1, 04:39:34
-  *                             via 10.0.101.1, eth1, weight 1, 04:39:34
-O>* 192.168.20.0/24 [110/30000] via 10.0.100.1, eth0, weight 1, 04:39:34
-  *                             via 10.0.101.1, eth1, weight 1, 04:39:34
-O>* 192.168.99.0/24 [110/30000] via 10.0.100.1, eth0, weight 1, 04:39:34
-  *                             via 10.0.101.1, eth1, weight 1, 04:39:34
+O>* 10.0.11.0/30 [110/20000] via 10.0.100.1, eth0, weight 1, 13:53:13
+O>* 10.0.12.0/30 [110/20000] via 10.0.101.1, eth1, weight 1, 13:53:27
+O>* 10.0.21.0/30 [110/20000] via 10.0.100.1, eth0, weight 1, 13:53:13
+O>* 10.0.22.0/30 [110/20000] via 10.0.101.1, eth1, weight 1, 13:53:21
+O   10.0.100.0/30 [110/10000] is directly connected, eth0, weight 1, 13:54:08
+O   10.0.101.0/30 [110/10000] is directly connected, eth1, weight 1, 13:54:08
+O>* 10.255.0.11/32 [110/10000] via 10.0.100.1, eth0, weight 1, 13:53:13
+O>* 10.255.0.12/32 [110/10000] via 10.0.101.1, eth1, weight 1, 13:53:27
+O>* 10.255.0.21/32 [110/20000] via 10.0.100.1, eth0, weight 1, 13:53:13
+  *                            via 10.0.101.1, eth1, weight 1, 13:53:13
+O>* 10.255.0.22/32 [110/20000] via 10.0.100.1, eth0, weight 1, 13:53:13
+  *                            via 10.0.101.1, eth1, weight 1, 13:53:13
+O   10.255.0.30/32 [110/0] is directly connected, lo, weight 1, 13:54:08
+O   172.16.50.0/24 [110/10000] is directly connected, eth2, weight 1, 13:54:08
+O>* 192.168.10.0/24 [110/30000] via 10.0.100.1, eth0, weight 1, 13:53:13
+  *                             via 10.0.101.1, eth1, weight 1, 13:53:13
+O>* 192.168.20.0/24 [110/30000] via 10.0.100.1, eth0, weight 1, 13:53:13
+  *                             via 10.0.101.1, eth1, weight 1, 13:53:13
+O>* 192.168.99.0/24 [110/30000] via 10.0.100.1, eth0, weight 1, 13:53:13
+  *                             via 10.0.101.1, eth1, weight 1, 13:53:13
 
 
 === LOOPBACK PREFIX ROUTE ===
@@ -130,28 +134,28 @@ O>* 192.168.99.0/24 [110/30000] via 10.0.100.1, eth0, weight 1, 04:39:34
 
 
 === INPUT RULES ===
-Chain INPUT (policy ACCEPT 3907 packets, 395K bytes)
+Chain INPUT (policy ACCEPT 423 packets, 42470 bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
-1     4639  694K PFE_ADMIN_INPUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+1    12830 1542K PFE_ADMIN_INPUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 
 === FORWARD RULES ===
-Chain FORWARD (policy ACCEPT 34 packets, 2018 bytes)
+Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
-1      160 13723 PFE_DMZ_FORWARD  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+1       68  4926 PFE_DMZ_FORWARD  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 
 === NAT RULES ===
-Chain PREROUTING (policy ACCEPT 2278 packets, 251K bytes)
+Chain PREROUTING (policy ACCEPT 6573 packets, 731K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain INPUT (policy ACCEPT 2110 packets, 239K bytes)
+Chain INPUT (policy ACCEPT 6255 packets, 708K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain OUTPUT (policy ACCEPT 3572 packets, 307K bytes)
+Chain OUTPUT (policy ACCEPT 10663 packets, 913K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain POSTROUTING (policy ACCEPT 3606 packets, 309K bytes)
+Chain POSTROUTING (policy ACCEPT 10761 packets, 919K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 1        0     0 MASQUERADE  all  --  *      eth3    192.168.0.0/16       0.0.0.0/0           
 2        0     0 MASQUERADE  all  --  *      eth3    172.16.50.0/24       0.0.0.0/0           

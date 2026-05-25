@@ -15,28 +15,121 @@
   loop: "{{ oob_ssh_allowed.results }}"
 
 - name: Test that Web HTTP is allowed
-  ansible.builtin.command: "curl -s --connect-timeout 5 http://172.16.50.10"
+  ansible.builtin.command: "curl -s --connect-timeout 5 {{ expected_services.web.url }}"
   register: web_http_allowed
   changed_when: false
   failed_when: web_http_allowed.rc != 0
 
+- name: Assert Web HTTP content is valid
+  ansible.builtin.assert:
+    that:
+      - "'DMZ Web Server' in web_http_allowed.stdout"
+    fail_msg: "Web service responded but expected DMZ Web Server content was not found."
+    success_msg: "Web HTTP service is reachable and content is valid."
+
 - name: Test that DNS query is allowed
-  ansible.builtin.command: "nslookup web.pfe.local 172.16.50.20"
+  ansible.builtin.command: "nslookup {{ expected_services.dns.test_domain }} {{ expected_services.dns.ip }}"
   register: dns_allowed
   changed_when: false
   failed_when: dns_allowed.rc != 0
 
+- name: Assert DNS response contains expected answer
+  ansible.builtin.assert:
+    that:
+      - expected_services.dns.expected_answer in dns_allowed.stdout
+    fail_msg: "DNS query did not return expected answer {{ expected_services.dns.expected_answer }}."
+    success_msg: "DNS query returned expected answer."
+
+- name: Test that OOB-to-DMZ Web HTTP is explicitly allowed
+  ansible.builtin.command: "nc -zv -w 3 {{ expected_services.web.ip }} 80"
+  register: oob_dmz_web_http_allowed
+  changed_when: false
+  failed_when: false
+
+- name: Assert OOB-to-DMZ Web HTTP is explicitly allowed
+  ansible.builtin.assert:
+    that:
+      - oob_dmz_web_http_allowed.rc == 0
+    fail_msg: "OOB-to-DMZ Web HTTP TCP/80 should be allowed but is blocked."
+    success_msg: "OOB-to-DMZ Web HTTP TCP/80 is explicitly allowed."
+
+- name: Test that OOB-to-DMZ DNS TCP is explicitly allowed
+  ansible.builtin.command: "nc -zv -w 3 {{ expected_services.dns.ip }} 53"
+  register: oob_dmz_dns_tcp_allowed
+  changed_when: false
+  failed_when: false
+
+- name: Assert OOB-to-DMZ DNS TCP is explicitly allowed
+  ansible.builtin.assert:
+    that:
+      - oob_dmz_dns_tcp_allowed.rc == 0
+    fail_msg: "OOB-to-DMZ DNS TCP/53 should be allowed but is blocked."
+    success_msg: "OOB-to-DMZ DNS TCP/53 is explicitly allowed."
+
+- name: Test that OOB-to-DMZ Web SSH is blocked
+  ansible.builtin.command: "nc -zv -w 3 {{ expected_services.web.ip }} 22"
+  register: oob_dmz_web_ssh_blocked
+  changed_when: false
+  failed_when: false
+
+- name: Assert OOB-to-DMZ Web SSH is blocked
+  ansible.builtin.assert:
+    that:
+      - oob_dmz_web_ssh_blocked.rc != 0
+    fail_msg: "Security issue: OOB-to-DMZ Web SSH TCP/22 is reachable."
+    success_msg: "OOB-to-DMZ Web SSH TCP/22 is blocked."
+
+- name: Test that OOB-to-DMZ DNS HTTP is blocked
+  ansible.builtin.command: "nc -zv -w 3 {{ expected_services.dns.ip }} 80"
+  register: oob_dmz_dns_http_blocked
+  changed_when: false
+  failed_when: false
+
+- name: Assert OOB-to-DMZ DNS HTTP is blocked
+  ansible.builtin.assert:
+    that:
+      - oob_dmz_dns_http_blocked.rc != 0
+    fail_msg: "Security issue: OOB-to-DMZ DNS HTTP TCP/80 is reachable."
+    success_msg: "OOB-to-DMZ DNS HTTP TCP/80 is blocked."
+
 - name: Test that Web SSH is blocked
-  ansible.builtin.command: "nc -zv -w 3 172.16.50.10 22"
+  ansible.builtin.command: "nc -zv -w 3 {{ expected_services.web.ip }} 22"
   register: web_ssh_blocked
   changed_when: false
   failed_when: false
 
+- name: Assert Web SSH is blocked
+  ansible.builtin.assert:
+    that:
+      - web_ssh_blocked.rc != 0
+    fail_msg: "Security issue: Web server SSH port 22 is reachable."
+    success_msg: "Web server SSH port 22 is blocked."
+
 - name: Test that DNS HTTP is blocked
-  ansible.builtin.command: "nc -zv -w 3 172.16.50.20 80"
+  ansible.builtin.command: "nc -zv -w 3 {{ expected_services.dns.ip }} 80"
   register: dns_http_blocked
   changed_when: false
   failed_when: false
+
+- name: Assert DNS HTTP is blocked
+  ansible.builtin.assert:
+    that:
+      - dns_http_blocked.rc != 0
+    fail_msg: "Security issue: DNS server HTTP port 80 is reachable."
+    success_msg: "DNS server HTTP port 80 is blocked."
+
+- name: Test that DNS SSH is blocked
+  ansible.builtin.command: "nc -zv -w 3 {{ expected_services.dns.ip }} 22"
+  register: dns_ssh_blocked
+  changed_when: false
+  failed_when: false
+
+- name: Assert DNS SSH is blocked
+  ansible.builtin.assert:
+    that:
+      - dns_ssh_blocked.rc != 0
+    fail_msg: "Security issue: DNS server SSH port 22 is reachable."
+    success_msg: "DNS server SSH port 22 is blocked."
 
 - name: Save security validation output locally
   ansible.builtin.copy:
@@ -59,6 +152,28 @@
       rc={{ dns_allowed.rc }}
       {{ dns_allowed.stdout }}
 
+      === OOB TO DMZ EXPLICIT POLICY TESTS ===
+
+      OOB -> Web HTTP TCP/80:
+      rc={{ oob_dmz_web_http_allowed.rc }}
+      stdout={{ oob_dmz_web_http_allowed.stdout }}
+      stderr={{ oob_dmz_web_http_allowed.stderr }}
+
+      OOB -> DNS TCP/53:
+      rc={{ oob_dmz_dns_tcp_allowed.rc }}
+      stdout={{ oob_dmz_dns_tcp_allowed.stdout }}
+      stderr={{ oob_dmz_dns_tcp_allowed.stderr }}
+
+      OOB -> Web SSH TCP/22:
+      rc={{ oob_dmz_web_ssh_blocked.rc }}
+      stdout={{ oob_dmz_web_ssh_blocked.stdout }}
+      stderr={{ oob_dmz_web_ssh_blocked.stderr }}
+
+      OOB -> DNS HTTP TCP/80:
+      rc={{ oob_dmz_dns_http_blocked.rc }}
+      stdout={{ oob_dmz_dns_http_blocked.stdout }}
+      stderr={{ oob_dmz_dns_http_blocked.stderr }}
+
       === WEB SSH BLOCKED ===
       rc={{ web_ssh_blocked.rc }}
       stdout={{ web_ssh_blocked.stdout }}
@@ -68,4 +183,9 @@
       rc={{ dns_http_blocked.rc }}
       stdout={{ dns_http_blocked.stdout }}
       stderr={{ dns_http_blocked.stderr }}
+
+      === DNS SSH BLOCKED ===
+      rc={{ dns_ssh_blocked.rc }}
+      stdout={{ dns_ssh_blocked.stdout }}
+      stderr={{ dns_ssh_blocked.stderr }}
   delegate_to: localhost

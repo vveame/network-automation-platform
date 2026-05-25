@@ -1,4 +1,6 @@
 ---
+- import_playbook: 06_validate_inventory_consistency.yml
+
 - import_playbook: 00_management_readiness.yml
 - import_playbook: 00b_wait_for_ansible_connection.yml
 
@@ -7,6 +9,7 @@
 - import_playbook: 03_validate_dmz_services.yml
 - import_playbook: 04_validate_security_rules.yml
 - import_playbook: 05_validate_end_to_end.yml
+- import_playbook: 07_validate_report_artifacts.yml
 
 - name: Collect final validation report
   hosts: localhost
@@ -14,5 +17,6 @@
   gather_facts: false
   vars_files:
     - ../group_vars/all.yml
+
   roles:
     - report_collect

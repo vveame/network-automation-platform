@@ -12,6 +12,10 @@ Dist-FRR-1
     inet 10.255.0.21/32 scope global lo
 
 
+=== FULL OSPF NEIGHBOR COUNT ===
+expected_min=2
+actual=2
+
 === IP CONFIGURATION ===
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
@@ -119,8 +123,8 @@ default nhid 62 proto ospf metric 20
 === OSPF NEIGHBORS ===
 
 Neighbor ID     Pri State           Up Time         Dead Time Address         Interface                        RXmtL RqstL DBsmL
-1.1.1.1           1 Full/Backup     4h39m47s          35.507s 10.0.11.1       eth1:10.0.11.2                       0     0     0
-1.1.1.2           1 Full/Backup     4h39m47s          35.509s 10.0.12.1       eth2:10.0.12.2                       0     0     0
+1.1.1.1           1 Full/Backup     13h53m26s         37.577s 10.0.11.1       eth1:10.0.11.2                       0     0     0
+1.1.1.2           1 Full/Backup     13h53m26s         37.569s 10.0.12.1       eth2:10.0.12.2                       0     0     0
 
 
 
@@ -132,26 +136,26 @@ Codes: K - kernel route, C - connected, S - static, R - RIP,
        > - selected route, * - FIB route, q - queued, r - rejected, b - backup
        t - trapped, o - offload failure
 
-O>* 0.0.0.0/0 [110/10] via 10.0.11.1, eth1, weight 1, 04:39:33
-  *                    via 10.0.12.1, eth2, weight 1, 04:39:33
-O   10.0.11.0/30 [110/10000] is directly connected, eth1, weight 1, 04:40:28
-O   10.0.12.0/30 [110/10000] is directly connected, eth2, weight 1, 04:40:28
-O>* 10.0.21.0/30 [110/20000] via 10.0.11.1, eth1, weight 1, 04:39:44
-O>* 10.0.22.0/30 [110/20000] via 10.0.12.1, eth2, weight 1, 04:39:44
-O>* 10.0.100.0/30 [110/20000] via 10.0.11.1, eth1, weight 1, 04:39:44
-O>* 10.0.101.0/30 [110/20000] via 10.0.12.1, eth2, weight 1, 04:39:44
-O>* 10.255.0.11/32 [110/10000] via 10.0.11.1, eth1, weight 1, 04:39:44
-O>* 10.255.0.12/32 [110/10000] via 10.0.12.1, eth2, weight 1, 04:39:44
-O   10.255.0.21/32 [110/0] is directly connected, lo, weight 1, 04:40:28
-O>* 10.255.0.22/32 [110/20000] via 10.0.11.1, eth1, weight 1, 04:39:34
-  *                            via 10.0.12.1, eth2, weight 1, 04:39:34
-O>* 10.255.0.30/32 [110/20000] via 10.0.11.1, eth1, weight 1, 04:39:34
-  *                            via 10.0.12.1, eth2, weight 1, 04:39:34
-O>* 172.16.50.0/24 [110/30000] via 10.0.11.1, eth1, weight 1, 04:39:34
-  *                            via 10.0.12.1, eth2, weight 1, 04:39:34
-O   192.168.10.0/24 [110/10000] is directly connected, eth0.10, weight 1, 04:40:28
-O   192.168.20.0/24 [110/10000] is directly connected, eth0.20, weight 1, 04:40:28
-O   192.168.99.0/24 [110/10000] is directly connected, eth0.99, weight 1, 04:40:28
+O>* 0.0.0.0/0 [110/10] via 10.0.11.1, eth1, weight 1, 13:53:12
+  *                    via 10.0.12.1, eth2, weight 1, 13:53:12
+O   10.0.11.0/30 [110/10000] is directly connected, eth1, weight 1, 13:54:07
+O   10.0.12.0/30 [110/10000] is directly connected, eth2, weight 1, 13:54:07
+O>* 10.0.21.0/30 [110/20000] via 10.0.11.1, eth1, weight 1, 13:53:23
+O>* 10.0.22.0/30 [110/20000] via 10.0.12.1, eth2, weight 1, 13:53:23
+O>* 10.0.100.0/30 [110/20000] via 10.0.11.1, eth1, weight 1, 13:53:23
+O>* 10.0.101.0/30 [110/20000] via 10.0.12.1, eth2, weight 1, 13:53:23
+O>* 10.255.0.11/32 [110/10000] via 10.0.11.1, eth1, weight 1, 13:53:23
+O>* 10.255.0.12/32 [110/10000] via 10.0.12.1, eth2, weight 1, 13:53:23
+O   10.255.0.21/32 [110/0] is directly connected, lo, weight 1, 13:54:07
+O>* 10.255.0.22/32 [110/20000] via 10.0.11.1, eth1, weight 1, 13:53:13
+  *                            via 10.0.12.1, eth2, weight 1, 13:53:13
+O>* 10.255.0.30/32 [110/20000] via 10.0.11.1, eth1, weight 1, 13:53:13
+  *                            via 10.0.12.1, eth2, weight 1, 13:53:13
+O>* 172.16.50.0/24 [110/30000] via 10.0.11.1, eth1, weight 1, 13:53:13
+  *                            via 10.0.12.1, eth2, weight 1, 13:53:13
+O   192.168.10.0/24 [110/10000] is directly connected, eth0.10, weight 1, 13:54:07
+O   192.168.20.0/24 [110/10000] is directly connected, eth0.20, weight 1, 13:54:07
+O   192.168.99.0/24 [110/10000] is directly connected, eth0.99, weight 1, 13:54:07
 
 
 === LOOPBACK PREFIX ROUTE ===
@@ -181,9 +185,9 @@ O   192.168.99.0/24 [110/10000] is directly connected, eth0.99, weight 1, 04:40:
  Advertisement Interval                  1000 ms             
  Master Advertisement Interval (v4) Rx   1000 ms (stale)     
  Master Advertisement Interval (v6) Rx   0 ms (stale)        
- Advertisements Tx (v4)                  16800               
+ Advertisements Tx (v4)                  50005               
  Advertisements Tx (v6)                  0                   
- Advertisements Rx (v4)                  1                   
+ Advertisements Rx (v4)                  2                   
  Advertisements Rx (v6)                  0                   
  Gratuitous ARP Tx (v4)                  1                   
  Neigh. Adverts Tx (v6)                  0                   
@@ -219,9 +223,9 @@ O   192.168.99.0/24 [110/10000] is directly connected, eth0.99, weight 1, 04:40:
  Advertisement Interval                  1000 ms             
  Master Advertisement Interval (v4) Rx   1000 ms (stale)     
  Master Advertisement Interval (v6) Rx   0 ms (stale)        
- Advertisements Tx (v4)                  16800               
+ Advertisements Tx (v4)                  50005               
  Advertisements Tx (v6)                  0                   
- Advertisements Rx (v4)                  1                   
+ Advertisements Rx (v4)                  2                   
  Advertisements Rx (v6)                  0                   
  Gratuitous ARP Tx (v4)                  1                   
  Neigh. Adverts Tx (v6)                  0                   
@@ -257,9 +261,9 @@ O   192.168.99.0/24 [110/10000] is directly connected, eth0.99, weight 1, 04:40:
  Advertisement Interval                  1000 ms             
  Master Advertisement Interval (v4) Rx   1000 ms (stale)     
  Master Advertisement Interval (v6) Rx   0 ms (stale)        
- Advertisements Tx (v4)                  16800               
+ Advertisements Tx (v4)                  50005               
  Advertisements Tx (v6)                  0                   
- Advertisements Rx (v4)                  1                   
+ Advertisements Rx (v4)                  2                   
  Advertisements Rx (v6)                  0                   
  Gratuitous ARP Tx (v4)                  1                   
  Neigh. Adverts Tx (v6)                  0                   
@@ -276,9 +280,9 @@ O   192.168.99.0/24 [110/10000] is directly connected, eth0.99, weight 1, 04:40:
 
 
 === INPUT RULES ===
-Chain INPUT (policy ACCEPT 3915 packets, 395K bytes)
+Chain INPUT (policy ACCEPT 11673 packets, 1174K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
-1     4787  710K PFE_ADMIN_INPUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+1    13283 1572K PFE_ADMIN_INPUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 
 === FORWARD RULES ===
@@ -288,14 +292,14 @@ num   pkts bytes target     prot opt in     out     source               destina
 
 
 === NAT RULES ===
-Chain PREROUTING (policy ACCEPT 218 packets, 21598 bytes)
+Chain PREROUTING (policy ACCEPT 8055 packets, 806K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain INPUT (policy ACCEPT 218 packets, 21598 bytes)
+Chain INPUT (policy ACCEPT 7987 packets, 800K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain OUTPUT (policy ACCEPT 3321 packets, 125K bytes)
+Chain OUTPUT (policy ACCEPT 120K packets, 4558K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain POSTROUTING (policy ACCEPT 3321 packets, 125K bytes)
+Chain POSTROUTING (policy ACCEPT 120K packets, 4558K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         

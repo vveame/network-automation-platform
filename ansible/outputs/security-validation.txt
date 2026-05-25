@@ -76,12 +76,39 @@ Address:	172.16.50.20#53
 Name:	web.pfe.local
 Address: 172.16.50.10
 
+=== OOB TO DMZ EXPLICIT POLICY TESTS ===
+
+OOB -> Web HTTP TCP/80:
+rc=0
+stdout=
+stderr=Connection to 172.16.50.10 80 port [tcp/http] succeeded!
+
+OOB -> DNS TCP/53:
+rc=0
+stdout=
+stderr=Connection to 172.16.50.20 53 port [tcp/domain] succeeded!
+
+OOB -> Web SSH TCP/22:
+rc=1
+stdout=
+stderr=nc: connect to 172.16.50.10 port 22 (tcp) timed out: Operation now in progress
+
+OOB -> DNS HTTP TCP/80:
+rc=1
+stdout=
+stderr=nc: connect to 172.16.50.20 port 80 (tcp) timed out: Operation now in progress
+
 === WEB SSH BLOCKED ===
 rc=1
 stdout=
-stderr=nc: connect to 172.16.50.10 port 22 (tcp) failed: Connection refused
+stderr=nc: connect to 172.16.50.10 port 22 (tcp) timed out: Operation now in progress
 
 === DNS HTTP BLOCKED ===
 rc=1
 stdout=
-stderr=nc: connect to 172.16.50.20 port 80 (tcp) failed: Connection refused
+stderr=nc: connect to 172.16.50.20 port 80 (tcp) timed out: Operation now in progress
+
+=== DNS SSH BLOCKED ===
+rc=1
+stdout=
+stderr=nc: connect to 172.16.50.20 port 22 (tcp) timed out: Operation now in progress

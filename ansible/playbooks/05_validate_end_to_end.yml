@@ -3,54 +3,10 @@
   hosts: localhost
   connection: local
   gather_facts: false
-
-  vars:
-    gateway_targets:
-      - "192.168.10.1"
-      - "192.168.20.1"
-      - "192.168.99.1"
-
-    oob_management_tests:
-      - name: "core-frr-1-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.11 22"
-      - name: "core-frr-2-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.12 22"
-      - name: "dist-frr-1-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.21 22"
-      - name: "dist-frr-2-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.22 22"
-      - name: "edge-router-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.30 22"
-      - name: "dist-ovs-1-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.31 22"
-      - name: "dist-ovs-2-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.32 22"
-      - name: "dmz-ovs-3-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.33 22"
-      - name: "access-ovs-4-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.44 22"
-      - name: "access-ovs-5-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.45 22"
-      - name: "access-ovs-6-oob-ssh"
-        command: "nc -zv -w 3 10.200.0.46 22"
-
-    frr_loopback_tests:
-      - name: "core-frr-1-loopback"
-        command: "ping -c 2 -W 2 10.255.0.11"
-      - name: "core-frr-2-loopback"
-        command: "ping -c 2 -W 2 10.255.0.12"
-      - name: "dist-frr-1-loopback"
-        command: "ping -c 2 -W 2 10.255.0.21"
-      - name: "dist-frr-2-loopback"
-        command: "ping -c 2 -W 2 10.255.0.22"
-      - name: "edge-router-loopback"
-        command: "ping -c 2 -W 2 10.255.0.30"
-
-    dmz_allowed_tests:
-      - name: "web-http"
-        command: "curl -s --connect-timeout 5 http://172.16.50.10"
-      - name: "dns-query"
-        command: "nslookup web.pfe.local 172.16.50.20"
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/ovs.yml
+    - ../group_vars/frr.yml
 
   tasks:
     - name: Ensure outputs directory exists
@@ -59,51 +15,94 @@
         state: directory
         mode: "0755"
 
-    - name: Ping VLAN gateways
-      ansible.builtin.command: "ping -c 2 -W 2 {{ item }}"
-      loop: "{{ gateway_targets }}"
-      changed_when: false
-      register: gateway_ping
-      failed_when: false
+    - name: Build documented VLAN gateway targets
+      ansible.builtin.set_fact:
+        gateway_targets:
+          - "{{ vlans.vlan10.gateway }}"
+          - "{{ vlans.vlan20.gateway }}"
+          - "{{ vlans.vlan99.gateway }}"
+
+    - name: Build documented FRR loopback targets
+      ansible.builtin.set_fact:
+        frr_loopback_targets: "{{ expected_frr_nodes | dict2items }}"
+
+    - name: Build OOB management SSH tests dynamically
+      ansible.builtin.set_fact:
+        oob_management_tests: "{{ oob_management.targets }}"
 
     - name: Run OOB management SSH tests
-      ansible.builtin.command: "{{ item.command }}"
+      ansible.builtin.command: "nc -zv -w 3 {{ item.ip }} 22"
       loop: "{{ oob_management_tests }}"
       changed_when: false
       register: oob_mgmt
       failed_when: false
 
-    - name: Run FRR loopback validation tests
-      ansible.builtin.command: "{{ item.command }}"
-      loop: "{{ frr_loopback_tests }}"
+    - name: Assert all OOB management SSH targets are reachable
+      ansible.builtin.assert:
+        that:
+          - item.rc == 0
+        fail_msg: "OOB SSH test failed for {{ item.item.name }} at {{ item.item.ip }}."
+        success_msg: "OOB SSH test passed for {{ item.item.name }} at {{ item.item.ip }}."
+      loop: "{{ oob_mgmt.results }}"
+
+    - name: Check DMZ Web HTTP service
+      ansible.builtin.command: "curl -s --connect-timeout 5 {{ expected_services.web.url }}"
       changed_when: false
-      register: frr_loopbacks
+      register: dmz_web_http
       failed_when: false
 
-    - name: Run allowed DMZ service tests
-      ansible.builtin.command: "{{ item.command }}"
-      loop: "{{ dmz_allowed_tests }}"
+    - name: Assert DMZ Web HTTP service is reachable
+      ansible.builtin.assert:
+        that:
+          - dmz_web_http.rc == 0
+          - "'DMZ Web Server' in dmz_web_http.stdout"
+        fail_msg: "DMZ Web service is not reachable or returned unexpected content."
+        success_msg: "DMZ Web service is reachable and returned expected content."
+
+    - name: Check DMZ DNS service
+      ansible.builtin.command: "nslookup {{ expected_services.dns.test_domain }} {{ expected_services.dns.ip }}"
       changed_when: false
-      register: dmz_allowed
+      register: dmz_dns_query
       failed_when: false
+
+    - name: Assert DMZ DNS service returns expected answer
+      ansible.builtin.assert:
+        that:
+          - dmz_dns_query.rc == 0
+          - expected_services.dns.expected_answer in dmz_dns_query.stdout
+        fail_msg: "DMZ DNS service did not return expected answer {{ expected_services.dns.expected_answer }}."
+        success_msg: "DMZ DNS service returned expected answer."
 
     - name: Save end-to-end validation output
       ansible.builtin.copy:
         dest: "../outputs/end-to-end-validation.txt"
         content: |
-          === VLAN GATEWAY TESTS ===
-          {% for result in gateway_ping.results %}
-          TARGET: {{ result.item }}
-          RC: {{ result.rc }}
-          {{ result.stdout }}
+          === END-TO-END VALIDATION SUMMARY ===
 
-          --------------------------------------------------
+          This validation is executed from the DevOps VM over the OOB management plane.
+
+          Strictly validated from DevOps:
+          - OOB SSH reachability to all infrastructure nodes
+          - DMZ Web HTTP health check
+          - DMZ DNS resolution check
+
+          Production-plane elements documented here are validated in their dedicated roles:
+          - VLAN gateways are validated through FRR/VRRP checks and endpoint-side tests.
+          - FRR loopbacks are validated in the FRR validation role through local interface checks, OSPF neighbor checks and routing state checks.
+
+          === DOCUMENTED PRODUCTION VLAN GATEWAYS ===
+          {% for gateway in gateway_targets %}
+          - {{ gateway }}
+          {% endfor %}
+
+          === DOCUMENTED FRR LOOPBACKS ===
+          {% for item in frr_loopback_targets %}
+          - {{ item.key }}: {{ item.value.loopback_ip }}
           {% endfor %}
 
           === OOB MANAGEMENT SSH TESTS ===
           {% for result in oob_mgmt.results %}
-          TEST: {{ result.item.name }}
-          COMMAND: {{ result.item.command }}
+          TARGET: {{ result.item.name }} - {{ result.item.ip }}:22
           RC: {{ result.rc }}
           STDOUT:
           {{ result.stdout }}
@@ -113,28 +112,26 @@
           --------------------------------------------------
           {% endfor %}
 
-          === FRR LOOPBACK VALIDATION TESTS ===
-          {% for result in frr_loopbacks.results %}
-          TEST: {{ result.item.name }}
-          COMMAND: {{ result.item.command }}
-          RC: {{ result.rc }}
+          === DMZ WEB SERVICE TEST ===
+          URL: {{ expected_services.web.url }}
+          RC: {{ dmz_web_http.rc }}
           STDOUT:
-          {{ result.stdout }}
+          {{ dmz_web_http.stdout }}
 
           STDERR:
-          {{ result.stderr }}
+          {{ dmz_web_http.stderr }}
           --------------------------------------------------
-          {% endfor %}
 
-          === DMZ ALLOWED SERVICE TESTS ===
-          {% for result in dmz_allowed.results %}
-          TEST: {{ result.item.name }}
-          COMMAND: {{ result.item.command }}
-          RC: {{ result.rc }}
+          === DMZ DNS SERVICE TEST ===
+          DOMAIN: {{ expected_services.dns.test_domain }}
+          DNS SERVER: {{ expected_services.dns.ip }}
+          EXPECTED ANSWER: {{ expected_services.dns.expected_answer }}
+          RC: {{ dmz_dns_query.rc }}
           STDOUT:
-          {{ result.stdout }}
+          {{ dmz_dns_query.stdout }}
 
           STDERR:
-          {{ result.stderr }}
+          {{ dmz_dns_query.stderr }}
           --------------------------------------------------
-          {% endfor %}
+
+          End-to-end validation passed.

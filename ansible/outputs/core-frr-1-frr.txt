@@ -12,6 +12,10 @@ Core-FRR-1
     inet 10.255.0.11/32 scope global lo
 
 
+=== FULL OSPF NEIGHBOR COUNT ===
+expected_min=3
+actual=3
+
 === IP CONFIGURATION ===
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
@@ -81,9 +85,9 @@ default nhid 42 via 10.0.100.2 dev eth2 proto ospf metric 20
 === OSPF NEIGHBORS ===
 
 Neighbor ID     Pri State           Up Time         Dead Time Address         Interface                        RXmtL RqstL DBsmL
-2.2.2.1           1 Full/DR         4h39m47s          35.589s 10.0.11.2       eth0:10.0.11.1                       0     0     0
-2.2.2.2           1 Full/DR         4h39m47s          35.602s 10.0.21.2       eth1:10.0.21.1                       0     0     0
-3.3.3.3           1 Full/DR         4h39m44s          35.592s 10.0.100.2      eth2:10.0.100.1                      0     0     0
+2.2.2.1           1 Full/DR         13h53m26s         37.623s 10.0.11.2       eth0:10.0.11.1                       0     0     0
+2.2.2.2           1 Full/DR         13h53m25s         37.623s 10.0.21.2       eth1:10.0.21.1                       0     0     0
+3.3.3.3           1 Full/DR         13h53m22s         37.627s 10.0.100.2      eth2:10.0.100.1                      0     0     0
 
 
 
@@ -95,27 +99,27 @@ Codes: K - kernel route, C - connected, S - static, R - RIP,
        > - selected route, * - FIB route, q - queued, r - rejected, b - backup
        t - trapped, o - offload failure
 
-O>* 0.0.0.0/0 [110/10] via 10.0.100.2, eth2, weight 1, 04:39:33
-O   10.0.11.0/30 [110/10000] is directly connected, eth0, weight 1, 04:39:48
-O>* 10.0.12.0/30 [110/20000] via 10.0.11.2, eth0, weight 1, 04:39:44
-O   10.0.21.0/30 [110/10000] is directly connected, eth1, weight 1, 04:39:47
-O>* 10.0.22.0/30 [110/20000] via 10.0.21.2, eth1, weight 1, 04:39:42
-O   10.0.100.0/30 [110/10000] is directly connected, eth2, weight 1, 04:40:29
-O>* 10.0.101.0/30 [110/20000] via 10.0.100.2, eth2, weight 1, 04:39:34
-O   10.255.0.11/32 [110/0] is directly connected, lo, weight 1, 04:40:29
-O>* 10.255.0.12/32 [110/20000] via 10.0.11.2, eth0, weight 1, 04:39:34
-  *                            via 10.0.21.2, eth1, weight 1, 04:39:34
-  *                            via 10.0.100.2, eth2, weight 1, 04:39:34
-O>* 10.255.0.21/32 [110/10000] via 10.0.11.2, eth0, weight 1, 04:39:44
-O>* 10.255.0.22/32 [110/10000] via 10.0.21.2, eth1, weight 1, 04:39:42
-O>* 10.255.0.30/32 [110/10000] via 10.0.100.2, eth2, weight 1, 04:39:34
-O>* 172.16.50.0/24 [110/20000] via 10.0.100.2, eth2, weight 1, 04:39:34
-O>* 192.168.10.0/24 [110/20000] via 10.0.11.2, eth0, weight 1, 03:30:44
-  *                             via 10.0.21.2, eth1, weight 1, 03:30:44
-O>* 192.168.20.0/24 [110/20000] via 10.0.11.2, eth0, weight 1, 03:30:44
-  *                             via 10.0.21.2, eth1, weight 1, 03:30:44
-O>* 192.168.99.0/24 [110/20000] via 10.0.11.2, eth0, weight 1, 03:30:44
-  *                             via 10.0.21.2, eth1, weight 1, 03:30:44
+O>* 0.0.0.0/0 [110/10] via 10.0.100.2, eth2, weight 1, 13:53:12
+O   10.0.11.0/30 [110/10000] is directly connected, eth0, weight 1, 13:53:27
+O>* 10.0.12.0/30 [110/20000] via 10.0.11.2, eth0, weight 1, 13:53:23
+O   10.0.21.0/30 [110/10000] is directly connected, eth1, weight 1, 13:53:26
+O>* 10.0.22.0/30 [110/20000] via 10.0.21.2, eth1, weight 1, 13:53:21
+O   10.0.100.0/30 [110/10000] is directly connected, eth2, weight 1, 13:54:08
+O>* 10.0.101.0/30 [110/20000] via 10.0.100.2, eth2, weight 1, 13:53:13
+O   10.255.0.11/32 [110/0] is directly connected, lo, weight 1, 13:54:08
+O>* 10.255.0.12/32 [110/20000] via 10.0.11.2, eth0, weight 1, 13:53:13
+  *                            via 10.0.21.2, eth1, weight 1, 13:53:13
+  *                            via 10.0.100.2, eth2, weight 1, 13:53:13
+O>* 10.255.0.21/32 [110/10000] via 10.0.11.2, eth0, weight 1, 13:53:23
+O>* 10.255.0.22/32 [110/10000] via 10.0.21.2, eth1, weight 1, 13:53:21
+O>* 10.255.0.30/32 [110/10000] via 10.0.100.2, eth2, weight 1, 13:53:13
+O>* 172.16.50.0/24 [110/20000] via 10.0.100.2, eth2, weight 1, 13:53:13
+O>* 192.168.10.0/24 [110/20000] via 10.0.11.2, eth0, weight 1, 12:44:23
+  *                             via 10.0.21.2, eth1, weight 1, 12:44:23
+O>* 192.168.20.0/24 [110/20000] via 10.0.11.2, eth0, weight 1, 12:44:23
+  *                             via 10.0.21.2, eth1, weight 1, 12:44:23
+O>* 192.168.99.0/24 [110/20000] via 10.0.11.2, eth0, weight 1, 12:44:23
+  *                             via 10.0.21.2, eth1, weight 1, 12:44:23
 
 
 === LOOPBACK PREFIX ROUTE ===
@@ -126,9 +130,9 @@ O>* 192.168.99.0/24 [110/20000] via 10.0.11.2, eth0, weight 1, 03:30:44
 
 
 === INPUT RULES ===
-Chain INPUT (policy ACCEPT 5640 packets, 545K bytes)
+Chain INPUT (policy ACCEPT 16809 packets, 1616K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
-1     6382  844K PFE_ADMIN_INPUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+1    17986 1983K PFE_ADMIN_INPUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
 
 
 === FORWARD RULES ===
@@ -137,14 +141,14 @@ num   pkts bytes target     prot opt in     out     source               destina
 
 
 === NAT RULES ===
-Chain PREROUTING (policy ACCEPT 313 packets, 29578 bytes)
+Chain PREROUTING (policy ACCEPT 11555 packets, 1106K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain INPUT (policy ACCEPT 313 packets, 29578 bytes)
+Chain INPUT (policy ACCEPT 11493 packets, 1101K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain OUTPUT (policy ACCEPT 289 packets, 24420 bytes)
+Chain OUTPUT (policy ACCEPT 11126 packets, 953K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         
 
-Chain POSTROUTING (policy ACCEPT 289 packets, 24420 bytes)
+Chain POSTROUTING (policy ACCEPT 11126 packets, 953K bytes)
 num   pkts bytes target     prot opt in     out     source               destination         

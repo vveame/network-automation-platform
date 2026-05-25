@@ -1,0 +1,49 @@
+---
+- name: Initialize expected report file list
+  ansible.builtin.set_fact:
+    expected_report_files:
+      - oob-management-readiness.txt
+      - inventory-consistency.txt
+      - dmz-services.txt
+      - security-validation.txt
+      - end-to-end-validation.txt
+
+- name: Add expected FRR report files
+  ansible.builtin.set_fact:
+    expected_report_files: "{{ expected_report_files + [item.key ~ '-frr.txt'] }}"
+  loop: "{{ expected_frr_nodes | dict2items }}"
+
+- name: Add expected OVS report files
+  ansible.builtin.set_fact:
+    expected_report_files: "{{ expected_report_files + [item.key ~ '-ovs.txt'] }}"
+  loop: "{{ expected_ovs_nodes | dict2items }}"
+
+- name: Show expected report files
+  ansible.builtin.debug:
+    var: expected_report_files
+
+- name: Check expected report files exist
+  ansible.builtin.stat:
+    path: "../outputs/{{ item }}"
+  loop: "{{ expected_report_files }}"
+  register: expected_report_stats
+
+- name: Assert expected report files exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.size > 0
+    fail_msg: "Expected report file {{ item.item }} is missing or empty."
+    success_msg: "Expected report file {{ item.item }} exists and is not empty."
+  loop: "{{ expected_report_stats.results }}"
+
+- name: Save report artifact validation output
+  ansible.builtin.copy:
+    dest: "../outputs/report-artifacts-validation.txt"
+    content: |
+      Report artifact validation passed.
+
+      Expected report files:
+      {% for file in expected_report_files %}
+      - {{ file }}
+      {% endfor %}

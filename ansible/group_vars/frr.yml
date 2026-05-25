@@ -68,10 +68,30 @@ frr_security_validation_commands:
 
 expected_ospf_state: "Full"
 
-frr_roles:
-  core:
-    expected_neighbors_min: 2
-  distribution:
-    expected_neighbors_min: 2
-  edge:
-    expected_neighbors_min: 2
+frr_validation:
+  nodes:
+    core-frr-1:
+      expected_min_ospf_full_neighbors: 3
+      expected_vrrp_gateways: []
+
+    core-frr-2:
+      expected_min_ospf_full_neighbors: 3
+      expected_vrrp_gateways: []
+
+    dist-frr-1:
+      expected_min_ospf_full_neighbors: 2
+      expected_vrrp_gateways:
+        - "192.168.10.1"
+        - "192.168.20.1"
+        - "192.168.99.1"
+
+    dist-frr-2:
+      expected_min_ospf_full_neighbors: 2
+      expected_vrrp_gateways:
+        - "192.168.10.1"
+        - "192.168.20.1"
+        - "192.168.99.1"
+
+    edge-router:
+      expected_min_ospf_full_neighbors: 2
+      expected_vrrp_gateways: []

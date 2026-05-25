@@ -1,0 +1,104 @@
+---
+- name: Validate required global variables exist
+  ansible.builtin.assert:
+    that:
+      - project_name is defined
+      - lab_environment is defined
+      - devops_server is defined
+      - devops_server.oob_ip is defined
+      - oob_management is defined
+      - oob_management.network is defined
+      - oob_management.targets is defined
+      - expected_frr_nodes is defined
+      - expected_ovs_nodes is defined
+      - dmz is defined
+    fail_msg: "One or more required global Ansible variables are missing."
+    success_msg: "Required global variables are present."
+
+- name: Validate OOB target list is not empty
+  ansible.builtin.assert:
+    that:
+      - oob_management.targets | length > 0
+    fail_msg: "oob_management.targets is empty."
+    success_msg: "OOB management targets are defined."
+
+- name: Validate expected FRR node list is not empty
+  ansible.builtin.assert:
+    that:
+      - expected_frr_nodes | length > 0
+    fail_msg: "expected_frr_nodes is empty."
+    success_msg: "Expected FRR nodes are defined."
+
+- name: Validate expected OVS node list is not empty
+  ansible.builtin.assert:
+    that:
+      - expected_ovs_nodes | length > 0
+    fail_msg: "expected_ovs_nodes is empty."
+    success_msg: "Expected OVS nodes are defined."
+
+- name: Build list of OOB target IPs
+  ansible.builtin.set_fact:
+    oob_target_ips: "{{ oob_management.targets | map(attribute='ip') | list }}"
+
+- name: Validate OOB target IPs are unique
+  ansible.builtin.assert:
+    that:
+      - oob_target_ips | length == oob_target_ips | unique | length
+    fail_msg: "Duplicate IP address found in oob_management.targets."
+    success_msg: "OOB target IP addresses are unique."
+
+- name: Validate FRR nodes exist in inventory
+  ansible.builtin.assert:
+    that:
+      - item.key in groups['frr']
+      - item.key in groups['network_infra']
+    fail_msg: "FRR node {{ item.key }} is missing from frr or network_infra inventory groups."
+    success_msg: "FRR node {{ item.key }} exists in inventory."
+  loop: "{{ expected_frr_nodes | dict2items }}"
+
+- name: Validate OVS nodes exist in inventory
+  ansible.builtin.assert:
+    that:
+      - item.key in groups['ovs']
+      - item.key in groups['network_infra']
+    fail_msg: "OVS node {{ item.key }} is missing from ovs or network_infra inventory groups."
+    success_msg: "OVS node {{ item.key }} exists in inventory."
+  loop: "{{ expected_ovs_nodes | dict2items }}"
+
+- name: Validate FRR ansible_host matches OOB IP
+  ansible.builtin.assert:
+    that:
+      - hostvars[item.key].ansible_host == item.value.oob_ip
+    fail_msg: "Inventory ansible_host for {{ item.key }} does not match expected OOB IP {{ item.value.oob_ip }}."
+    success_msg: "Inventory ansible_host for {{ item.key }} matches OOB IP."
+  loop: "{{ expected_frr_nodes | dict2items }}"
+
+- name: Validate OVS ansible_host matches OOB IP
+  ansible.builtin.assert:
+    that:
+      - hostvars[item.key].ansible_host == item.value.oob_ip
+    fail_msg: "Inventory ansible_host for {{ item.key }} does not match expected OOB IP {{ item.value.oob_ip }}."
+    success_msg: "Inventory ansible_host for {{ item.key }} matches OOB IP."
+  loop: "{{ expected_ovs_nodes | dict2items }}"
+
+- name: Save inventory consistency report
+  ansible.builtin.copy:
+    dest: "../outputs/inventory-consistency.txt"
+    content: |
+      Inventory and variable consistency validation passed.
+
+      Project: {{ project_name }}
+      Environment: {{ lab_environment }}
+
+      OOB network: {{ oob_management.network }}
+      DevOps OOB IP: {{ devops_server.oob_ip }}
+
+      FRR nodes:
+      {% for node, data in expected_frr_nodes.items() %}
+      - {{ node }} -> {{ data.oob_ip }} / {{ data.oob_interface }}
+      {% endfor %}
+
+      OVS nodes:
+      {% for node, data in expected_ovs_nodes.items() %}
+      - {{ node }} -> {{ data.oob_ip }} / {{ data.oob_interface }}
+      {% endfor %}
