@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   trigger-jenkins:
-    if: ${{ github.repository == 'weame/network-automation-platform' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
+    if: ${{ github.repository == 'vveame/network-automation-platform' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
     runs-on: [self-hosted, linux, x64, pfe-devops-vm, jenkins-bridge]
 
     steps:

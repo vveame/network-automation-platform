@@ -8,10 +8,6 @@ pipeline {
         skipDefaultCheckout(true)
     }
 
-    triggers {
-        pollSCM('H/5 * * * *')
-    }
-
     environment {
         ANSIBLE_DIR = 'ansible'
         ANSIBLE_HOST_KEY_CHECKING = 'False'
