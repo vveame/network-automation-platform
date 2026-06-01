@@ -1,0 +1,22 @@
+name: Trigger Jenkins Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: jenkins-trigger-main
+  cancel-in-progress: true
+
+jobs:
+  trigger-jenkins:
+    if: ${{ github.repository == 'weame/network-automation-platform' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
+    runs-on: [self-hosted, linux, x64, pfe-devops-vm, jenkins-bridge]
+
+    steps:
+      - name: Trigger Jenkins locally from DevOps VM
+        run: sudo /usr/local/sbin/trigger-jenkins-pfe
