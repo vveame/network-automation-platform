@@ -400,6 +400,41 @@ python -m pip install -r dashboard/requirements.txt
 python dashboard/app.py
 ```
 
+## CI/CD Integration with Jenkins and GitHub Actions
+
+The project uses Jenkins as the main CI/CD automation server for validating the local network topology. Jenkins runs from the DevOps control VM and executes the Ansible validation pipeline.
+
+Because the repository is public, Jenkins is not exposed directly to the Internet. Instead, a GitHub Actions self-hosted runner is installed on the DevOps VM under a dedicated limited Linux user named `gha-runner`.
+
+The runner does not build, test, deploy or checkout the repository. Its only role is to act as a secure trigger bridge between GitHub and Jenkins. When a push is made to the `main` branch, GitHub Actions runs a local command on the DevOps VM:
+
+```bash
+sudo /usr/local/sbin/trigger-jenkins-pfe
+```
+
+This script triggers the Jenkins job locally through the Jenkins API at:
+
+This script triggers the Jenkins job locally through the Jenkins API at:
+
+```text
+10.200.0.10:8080
+```
+
+The Jenkins pipeline then performs the real validation workflow:
+
+1. Cleans the workspace.
+2. Checks out the repository.
+3. Displays the execution environment.
+4. Prepares Ansible output directories.
+5. Validates the Ansible inventory.
+6. Runs syntax checks.
+7. Executes the Ansible validation gate.
+8. Generates an HTML summary report.
+9. Synchronizes reports to the Flask dashboard folder.
+10. Archives validation outputs as Jenkins artifacts.
+
+This design keeps Jenkins private inside the lab while still providing automatic CI/CD execution after each push to GitHub.
+
 ## Final Management Principle
 
 The final architecture keeps both management concepts:

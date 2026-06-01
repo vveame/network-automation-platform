@@ -1,0 +1,3 @@
+machine 10.200.0.10
+login wiam
+password JENKINS_API_TOKEN
