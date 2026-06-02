@@ -169,6 +169,11 @@ DevOps VM: 10.200.0.10
 |   │   ├── security_validate/
 |   │   └── report_collect/
 │   └── ansible.cfg
+├── ci-cd/
+│   ├── github-actions-jenkins-bridge.md
+│   ├── trigger-jenkins-pfe.example.sh
+│   ├── jenkins-netrc.example
+│   └── gha-runner-sudoers.example
 ├── dashboard/
 │   ├── app.py
 │   ├── config.py
@@ -195,7 +200,11 @@ DevOps VM: 10.200.0.10
 │   ├── routing/
 ├── gns3/
 │   ├── node-mapping.md
-│   └── startup-order.md
+│   ├── startup-order.md
+│   └── scripts/
+│       ├── bootstrap-gns3.sh
+│       ├── bootstrap-persistent-gns3.sh
+│       └── gns3-status.sh
 ├── hosts/
 │   ├── host-ip-plan.md
 │   ├── devops-server-ip.sh
@@ -402,38 +411,136 @@ python dashboard/app.py
 
 ## CI/CD Integration with Jenkins and GitHub Actions
 
-The project uses Jenkins as the main CI/CD automation server for validating the local network topology. Jenkins runs from the DevOps control VM and executes the Ansible validation pipeline.
+The project uses Jenkins as the main CI/CD automation server for validating and maintaining the local network automation platform.
 
-Because the repository is public, Jenkins is not exposed directly to the Internet. Instead, a GitHub Actions self-hosted runner is installed on the DevOps VM under a dedicated limited Linux user named `gha-runner`.
+Jenkins runs from the DevOps control VM and remains private inside the local lab. Because the GitHub repository is public, Jenkins is not exposed directly to the Internet. Instead, a GitHub Actions self-hosted runner is installed on the DevOps VM under a dedicated limited Linux user named `gha-runner`.
 
-The runner does not build, test, deploy or checkout the repository. Its only role is to act as a secure trigger bridge between GitHub and Jenkins. When a push is made to the `main` branch, GitHub Actions runs a local command on the DevOps VM:
+The runner does not build, test, deploy, or checkout the repository. Its only role is to act as a secure trigger bridge between GitHub and Jenkins.
+
+When a push is made to the `main` branch, GitHub Actions runs the following protected local command on the DevOps VM:
 
 ```bash
 sudo /usr/local/sbin/trigger-jenkins-pfe
 ```
 
-This script triggers the Jenkins job locally through the Jenkins API at:
-
-This script triggers the Jenkins job locally through the Jenkins API at:
+This script triggers the Jenkins job through the local Jenkins API:
 
 ```text
-10.200.0.10:8080
+http://10.200.0.10:8080
 ```
 
-The Jenkins pipeline then performs the real validation workflow:
+The Jenkins API token is not stored in GitHub. It is stored locally on the DevOps VM in:
+
+```text
+/root/.jenkins_netrc
+```
+
+### GitHub Actions Bridge
+
+The GitHub Actions workflow is stored in:
+
+```text
+.github/workflows/trigger-jenkins.yml
+```
+
+It is triggered only by:
+
+* push events on the `main` branch
+* manual execution using `workflow_dispatch`
+
+The workflow does not use `actions/checkout`. This prevents repository code from being executed directly by the self-hosted runner.
+
+### Jenkins Pipeline Modes
+
+The Jenkins pipeline is parameterized and supports multiple execution modes:
+
+| Mode                 | Purpose                                                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `AUTO`               | Default mode used by GitHub push triggers. Validates the topology and optionally builds/pushes changed Docker images. |
+| `VALIDATE_ONLY`      | Runs validation, report generation and dashboard publishing only.                                                     |
+| `BUILD_IMAGES`       | Builds all custom Docker images on the GNS3 host.                                                                     |
+| `PUSH_IMAGES`        | Builds and pushes all custom Docker images to Docker Hub.                                                             |
+| `BOOTSTRAP_GNS3`     | Runs the persistent GNS3 bootstrap process.                                                                           |
+| `FULL_LOCAL_REFRESH` | Performs a complete local maintenance workflow including image refresh, bootstrap and validation.                     |
+
+Topology-changing actions require:
+
+```text
+CONFIRM_APPLY=true
+```
+
+This confirmation is required for actions such as GNS3 bootstrap and full local refresh, because they modify the lab environment or persistent node configuration.
+
+### Jenkins Pipeline Workflow
+
+In its default validation workflow, Jenkins performs the following actions:
 
 1. Cleans the workspace.
 2. Checks out the repository.
-3. Displays the execution environment.
+3. Detects changed repository areas.
 4. Prepares Ansible output directories.
 5. Validates the Ansible inventory.
-6. Runs syntax checks.
-7. Executes the Ansible validation gate.
+6. Runs Ansible syntax checks.
+7. Executes the local topology validation gate.
 8. Generates an HTML summary report.
 9. Synchronizes reports to the Flask dashboard folder.
 10. Archives validation outputs as Jenkins artifacts.
+11. Updates the Jenkins build description with dashboard and artifact links.
 
-This design keeps Jenkins private inside the lab while still providing automatic CI/CD execution after each push to GitHub.
+### Docker Image Automation
+
+Custom Docker images are used for the simulated GNS3 nodes:
+
+* FRR routers.
+* OVS switches.
+* Web service node.
+* DNS service node.
+
+Docker build and push operations are delegated to the GNS3 host through SSH, because Docker is installed on the GNS3 VM and not on the DevOps VM.
+
+This keeps the DevOps VM focused on orchestration, Ansible validation and reporting, while the GNS3 VM remains responsible for image building and topology-related Docker operations.
+
+Important distinction:
+
+```text
+docker build  → creates or updates a local image on the GNS3 host
+docker push   → publishes the image to Docker Hub
+GNS3 nodes    → existing containers are not automatically recreated
+```
+
+Pushing a new image to Docker Hub does not automatically update already-created GNS3 nodes. Applying a new image to existing GNS3 nodes requires a controlled maintenance action, such as recreating the affected nodes or using a future GNS3 API-based refresh workflow.
+
+### GNS3 Host Synchronization
+
+For Docker build and bootstrap operations, Jenkins connects to the GNS3 host through SSH and synchronizes the local repository copy located at:
+
+```text
+/home/gns3/pfe-repo
+```
+
+The GitHub repository is treated as the source of truth for tracked files.
+
+Real environment and secret files are not committed to GitHub. They are preserved locally on the GNS3 host, for example under:
+
+```text
+/home/gns3/pfe-local-files
+```
+
+Only example files are versioned in the repository.
+
+### Security Summary
+
+This CI/CD design provides the following security properties:
+
+* Jenkins remains private inside the local lab.
+* The GitHub Actions runner only triggers Jenkins.
+* The runner runs under a limited Linux user.
+* The runner does not checkout or execute repository code.
+* Jenkins credentials remain local to the DevOps VM.
+* Docker operations are delegated to the GNS3 host.
+* GNS3 topology-changing actions are manual and protected by confirmation.
+
+This design keeps the CI/CD workflow enterprise-like while remaining suitable for an academic hybrid network automation lab.
 
 ## Final Management Principle
 
