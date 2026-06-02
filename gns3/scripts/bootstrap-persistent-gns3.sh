@@ -2,7 +2,8 @@
 
 set -e
 
-REPO="/home/gns3/pfe-repo"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PUBKEY_FILE="$REPO/devops.pub"
 
 find_container_any_state() {
