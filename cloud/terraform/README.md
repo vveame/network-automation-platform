@@ -10,9 +10,9 @@ The local on-premises infrastructure is implemented in GNS3 and validated throug
 
 ## Current Implementation Status
 
-The first cloud implementation step is complete.
+The current Terraform baseline implements the first AWS network and security foundation.
 
-The implemented Terraform baseline creates:
+It creates:
 
 * one AWS VPC
 * one public subnet
@@ -23,6 +23,11 @@ The implemented Terraform baseline creates:
 * one private route table
 * one monitoring route table
 * route table associations for the three subnets
+* one admin security group
+* one monitoring security group
+* one AI analysis security group
+* one private services security group
+* standalone security group ingress and egress rules
 
 No EC2 instances, NAT Gateway, VPN connection, monitoring services, AI services or S3 buckets are created yet.
 
@@ -88,14 +93,17 @@ The private and monitoring subnets remain isolated for now.
 
 ### security
 
-Planned.
+Implemented.
 
-Will contain cloud security controls:
+Creates the AWS security group baseline:
 
-* security groups
-* controlled SSH/admin access
-* monitoring access rules
-* future VPN-related rules
+* admin security group
+* monitoring security group
+* AI analysis security group
+* private services security group
+* standalone ingress and egress rules
+
+The security module prepares controlled access rules for future cloud services without deploying compute instances yet.
 
 ### compute
 
@@ -118,6 +126,36 @@ Will contain cloud storage resources:
 * analysis outputs
 * future datasets
 
+## Security Group Design
+
+### Admin security group
+
+Reserved for a future bastion or management instance.
+
+Allows SSH only from the configured administrator public CIDR.
+
+### Monitoring security group
+
+Reserved for future Prometheus and Grafana services.
+
+Allows:
+
+* Grafana access on TCP/3000 from the configured admin public CIDR
+* Prometheus access on TCP/9090 from the configured admin public CIDR
+* internal metrics traffic on TCP/9100 from the VPC CIDR
+
+### AI security group
+
+Reserved for the future anomaly detection / AI analysis service.
+
+Allows AI service traffic on TCP/8000 from the monitoring security group.
+
+### Private services security group
+
+Reserved for future private cloud services.
+
+Allows internal VPC service-to-service traffic.
+
 ## Design Notes
 
 The cloud baseline is intentionally simple and low-cost.
@@ -125,6 +163,8 @@ The cloud baseline is intentionally simple and low-cost.
 A NAT Gateway is not created at this stage in order to avoid unnecessary AWS costs during the student lab phase.
 
 The private and monitoring subnets will later be connected through controlled routing, VPN, or dedicated access mechanisms depending on the next implementation steps.
+
+Security group rules are managed as standalone Terraform resources instead of inline security group rules. This keeps rule management clearer and avoids conflicts between inline and standalone rule definitions.
 
 ## State Management
 
@@ -179,6 +219,14 @@ vpc_cidr               = "10.50.0.0/16"
 public_subnet_cidr     = "10.50.10.0/24"
 private_subnet_cidr    = "10.50.20.0/24"
 monitoring_subnet_cidr = "10.50.30.0/24"
+
+admin_allowed_cidr = "YOUR_PUBLIC_IP/32"
+```
+
+In `terraform.tfvars.example`, the admin CIDR should remain restrictive:
+
+```hcl
+admin_allowed_cidr = "0.0.0.0/32"
 ```
 
 ## Commands
@@ -194,7 +242,7 @@ terraform validate
 terraform plan
 ```
 
-Apply the current network baseline:
+Apply the current baseline:
 
 ```bash
 terraform plan -out=tfplan

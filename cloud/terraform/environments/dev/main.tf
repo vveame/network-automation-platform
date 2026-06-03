@@ -9,3 +9,13 @@ module "network" {
   availability_zone      = var.availability_zone
   common_tags            = local.common_tags
 }
+
+module "security" {
+  source = "../../modules/security"
+
+  name_prefix        = local.name_prefix
+  vpc_id             = module.network.vpc_id
+  vpc_cidr           = module.network.vpc_cidr
+  admin_allowed_cidr = var.admin_allowed_cidr
+  common_tags        = local.common_tags
+}

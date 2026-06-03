@@ -57,3 +57,9 @@ variable "monitoring_subnet_cidr" {
   type        = string
   default     = "10.50.30.0/24"
 }
+
+variable "admin_allowed_cidr" {
+  description = "Public CIDR allowed to access cloud admin services such as SSH. Use a /32 for a single admin public IP."
+  type        = string
+  default     = "0.0.0.0/32"
+}

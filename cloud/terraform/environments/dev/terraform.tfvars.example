@@ -13,3 +13,6 @@ vpc_cidr               = "10.50.0.0/16"
 public_subnet_cidr     = "10.50.10.0/24"
 private_subnet_cidr    = "10.50.20.0/24"
 monitoring_subnet_cidr = "10.50.30.0/24"
+
+# Public CIDR allowed to access admin/cloud services.
+admin_allowed_cidr = "DEVOPS_VM_PUBLIC_IP/32"

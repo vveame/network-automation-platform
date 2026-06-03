@@ -42,3 +42,23 @@ output "internet_gateway_id" {
   description = "Internet Gateway ID."
   value       = module.network.internet_gateway_id
 }
+
+output "admin_security_group_id" {
+  description = "Security group ID for future admin/bastion access."
+  value       = module.security.admin_security_group_id
+}
+
+output "monitoring_security_group_id" {
+  description = "Security group ID for future monitoring services."
+  value       = module.security.monitoring_security_group_id
+}
+
+output "ai_security_group_id" {
+  description = "Security group ID for future AI analysis service."
+  value       = module.security.ai_security_group_id
+}
+
+output "private_security_group_id" {
+  description = "Security group ID for future private services."
+  value       = module.security.private_security_group_id
+}

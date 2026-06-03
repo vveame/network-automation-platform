@@ -411,11 +411,13 @@ python dashboard/app.py
 
 ## Cloud Infrastructure Baseline
 
-The project now includes an initial AWS cloud infrastructure baseline provisioned with Terraform.
+The project includes an initial AWS cloud infrastructure baseline provisioned with Terraform.
 
-This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking environment that will later host monitoring, analysis, storage and cloud-side services.
+This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking and security environment that will later host monitoring, analysis, storage and cloud-side services.
 
-The first implemented cloud baseline includes:
+### Implemented Cloud Components
+
+The current Terraform baseline includes:
 
 * One AWS VPC.
 * One public subnet.
@@ -426,10 +428,7 @@ The first implemented cloud baseline includes:
 * One private route table.
 * One monitoring route table.
 * Route table associations for the three subnets.
-
-The public subnet is connected to the Internet Gateway through a public route table.
-
-The private and monitoring subnets are intentionally isolated at this stage. They do not use a NAT Gateway yet in order to avoid unnecessary AWS costs during the student lab phase.
+* Security group baseline for future cloud services.
 
 ### Cloud CIDR Plan
 
@@ -441,6 +440,39 @@ Monitoring/AI subnet: 10.50.30.0/24
 ```
 
 The cloud CIDR range is separated from the local GNS3/on-premises addressing plan to prepare for future hybrid connectivity.
+
+### Subnet Roles
+
+| Subnet                 | Role                                                           |
+| ---------------------- | -------------------------------------------------------------- |
+| Public subnet          | Future bastion/admin access or public-facing cloud services    |
+| Private subnet         | Future internal cloud services                                 |
+| Monitoring / AI subnet | Future monitoring, observability and anomaly-analysis services |
+
+Only the public subnet is connected to the Internet Gateway.
+
+The private and monitoring subnets are intentionally isolated at this stage. They do not use a NAT Gateway yet in order to avoid unnecessary AWS costs during the student lab phase.
+
+### Cloud Security Baseline
+
+The Terraform security module defines the first AWS security group baseline:
+
+| Security group                  | Purpose                                                     |
+| ------------------------------- | ----------------------------------------------------------- |
+| Admin security group            | Reserved for future bastion or management access            |
+| Monitoring security group       | Reserved for future Prometheus and Grafana services         |
+| AI security group               | Reserved for future anomaly detection / AI analysis service |
+| Private services security group | Reserved for future internal cloud services                 |
+
+The admin, Prometheus and Grafana access rules are restricted using the `admin_allowed_cidr` variable.
+
+In the public example file, this value is intentionally set to:
+
+```text
+0.0.0.0/32
+```
+
+The real administrator public IP must be configured only in the local untracked `terraform.tfvars` file.
 
 ### Terraform Structure
 
@@ -466,11 +498,11 @@ cloud/terraform/modules/
 └── storage/
 ```
 
-At the current stage, the `network` module is implemented. The `security`, `compute`, and `storage` modules are kept as placeholders for the next implementation steps.
+At the current stage, the `network` and `security` modules are implemented. The `compute` and `storage` modules are kept as placeholders for the next implementation steps.
 
 ### Current Cloud Status
 
-The current Terraform implementation creates the AWS network baseline only.
+The current Terraform implementation creates the AWS network and security baseline only.
 
 It does not create yet:
 
