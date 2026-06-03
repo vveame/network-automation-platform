@@ -72,3 +72,33 @@ output "artifacts_bucket_arn" {
   description = "ARN of the S3 bucket used for logs, metrics, AI outputs and reports."
   value       = module.storage.artifacts_bucket_arn
 }
+
+output "bastion_instance_id" {
+  description = "ID of the bastion/admin instance, if compute is enabled."
+  value       = module.compute.bastion_instance_id
+}
+
+output "bastion_public_ip" {
+  description = "Public IP of the bastion/admin instance, if compute is enabled."
+  value       = module.compute.bastion_public_ip
+}
+
+output "monitoring_instance_id" {
+  description = "ID of the monitoring placeholder instance, if compute is enabled."
+  value       = module.compute.monitoring_instance_id
+}
+
+output "monitoring_private_ip" {
+  description = "Private IP of the monitoring placeholder instance, if compute is enabled."
+  value       = module.compute.monitoring_private_ip
+}
+
+output "ai_instance_id" {
+  description = "ID of the AI analysis placeholder instance, if compute is enabled."
+  value       = module.compute.ai_instance_id
+}
+
+output "ai_private_ip" {
+  description = "Private IP of the AI analysis placeholder instance, if compute is enabled."
+  value       = module.compute.ai_private_ip
+}

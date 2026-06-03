@@ -413,7 +413,7 @@ python dashboard/app.py
 
 The project includes an initial AWS cloud infrastructure baseline provisioned with Terraform.
 
-This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking, security and storage environment that will later host monitoring, analysis, logs, datasets and cloud-side services.
+This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking, security, storage and future compute environment that will later host monitoring, analysis, logs, datasets and cloud-side services.
 
 ### Implemented Cloud Components
 
@@ -430,6 +430,7 @@ The current Terraform baseline includes:
 * Route table associations for the three subnets.
 * Security group baseline for future cloud services.
 * One private S3 bucket for future logs, metrics exports, AI outputs and reports.
+* Optional compute module prepared for future EC2 instances.
 
 ### Cloud CIDR Plan
 
@@ -475,6 +476,8 @@ In the public example file, this value is intentionally set to:
 
 The real administrator public IP must be configured only in the local untracked `terraform.tfvars` file.
 
+Additional internal SSH rules are prepared so that a future bastion/admin instance can access the future monitoring and AI instances through security group references.
+
 ### Cloud Storage Baseline
 
 The Terraform storage module creates a private S3 bucket reserved for future platform artifacts.
@@ -495,6 +498,24 @@ The S3 bucket is configured with:
 * server-side encryption using AES256
 
 This storage baseline prepares the project for future monitoring and AI phases without exposing data publicly.
+
+### Cloud Compute Baseline
+
+The Terraform compute module is prepared but disabled by default.
+
+It is controlled using:
+
+```hcl
+enable_compute = false
+```
+
+When enabled later, the module will create optional EC2 placeholder instances for:
+
+* bastion/admin access
+* monitoring services
+* AI/anomaly analysis services
+
+At the current stage, no EC2 instances are created. This avoids unnecessary AWS costs while keeping the cloud architecture ready for the next implementation phase.
 
 ### Terraform Structure
 
@@ -520,7 +541,7 @@ cloud/terraform/modules/
 └── storage/
 ```
 
-At the current stage, the `network`, `security`, and `storage` modules are implemented. The `compute` module is kept as a placeholder for the next implementation step.
+At the current stage, the `network`, `security`, `storage`, and optional `compute` modules are implemented. Compute resources remain disabled until explicitly enabled.
 
 ### Current Cloud Status
 

@@ -10,9 +10,9 @@ The local on-premises infrastructure is implemented in GNS3 and validated throug
 
 ## Current Implementation Status
 
-The current Terraform baseline implements the first AWS network, security and storage foundation.
+The current Terraform baseline implements the first AWS network, security, storage and optional compute foundation.
 
-It creates:
+It creates or prepares:
 
 * one AWS VPC
 * one public subnet
@@ -33,8 +33,9 @@ It creates:
 * S3 ownership controls
 * S3 versioning
 * S3 server-side encryption
+* optional EC2 compute placeholders, disabled by default
 
-No EC2 instances, NAT Gateway, VPN connection, monitoring services or AI services are created yet.
+No EC2 instances, NAT Gateway, VPN connection, monitoring services or AI services are created yet unless compute is explicitly enabled.
 
 ## Structure
 
@@ -108,7 +109,9 @@ Creates the AWS security group baseline:
 * private services security group
 * standalone ingress and egress rules
 
-The security module prepares controlled access rules for future cloud services without deploying compute instances yet.
+The security module prepares controlled access rules for future cloud services.
+
+It also prepares SSH access from the future admin/bastion security group toward the future monitoring and AI instances.
 
 ### storage
 
@@ -126,13 +129,24 @@ The storage bucket is reserved for future logs, metrics exports, AI outputs, dat
 
 ### compute
 
-Planned.
+Implemented as an optional module.
 
-Will contain cloud compute resources:
+The compute module is disabled by default in order to avoid unnecessary AWS costs.
 
-* monitoring instance
-* AI/anomaly analysis instance
-* optional bastion or management instance
+It is controlled by:
+
+```hcl
+enable_compute = false
+```
+
+When enabled, it can create:
+
+* one bastion/admin EC2 instance in the public subnet
+* one monitoring placeholder EC2 instance in the monitoring subnet
+* one AI analysis placeholder EC2 instance in the monitoring subnet
+* one EC2 key pair if a public SSH key is provided
+
+At the current stage, compute remains disabled and no EC2 instances are created.
 
 ## Security Group Design
 
@@ -151,12 +165,16 @@ Allows:
 * Grafana access on TCP/3000 from the configured admin public CIDR
 * Prometheus access on TCP/9090 from the configured admin public CIDR
 * internal metrics traffic on TCP/9100 from the VPC CIDR
+* SSH from the future admin/bastion security group
 
 ### AI security group
 
 Reserved for the future anomaly detection / AI analysis service.
 
-Allows AI service traffic on TCP/8000 from the monitoring security group.
+Allows:
+
+* AI service traffic on TCP/8000 from the monitoring security group
+* SSH from the future admin/bastion security group
 
 ### Private services security group
 
@@ -189,6 +207,20 @@ If no custom bucket name is provided, the module generates a deterministic bucke
 <project-name>-<environment>-artifacts-<aws-account-id>
 ```
 
+## Compute Design
+
+The compute module prepares the future cloud execution layer.
+
+When enabled, the planned EC2 layout is:
+
+| Instance      | Subnet                 | Public IP | Purpose                                               |
+| ------------- | ---------------------- | --------- | ----------------------------------------------------- |
+| Bastion/admin | Public subnet          | Yes       | Controlled administrative entry point                 |
+| Monitoring    | Monitoring / AI subnet | No        | Future Prometheus, Grafana and telemetry ingestion    |
+| AI analysis   | Monitoring / AI subnet | No        | Future anomaly detection and decision-support service |
+
+The monitoring and AI instances are private and are intended to be accessed through the bastion/admin instance or future hybrid/VPN routing.
+
 ## Design Notes
 
 The cloud baseline is intentionally simple and low-cost.
@@ -200,6 +232,8 @@ The private and monitoring subnets will later be connected through controlled ro
 Security group rules are managed as standalone Terraform resources instead of inline security group rules. This keeps rule management clearer and avoids conflicts between inline and standalone rule definitions.
 
 The S3 bucket is not used for Terraform remote state at this stage. It is reserved for platform artifacts, logs, metrics exports and future AI analysis outputs.
+
+The compute module is prepared but disabled by default. This allows the architecture to be documented and versioned without creating running EC2 resources until they are needed.
 
 ## State Management
 
@@ -258,12 +292,23 @@ monitoring_subnet_cidr = "10.50.30.0/24"
 admin_allowed_cidr = "YOUR_PUBLIC_IP/32"
 
 storage_bucket_name_override = null
+
+enable_compute        = false
+compute_instance_type = "t3.micro"
+compute_ami_ssm_parameter = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+admin_public_key = null
 ```
 
 In `terraform.tfvars.example`, the admin CIDR should remain restrictive:
 
 ```hcl
 admin_allowed_cidr = "0.0.0.0/32"
+```
+
+Compute should remain disabled by default:
+
+```hcl
+enable_compute = false
 ```
 
 ## Commands

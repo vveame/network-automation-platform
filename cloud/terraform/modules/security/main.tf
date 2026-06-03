@@ -133,3 +133,23 @@ resource "aws_vpc_security_group_egress_rule" "private_all_outbound" {
   ip_protocol = "-1"
   cidr_ipv4   = "0.0.0.0/0"
 }
+
+resource "aws_vpc_security_group_ingress_rule" "monitoring_ssh_from_admin_sg" {
+  security_group_id = aws_security_group.monitoring.id
+
+  description                  = "Allow SSH to monitoring instance from admin/bastion security group"
+  ip_protocol                  = "tcp"
+  from_port                    = 22
+  to_port                      = 22
+  referenced_security_group_id = aws_security_group.admin.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ai_ssh_from_admin_sg" {
+  security_group_id = aws_security_group.ai.id
+
+  description                  = "Allow SSH to AI instance from admin/bastion security group"
+  ip_protocol                  = "tcp"
+  from_port                    = 22
+  to_port                      = 22
+  referenced_security_group_id = aws_security_group.admin.id
+}

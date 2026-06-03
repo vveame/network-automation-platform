@@ -27,3 +27,19 @@ module "storage" {
   bucket_name_override = var.storage_bucket_name_override
   common_tags          = local.common_tags
 }
+
+module "compute" {
+  source = "../../modules/compute"
+
+  enable_compute              = var.enable_compute
+  name_prefix                 = local.name_prefix
+  ami_ssm_parameter           = var.compute_ami_ssm_parameter
+  instance_type               = var.compute_instance_type
+  admin_public_key            = var.admin_public_key
+  public_subnet_id            = module.network.public_subnet_id
+  monitoring_subnet_id        = module.network.monitoring_subnet_id
+  admin_security_group_id     = module.security.admin_security_group_id
+  monitoring_security_group_id = module.security.monitoring_security_group_id
+  ai_security_group_id        = module.security.ai_security_group_id
+  common_tags                 = local.common_tags
+}

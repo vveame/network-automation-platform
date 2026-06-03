@@ -63,3 +63,27 @@ variable "admin_allowed_cidr" {
   type        = string
   default     = "0.0.0.0/32"
 }
+
+variable "enable_compute" {
+  description = "Whether to create EC2 placeholder instances. Disabled by default to avoid unnecessary costs."
+  type        = bool
+  default     = false
+}
+
+variable "compute_instance_type" {
+  description = "EC2 instance type used for placeholder instances."
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "compute_ami_ssm_parameter" {
+  description = "SSM public parameter used to retrieve the latest Amazon Linux 2023 AMI."
+  type        = string
+  default     = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+}
+
+variable "admin_public_key" {
+  description = "Public SSH key used to create an AWS key pair for EC2 access. Keep null if compute is disabled."
+  type        = string
+  default     = null
+}

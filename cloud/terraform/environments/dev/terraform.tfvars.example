@@ -20,3 +20,15 @@ admin_allowed_cidr = "DEVOPS_VM_PUBLIC_IP/32"
 # Custom S3 bucket name.
 # null generate a bucket name using the AWS account ID.
 storage_bucket_name_override = null
+
+# EC2 compute placeholders.
+# Disabled by default to avoid unnecessary AWS costs.
+enable_compute        = false
+compute_instance_type = "t3.micro"
+
+# Amazon Linux 2023 AMI public SSM parameter.
+compute_ami_ssm_parameter = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+
+# Public SSH key for EC2 access.
+# Keep null unless compute is enabled.
+admin_public_key = null
