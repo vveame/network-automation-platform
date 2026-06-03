@@ -62,3 +62,13 @@ output "private_security_group_id" {
   description = "Security group ID for future private services."
   value       = module.security.private_security_group_id
 }
+
+output "artifacts_bucket_name" {
+  description = "Name of the S3 bucket used for logs, metrics, AI outputs and reports."
+  value       = module.storage.artifacts_bucket_name
+}
+
+output "artifacts_bucket_arn" {
+  description = "ARN of the S3 bucket used for logs, metrics, AI outputs and reports."
+  value       = module.storage.artifacts_bucket_arn
+}

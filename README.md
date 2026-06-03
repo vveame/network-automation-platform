@@ -413,7 +413,7 @@ python dashboard/app.py
 
 The project includes an initial AWS cloud infrastructure baseline provisioned with Terraform.
 
-This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking and security environment that will later host monitoring, analysis, storage and cloud-side services.
+This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking, security and storage environment that will later host monitoring, analysis, logs, datasets and cloud-side services.
 
 ### Implemented Cloud Components
 
@@ -429,6 +429,7 @@ The current Terraform baseline includes:
 * One monitoring route table.
 * Route table associations for the three subnets.
 * Security group baseline for future cloud services.
+* One private S3 bucket for future logs, metrics exports, AI outputs and reports.
 
 ### Cloud CIDR Plan
 
@@ -474,6 +475,27 @@ In the public example file, this value is intentionally set to:
 
 The real administrator public IP must be configured only in the local untracked `terraform.tfvars` file.
 
+### Cloud Storage Baseline
+
+The Terraform storage module creates a private S3 bucket reserved for future platform artifacts.
+
+The bucket is intended for:
+
+* monitoring exports
+* logs
+* AI analysis outputs
+* datasets
+* Jenkins/cloud reports
+
+The S3 bucket is configured with:
+
+* public access blocking
+* bucket owner enforced object ownership
+* versioning
+* server-side encryption using AES256
+
+This storage baseline prepares the project for future monitoring and AI phases without exposing data publicly.
+
 ### Terraform Structure
 
 The Terraform cloud baseline is stored under:
@@ -498,11 +520,11 @@ cloud/terraform/modules/
 └── storage/
 ```
 
-At the current stage, the `network` and `security` modules are implemented. The `compute` and `storage` modules are kept as placeholders for the next implementation steps.
+At the current stage, the `network`, `security`, and `storage` modules are implemented. The `compute` module is kept as a placeholder for the next implementation step.
 
 ### Current Cloud Status
 
-The current Terraform implementation creates the AWS network and security baseline only.
+The current Terraform implementation creates the AWS network, security and storage baseline only.
 
 It does not create yet:
 
@@ -511,7 +533,6 @@ It does not create yet:
 * VPN connection.
 * Monitoring services.
 * AI analysis services.
-* S3 storage bucket.
 
 These components will be added progressively in the next cloud implementation phases.
 

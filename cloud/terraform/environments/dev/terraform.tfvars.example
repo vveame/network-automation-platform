@@ -16,3 +16,7 @@ monitoring_subnet_cidr = "10.50.30.0/24"
 
 # Public CIDR allowed to access admin/cloud services.
 admin_allowed_cidr = "DEVOPS_VM_PUBLIC_IP/32"
+
+# Custom S3 bucket name.
+# null generate a bucket name using the AWS account ID.
+storage_bucket_name_override = null

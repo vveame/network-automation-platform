@@ -10,7 +10,7 @@ The local on-premises infrastructure is implemented in GNS3 and validated throug
 
 ## Current Implementation Status
 
-The current Terraform baseline implements the first AWS network and security foundation.
+The current Terraform baseline implements the first AWS network, security and storage foundation.
 
 It creates:
 
@@ -28,8 +28,13 @@ It creates:
 * one AI analysis security group
 * one private services security group
 * standalone security group ingress and egress rules
+* one private S3 artifacts bucket
+* S3 public access blocking
+* S3 ownership controls
+* S3 versioning
+* S3 server-side encryption
 
-No EC2 instances, NAT Gateway, VPN connection, monitoring services, AI services or S3 buckets are created yet.
+No EC2 instances, NAT Gateway, VPN connection, monitoring services or AI services are created yet.
 
 ## Structure
 
@@ -105,6 +110,20 @@ Creates the AWS security group baseline:
 
 The security module prepares controlled access rules for future cloud services without deploying compute instances yet.
 
+### storage
+
+Implemented.
+
+Creates the AWS storage baseline:
+
+* private S3 artifacts bucket
+* public access block
+* bucket owner enforced ownership controls
+* versioning
+* server-side encryption
+
+The storage bucket is reserved for future logs, metrics exports, AI outputs, datasets and Jenkins/cloud reports.
+
 ### compute
 
 Planned.
@@ -114,17 +133,6 @@ Will contain cloud compute resources:
 * monitoring instance
 * AI/anomaly analysis instance
 * optional bastion or management instance
-
-### storage
-
-Planned.
-
-Will contain cloud storage resources:
-
-* S3 bucket for logs
-* metrics exports
-* analysis outputs
-* future datasets
 
 ## Security Group Design
 
@@ -156,6 +164,31 @@ Reserved for future private cloud services.
 
 Allows internal VPC service-to-service traffic.
 
+## Storage Design
+
+The storage module creates a private S3 bucket for future cloud-side artifacts.
+
+The bucket is intended for:
+
+* monitoring exports
+* logs
+* AI analysis outputs
+* datasets
+* Jenkins/cloud reports
+
+The bucket is configured with:
+
+* S3 Block Public Access
+* `BucketOwnerEnforced` object ownership
+* versioning enabled
+* AES256 server-side encryption
+
+If no custom bucket name is provided, the module generates a deterministic bucket name using:
+
+```text
+<project-name>-<environment>-artifacts-<aws-account-id>
+```
+
 ## Design Notes
 
 The cloud baseline is intentionally simple and low-cost.
@@ -165,6 +198,8 @@ A NAT Gateway is not created at this stage in order to avoid unnecessary AWS cos
 The private and monitoring subnets will later be connected through controlled routing, VPN, or dedicated access mechanisms depending on the next implementation steps.
 
 Security group rules are managed as standalone Terraform resources instead of inline security group rules. This keeps rule management clearer and avoids conflicts between inline and standalone rule definitions.
+
+The S3 bucket is not used for Terraform remote state at this stage. It is reserved for platform artifacts, logs, metrics exports and future AI analysis outputs.
 
 ## State Management
 
@@ -221,6 +256,8 @@ private_subnet_cidr    = "10.50.20.0/24"
 monitoring_subnet_cidr = "10.50.30.0/24"
 
 admin_allowed_cidr = "YOUR_PUBLIC_IP/32"
+
+storage_bucket_name_override = null
 ```
 
 In `terraform.tfvars.example`, the admin CIDR should remain restrictive:
