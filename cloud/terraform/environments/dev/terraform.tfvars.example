@@ -1,5 +1,15 @@
 project_name = "network-automation-platform"
 environment  = "dev"
-aws_region   = "eu-north-1"
+
+aws_region        = "eu-noth-1"
+availability_zone = "eu-north-1a"
+
 aws_profile = null
 owner = "wiam"
+
+# Cloud CIDR plan.
+# This CIDR must not overlap with the local GNS3/on-prem networks.
+vpc_cidr               = "10.50.0.0/16"
+public_subnet_cidr     = "10.50.10.0/24"
+private_subnet_cidr    = "10.50.20.0/24"
+monitoring_subnet_cidr = "10.50.30.0/24"

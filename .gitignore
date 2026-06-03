@@ -23,6 +23,10 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
+# Terraform plan files
+*.tfplan
+tfplan
+
 # Local cloud credentials / generated files
 aws-credentials*
 *.pem

@@ -409,6 +409,122 @@ python -m pip install -r dashboard/requirements.txt
 python dashboard/app.py
 ```
 
+## Cloud Infrastructure Baseline
+
+The project now includes an initial AWS cloud infrastructure baseline provisioned with Terraform.
+
+This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking environment that will later host monitoring, analysis, storage and cloud-side services.
+
+The first implemented cloud baseline includes:
+
+* One AWS VPC.
+* One public subnet.
+* One private subnet.
+* One monitoring / AI subnet.
+* One Internet Gateway.
+* One public route table.
+* One private route table.
+* One monitoring route table.
+* Route table associations for the three subnets.
+
+The public subnet is connected to the Internet Gateway through a public route table.
+
+The private and monitoring subnets are intentionally isolated at this stage. They do not use a NAT Gateway yet in order to avoid unnecessary AWS costs during the student lab phase.
+
+### Cloud CIDR Plan
+
+```text
+AWS VPC:              10.50.0.0/16
+Public subnet:        10.50.10.0/24
+Private subnet:       10.50.20.0/24
+Monitoring/AI subnet: 10.50.30.0/24
+```
+
+The cloud CIDR range is separated from the local GNS3/on-premises addressing plan to prepare for future hybrid connectivity.
+
+### Terraform Structure
+
+The Terraform cloud baseline is stored under:
+
+```text
+cloud/terraform/
+```
+
+The current environment is:
+
+```text
+cloud/terraform/environments/dev/
+```
+
+The Terraform modules are organized as:
+
+```text
+cloud/terraform/modules/
+├── network/
+├── security/
+├── compute/
+└── storage/
+```
+
+At the current stage, the `network` module is implemented. The `security`, `compute`, and `storage` modules are kept as placeholders for the next implementation steps.
+
+### Current Cloud Status
+
+The current Terraform implementation creates the AWS network baseline only.
+
+It does not create yet:
+
+* EC2 instances.
+* NAT Gateway.
+* VPN connection.
+* Monitoring services.
+* AI analysis services.
+* S3 storage bucket.
+
+These components will be added progressively in the next cloud implementation phases.
+
+### Terraform Commands
+
+From the DevOps VM:
+
+```bash
+cd cloud/terraform/environments/dev
+
+terraform init
+terraform fmt -recursive
+terraform validate
+terraform plan
+```
+
+To apply the cloud baseline:
+
+```bash
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+To inspect the deployed resource identifiers:
+
+```bash
+terraform output
+```
+
+### Terraform State and Secrets
+
+Terraform state files, real variable files and plan files must not be committed to GitHub.
+
+The following files remain local:
+
+```text
+terraform.tfvars
+terraform.tfstate
+terraform.tfstate.backup
+tfplan
+.terraform/
+```
+
+Only example files such as `terraform.tfvars.example` are versioned.
+
 ## CI/CD Integration with Jenkins and GitHub Actions
 
 The project uses Jenkins as the main CI/CD automation server for validating and maintaining the local network automation platform.

@@ -27,3 +27,33 @@ variable "owner" {
   type        = string
   default     = "wiam"
 }
+
+variable "vpc_cidr" {
+  description = "CIDR block for the AWS VPC."
+  type        = string
+  default     = "10.50.0.0/16"
+}
+
+variable "availability_zone" {
+  description = "Availability zone used for the first cloud baseline."
+  type        = string
+  default     = "eu-north-1a"
+}
+
+variable "public_subnet_cidr" {
+  description = "CIDR block for the public subnet."
+  type        = string
+  default     = "10.50.10.0/24"
+}
+
+variable "private_subnet_cidr" {
+  description = "CIDR block for the private subnet."
+  type        = string
+  default     = "10.50.20.0/24"
+}
+
+variable "monitoring_subnet_cidr" {
+  description = "CIDR block for the monitoring and AI subnet."
+  type        = string
+  default     = "10.50.30.0/24"
+}
