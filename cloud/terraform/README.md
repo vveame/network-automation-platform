@@ -217,6 +217,7 @@ The bucket is intended for:
 * AI analysis outputs
 * datasets
 * Jenkins/cloud reports
+* Jenkins/Ansible validation artifacts
 
 The bucket is configured with:
 
@@ -224,12 +225,56 @@ The bucket is configured with:
 * `BucketOwnerEnforced` object ownership
 * versioning enabled
 * AES256 server-side encryption
+* lifecycle retention rules for validation artifacts
 
 If no custom bucket name is provided, the module generates a deterministic bucket name using:
 
 ```text
 <project-name>-<environment>-artifacts-<aws-account-id>
 ```
+
+### Validation Artifact Lifecycle
+
+Jenkins uploads validation artifacts under:
+
+```text
+validation-artifacts/
+```
+
+Each Jenkins build receives its own prefix, for example:
+
+```text
+validation-artifacts/pfe-network-validation-43/
+```
+
+This makes validation outputs traceable per build.
+
+To prevent unnecessary storage growth, the storage module defines lifecycle retention variables:
+
+```hcl
+validation_artifact_retention_days = 30
+noncurrent_version_retention_days  = 7
+```
+
+The lifecycle policy applies to:
+
+```text
+validation-artifacts/
+```
+
+The default behavior is:
+
+* delete validation artifact objects after 30 days
+* delete noncurrent object versions after 7 days
+* abort incomplete multipart uploads after 1 day
+
+This keeps recent validation history available while automatically cleaning older artifacts.
+
+### Important Note
+
+The S3 bucket is not used for Terraform remote state at this stage.
+
+Terraform state remains local during the current development phase. The S3 bucket is reserved for platform artifacts, logs, metrics exports, reports and future AI analysis outputs.
 
 ## Compute Design
 
@@ -349,6 +394,9 @@ monitoring_subnet_cidr = "10.50.30.0/24"
 admin_allowed_cidr = "YOUR_PUBLIC_IP/32"
 
 storage_bucket_name_override = null
+
+validation_artifact_retention_days = 30
+noncurrent_version_retention_days  = 7
 
 enable_compute        = false
 compute_instance_type = "t3.micro"

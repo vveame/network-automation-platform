@@ -48,3 +48,28 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
     }
   }
 }
+
+resource "aws_s3_bucket_lifecycle_configuration" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  rule {
+    id     = "expire-validation-artifacts"
+    status = "Enabled"
+
+    filter {
+      prefix = "validation-artifacts/"
+    }
+
+    expiration {
+      days = var.validation_artifact_retention_days
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.noncurrent_version_retention_days
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
+}

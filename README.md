@@ -490,6 +490,7 @@ The bucket is intended for:
 * AI analysis outputs
 * datasets
 * Jenkins/cloud reports
+* Jenkins/Ansible validation artifacts
 
 The S3 bucket is configured with:
 
@@ -497,8 +498,42 @@ The S3 bucket is configured with:
 * bucket owner enforced object ownership
 * versioning
 * server-side encryption using AES256
+* lifecycle retention rules for validation artifacts
 
 This storage baseline prepares the project for future monitoring and AI phases without exposing data publicly.
+
+### Validation Artifact Retention
+
+Jenkins uploads validation outputs to S3 after successful local validation.
+
+Each Jenkins build writes to a dedicated S3 prefix:
+
+```text
+validation-artifacts/<jenkins-job-name>-<build-number>/
+```
+
+Manual uploads use a timestamped prefix:
+
+```text
+validation-artifacts/manual-<timestamp>/
+```
+
+This keeps each validation run immutable and traceable.
+
+To avoid unnecessary long-term storage growth, the S3 bucket uses a lifecycle policy for the `validation-artifacts/` prefix:
+
+```text
+Validation artifacts: deleted after 30 days
+Noncurrent object versions: deleted after 7 days
+Incomplete multipart uploads: deleted after 1 day
+```
+
+This provides a balanced approach:
+
+* recent Jenkins validation history remains available
+* cloud storage does not grow forever
+* future monitoring and AI services can consume recent validation artifacts from S3
+* old artifacts are cleaned automatically by AWS lifecycle rules
 
 ### Cloud Compute Baseline
 

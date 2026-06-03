@@ -20,6 +20,9 @@ if [ -n "$CRUMB" ]; then
     --data-urlencode "IMAGE_TAG=latest" \
     --data-urlencode "GNS3_HOST=<GNS3_VM_IP>" \
     --data-urlencode "PUBLISH_DASHBOARD=true" \
+    --data-urlencode "EXPORT_ARTIFACTS_TO_S3=true" \
+    --data-urlencode "S3_ARTIFACTS_BUCKET=network-automation-platform-dev-artifacts-823766425926" \
+    --data-urlencode "CLOUD_AWS_REGION=eu-north-1" \
     "${JENKINS_URL}/${JENKINS_JOB_PATH}/buildWithParameters"
 else
   curl -fsS -X POST \
@@ -31,6 +34,9 @@ else
     --data-urlencode "IMAGE_TAG=latest" \
     --data-urlencode "GNS3_HOST=<GNS3_VM_IP>" \
     --data-urlencode "PUBLISH_DASHBOARD=true" \
+    --data-urlencode "EXPORT_ARTIFACTS_TO_S3=true" \
+    --data-urlencode "S3_ARTIFACTS_BUCKET=network-automation-platform-dev-artifacts-823766425926" \
+    --data-urlencode "CLOUD_AWS_REGION=eu-north-1" \
     "${JENKINS_URL}/${JENKINS_JOB_PATH}/buildWithParameters"
 fi
 

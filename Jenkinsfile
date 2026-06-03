@@ -69,6 +69,24 @@ pipeline {
             defaultValue: true,
             description: 'Copy latest reports to the Flask dashboard output folder.'
         )
+
+        booleanParam(
+            name: 'EXPORT_ARTIFACTS_TO_S3',
+            defaultValue: false,
+            description: 'Upload Ansible/Jenkins validation artifacts to the AWS S3 artifacts bucket after validation.'
+        )
+
+        string(
+            name: 'S3_ARTIFACTS_BUCKET',
+            defaultValue: 'CHANGE_ME',
+            description: 'Terraform-created S3 artifacts bucket name. Keep CHANGE_ME in public repo and pass the real value from Jenkins or the local trigger script.'
+        )
+
+        string(
+            name: 'CLOUD_AWS_REGION',
+            defaultValue: 'eu-north-1',
+            description: 'AWS region used for S3 artifact export.'
+        )
     }
 
     environment {
@@ -934,7 +952,60 @@ PY
             }
         }
 
-        stage('19 - Show Generated Reports') {
+        stage('19 - Upload Validation Artifacts to AWS S3') {
+            /*
+            * Purpose:
+            * Export Jenkins/Ansible validation artifacts to the AWS S3 artifacts bucket.
+            *
+            * This implements the first safe cloud integration path:
+            * local validation outputs -> private S3 bucket.
+            *
+            * VPN remains disabled. Upload is done through outbound HTTPS using AWS CLI.
+            */
+            when {
+                expression {
+                    return params.EXPORT_ARTIFACTS_TO_S3
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-pfe-artifacts-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                        set -e
+
+                        if [ "$S3_ARTIFACTS_BUCKET" = "CHANGE_ME" ] || [ -z "$S3_ARTIFACTS_BUCKET" ]; then
+                            echo "[ERROR] S3_ARTIFACTS_BUCKET must be set when EXPORT_ARTIFACTS_TO_S3=true."
+                            exit 1
+                        fi
+
+                        if ! command -v aws >/dev/null 2>&1; then
+                            echo "[ERROR] AWS CLI is not installed or not available to the Jenkins user."
+                            exit 1
+                        fi
+
+                        chmod +x cloud/scripts/upload-validation-artifacts-s3.sh
+
+                        AWS_REGION="${CLOUD_AWS_REGION}" \
+                        ARTIFACTS_BUCKET="${S3_ARTIFACTS_BUCKET}" \
+                        BUILD_TAG="${JOB_NAME}-${BUILD_NUMBER}" \
+                        ./cloud/scripts/upload-validation-artifacts-s3.sh
+                    '''
+
+                    script {
+                        env.S3_ARTIFACTS_URI = "s3://${params.S3_ARTIFACTS_BUCKET}/validation-artifacts/${env.JOB_NAME}-${env.BUILD_NUMBER}/"
+
+                        currentBuild.description = """${currentBuild.description ?: ''}
+                    S3 artifacts: ${env.S3_ARTIFACTS_URI}
+                    """
+                    }
+                }
+            }
+        }
+
+        stage('20 - Show Generated Reports') {
             /*
              * Purpose:
              * Print the generated artifacts in the Jenkins console for quick verification.
@@ -949,17 +1020,20 @@ PY
             }
         }
 
-        stage('20 - Set Jenkins Build Description') {
+        stage('21 - Set Jenkins Build Description') {
             /*
              * Purpose:
              * Add direct dashboard/artifact links to the Jenkins build page.
              */
             steps {
                 script {
+                    def s3Line = env.S3_ARTIFACTS_URI ? "S3 artifacts: ${env.S3_ARTIFACTS_URI}" : "S3 artifacts: disabled"
+
                     currentBuild.description = """Mode: ${params.PIPELINE_MODE}
 Dashboard: ${env.DASHBOARD_URL}
 HTML summary: ${env.BUILD_URL}artifact/ansible/outputs/index.html
 Reports folder: ${env.DASHBOARD_OUTPUTS_DIR}
+${s3Line}
 """
                 }
             }
@@ -973,10 +1047,13 @@ Reports folder: ${env.DASHBOARD_OUTPUTS_DIR}
 
         success {
             script {
+                def s3Line = env.S3_ARTIFACTS_URI ? "S3 artifacts: ${env.S3_ARTIFACTS_URI}" : "S3 artifacts: disabled"
+
                 currentBuild.description = """SUCCESS - ${params.PIPELINE_MODE}
 Dashboard: ${env.DASHBOARD_URL}
 HTML summary: ${env.BUILD_URL}artifact/ansible/outputs/index.html
 Reports folder: ${env.DASHBOARD_OUTPUTS_DIR}
+${s3Line}
 """
             }
             echo 'PFE local automation pipeline completed successfully.'
@@ -984,9 +1061,12 @@ Reports folder: ${env.DASHBOARD_OUTPUTS_DIR}
 
         failure {
             script {
+                def s3Line = env.S3_ARTIFACTS_URI ? "S3 artifacts: ${env.S3_ARTIFACTS_URI}" : "S3 artifacts: not uploaded"
+
                 currentBuild.description = """FAILED - ${params.PIPELINE_MODE}
 Check console output and archived artifacts.
 HTML summary if generated: ${env.BUILD_URL}artifact/ansible/outputs/index.html
+${s3Line}
 """
             }
             echo 'PFE local automation pipeline failed. Check Jenkins console output and reports.'

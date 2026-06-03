@@ -13,3 +13,15 @@ variable "common_tags" {
   description = "Common tags applied to all resources."
   type        = map(string)
 }
+
+variable "validation_artifact_retention_days" {
+  description = "Number of days to retain validation artifact objects in S3."
+  type        = number
+  default     = 30
+}
+
+variable "noncurrent_version_retention_days" {
+  description = "Number of days to retain noncurrent object versions in the versioned S3 bucket."
+  type        = number
+  default     = 7
+}
