@@ -1,0 +1,5 @@
+project_name = "network-automation-platform"
+environment  = "dev"
+aws_region   = "eu-north-1"
+aws_profile = null
+owner = "wiam"
