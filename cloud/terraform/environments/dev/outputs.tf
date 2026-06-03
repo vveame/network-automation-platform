@@ -102,3 +102,33 @@ output "ai_private_ip" {
   description = "Private IP of the AI analysis placeholder instance, if compute is enabled."
   value       = module.compute.ai_private_ip
 }
+
+output "vpn_enabled" {
+  description = "Whether AWS Site-to-Site VPN resources are enabled."
+  value       = module.vpn.vpn_enabled
+}
+
+output "customer_gateway_id" {
+  description = "Customer Gateway ID, if VPN is enabled."
+  value       = module.vpn.customer_gateway_id
+}
+
+output "vpn_gateway_id" {
+  description = "Virtual Private Gateway ID, if VPN is enabled."
+  value       = module.vpn.vpn_gateway_id
+}
+
+output "vpn_connection_id" {
+  description = "Site-to-Site VPN connection ID, if VPN is enabled."
+  value       = module.vpn.vpn_connection_id
+}
+
+output "vpn_tunnel_1_address" {
+  description = "AWS tunnel 1 outside address, if VPN is enabled."
+  value       = module.vpn.vpn_tunnel_1_address
+}
+
+output "vpn_tunnel_2_address" {
+  description = "AWS tunnel 2 outside address, if VPN is enabled."
+  value       = module.vpn.vpn_tunnel_2_address
+}

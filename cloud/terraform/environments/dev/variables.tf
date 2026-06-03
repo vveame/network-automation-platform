@@ -87,3 +87,33 @@ variable "admin_public_key" {
   type        = string
   default     = null
 }
+
+variable "enable_vpn" {
+  description = "Whether to create AWS Site-to-Site VPN resources. Disabled by default."
+  type        = bool
+  default     = false
+}
+
+variable "onprem_public_ip" {
+  description = "Public IP address of the on-prem customer gateway device. Required only when enable_vpn is true."
+  type        = string
+  default     = null
+}
+
+variable "onprem_cidr_blocks" {
+  description = "On-premises CIDR blocks reachable through the VPN."
+  type        = list(string)
+  default     = ["10.200.0.0/24", "172.16.0.0/16"]
+}
+
+variable "onprem_bgp_asn" {
+  description = "BGP ASN for the on-prem customer gateway."
+  type        = number
+  default     = 65010
+}
+
+variable "aws_bgp_asn" {
+  description = "AWS side ASN for the virtual private gateway."
+  type        = number
+  default     = 64512
+}

@@ -10,7 +10,7 @@ The local on-premises infrastructure is implemented in GNS3 and validated throug
 
 ## Current Implementation Status
 
-The current Terraform baseline implements the first AWS network, security, storage and optional compute foundation.
+The current Terraform baseline implements the first AWS network, security, storage, optional compute and disabled VPN foundation.
 
 It creates or prepares:
 
@@ -34,8 +34,9 @@ It creates or prepares:
 * S3 versioning
 * S3 server-side encryption
 * optional EC2 compute placeholders, disabled by default
+* AWS Site-to-Site VPN module, disabled by default
 
-No EC2 instances, NAT Gateway, VPN connection, monitoring services or AI services are created yet unless compute is explicitly enabled.
+No EC2 instances, NAT Gateway, active VPN connection, monitoring services or AI services are created yet unless explicitly enabled.
 
 ## Structure
 
@@ -54,7 +55,8 @@ cloud/terraform/
 │   ├── network/
 │   ├── security/
 │   ├── compute/
-│   └── storage/
+│   ├── storage/
+│   └── vpn/
 └── README.md
 ```
 
@@ -148,6 +150,28 @@ When enabled, it can create:
 
 At the current stage, compute remains disabled and no EC2 instances are created.
 
+### vpn
+
+Implemented as a disabled hybrid connectivity module.
+
+The VPN module is disabled by default in order to avoid unnecessary AWS VPN costs and to prevent premature exposure.
+
+It is controlled by:
+
+```hcl
+enable_vpn = false
+```
+
+When enabled, it can create:
+
+* AWS Customer Gateway
+* AWS Virtual Private Gateway
+* AWS Site-to-Site VPN connection
+* static VPN routes
+* VPC route table routes toward on-premises CIDRs
+
+At the current stage, VPN remains disabled and no AWS VPN resources are created.
+
 ## Security Group Design
 
 ### Admin security group
@@ -221,6 +245,37 @@ When enabled, the planned EC2 layout is:
 
 The monitoring and AI instances are private and are intended to be accessed through the bastion/admin instance or future hybrid/VPN routing.
 
+## Hybrid / VPN Design
+
+The VPN module prepares the future hybrid connectivity layer.
+
+The intended design is:
+
+```text
+Local GNS3 on-premises network
+        ↕
+GNS3 EdgeRouter / VPN Gateway
+        ↕
+AWS Site-to-Site VPN
+        ↕
+AWS VPC
+```
+
+The first VPN model uses static routing.
+
+Default on-premises CIDRs prepared for future VPN routing:
+
+```text
+10.200.0.0/24
+172.16.0.0/16
+```
+
+A real AWS Site-to-Site VPN requires a reachable public IP address for the on-premises customer gateway.
+
+If the GNS3 EdgeRouter is behind VMware NAT or a home router without a stable public endpoint, another hybrid connectivity strategy may be required before enabling real VPN resources.
+
+VPN tunnel configuration details and pre-shared keys can appear in Terraform state. For that reason, VPN remains disabled until the state storage and connectivity strategy are reviewed.
+
 ## Design Notes
 
 The cloud baseline is intentionally simple and low-cost.
@@ -234,6 +289,8 @@ Security group rules are managed as standalone Terraform resources instead of in
 The S3 bucket is not used for Terraform remote state at this stage. It is reserved for platform artifacts, logs, metrics exports and future AI analysis outputs.
 
 The compute module is prepared but disabled by default. This allows the architecture to be documented and versioned without creating running EC2 resources until they are needed.
+
+The VPN module is prepared but disabled by default. This allows the hybrid architecture to be represented in Terraform without creating billable VPN resources until the real connectivity strategy is selected.
 
 ## State Management
 
@@ -297,6 +354,15 @@ enable_compute        = false
 compute_instance_type = "t3.micro"
 compute_ami_ssm_parameter = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 admin_public_key = null
+
+enable_vpn = false
+onprem_public_ip = null
+onprem_cidr_blocks = [
+  "10.200.0.0/24",
+  "172.16.0.0/16"
+]
+onprem_bgp_asn = 65010
+aws_bgp_asn    = 64512
 ```
 
 In `terraform.tfvars.example`, the admin CIDR should remain restrictive:
@@ -305,10 +371,11 @@ In `terraform.tfvars.example`, the admin CIDR should remain restrictive:
 admin_allowed_cidr = "0.0.0.0/32"
 ```
 
-Compute should remain disabled by default:
+Compute and VPN should remain disabled by default:
 
 ```hcl
 enable_compute = false
+enable_vpn     = false
 ```
 
 ## Commands

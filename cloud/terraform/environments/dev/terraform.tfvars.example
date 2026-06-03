@@ -32,3 +32,20 @@ compute_ami_ssm_parameter = "/aws/service/ami-amazon-linux-latest/al2023-ami-ker
 # Public SSH key for EC2 access.
 # Keep null unless compute is enabled.
 admin_public_key = null
+
+# Hybrid VPN placeholder.
+# Disabled by default to avoid VPN cost and accidental exposure.
+enable_vpn = false
+
+# Required only if enable_vpn = true.
+# Must be the public IP of the on-prem customer gateway device.
+onprem_public_ip = null
+
+# On-premises CIDRs that should be reachable through the future VPN.
+onprem_cidr_blocks = [
+  "10.200.0.0/24",
+  "172.16.0.0/16"
+]
+
+onprem_bgp_asn = 65010
+aws_bgp_asn    = 64512

@@ -413,7 +413,7 @@ python dashboard/app.py
 
 The project includes an initial AWS cloud infrastructure baseline provisioned with Terraform.
 
-This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking, security, storage and future compute environment that will later host monitoring, analysis, logs, datasets and cloud-side services.
+This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking, security, storage, optional compute and future hybrid connectivity environment that will later host monitoring, analysis, logs, datasets and cloud-side services.
 
 ### Implemented Cloud Components
 
@@ -431,6 +431,7 @@ The current Terraform baseline includes:
 * Security group baseline for future cloud services.
 * One private S3 bucket for future logs, metrics exports, AI outputs and reports.
 * Optional compute module prepared for future EC2 instances.
+* VPN / hybrid connectivity module prepared but disabled by default.
 
 ### Cloud CIDR Plan
 
@@ -517,6 +518,45 @@ When enabled later, the module will create optional EC2 placeholder instances fo
 
 At the current stage, no EC2 instances are created. This avoids unnecessary AWS costs while keeping the cloud architecture ready for the next implementation phase.
 
+### Hybrid / VPN Baseline
+
+The Terraform VPN module is prepared but disabled by default.
+
+It is controlled using:
+
+```hcl
+enable_vpn = false
+```
+
+When enabled later, the module is designed to create:
+
+* AWS Customer Gateway.
+* AWS Virtual Private Gateway.
+* AWS Site-to-Site VPN connection.
+* Static VPN routes.
+* VPC route table routes toward the on-premises CIDRs.
+
+The intended hybrid design is:
+
+```text
+GNS3 EdgeRouter / VPN Gateway
+        ↕
+AWS Site-to-Site VPN
+        ↕
+AWS VPC
+```
+
+At the current stage, no VPN resources are created. This avoids unnecessary AWS VPN cost and prevents accidental exposure before the real on-premises public gateway strategy is selected.
+
+The default on-premises CIDRs prepared for future VPN routing are:
+
+```text
+OOB management network: 10.200.0.0/24
+Local routed lab space: 172.16.0.0/16
+```
+
+A real AWS Site-to-Site VPN requires a reachable public IP address for the on-premises customer gateway. If the GNS3 EdgeRouter is behind VMware NAT or a home router without a stable public endpoint, another hybrid connectivity strategy may be required.
+
 ### Terraform Structure
 
 The Terraform cloud baseline is stored under:
@@ -538,10 +578,11 @@ cloud/terraform/modules/
 ├── network/
 ├── security/
 ├── compute/
-└── storage/
+├── storage/
+└── vpn/
 ```
 
-At the current stage, the `network`, `security`, `storage`, and optional `compute` modules are implemented. Compute resources remain disabled until explicitly enabled.
+At the current stage, the `network`, `security`, `storage`, optional `compute`, and disabled `vpn` modules are implemented.
 
 ### Current Cloud Status
 
@@ -551,7 +592,7 @@ It does not create yet:
 
 * EC2 instances.
 * NAT Gateway.
-* VPN connection.
+* Active VPN connection.
 * Monitoring services.
 * AI analysis services.
 
