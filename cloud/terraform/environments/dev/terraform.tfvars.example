@@ -25,6 +25,10 @@ storage_bucket_name_override = null
 validation_artifact_retention_days = 30
 noncurrent_version_retention_days  = 7
 
+# S3 analyzer output retention.
+processed_summary_retention_days = 90
+anomaly_result_retention_days    = 90
+
 # EC2 compute placeholders.
 # Disabled by default to avoid unnecessary AWS costs.
 enable_compute        = false

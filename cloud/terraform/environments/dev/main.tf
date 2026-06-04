@@ -23,11 +23,13 @@ module "security" {
 module "storage" {
   source = "../../modules/storage"
 
-  name_prefix                       = local.name_prefix
-  bucket_name_override              = var.storage_bucket_name_override
+  name_prefix                        = local.name_prefix
+  bucket_name_override               = var.storage_bucket_name_override
   validation_artifact_retention_days = var.validation_artifact_retention_days
+  processed_summary_retention_days   = var.processed_summary_retention_days
+  anomaly_result_retention_days      = var.anomaly_result_retention_days
   noncurrent_version_retention_days  = var.noncurrent_version_retention_days
-  common_tags                       = local.common_tags
+  common_tags                        = local.common_tags
 }
 
 module "compute" {

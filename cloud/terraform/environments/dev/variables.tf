@@ -129,3 +129,15 @@ variable "noncurrent_version_retention_days" {
   type        = number
   default     = 7
 }
+
+variable "processed_summary_retention_days" {
+  description = "Number of days to retain processed analyzer summaries in S3."
+  type        = number
+  default     = 90
+}
+
+variable "anomaly_result_retention_days" {
+  description = "Number of days to retain anomaly result outputs in S3."
+  type        = number
+  default     = 90
+}

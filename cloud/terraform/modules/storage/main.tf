@@ -72,4 +72,63 @@ resource "aws_s3_bucket_lifecycle_configuration" "artifacts" {
       days_after_initiation = 1
     }
   }
+
+  rule {
+    id     = "expire-processed-summaries"
+    status = "Enabled"
+
+    filter {
+      prefix = "processed-summaries/"
+    }
+
+    expiration {
+      days = var.processed_summary_retention_days
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.noncurrent_version_retention_days
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
+
+  rule {
+    id     = "expire-anomaly-results"
+    status = "Enabled"
+
+    filter {
+      prefix = "anomaly-results/"
+    }
+
+    expiration {
+      days = var.anomaly_result_retention_days
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.noncurrent_version_retention_days
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
+
+  rule {
+    id     = "expire-old-latest-analyzer-versions"
+    status = "Enabled"
+
+    filter {
+      prefix = "latest/analyzer/"
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.noncurrent_version_retention_days
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
 }
