@@ -44,6 +44,46 @@ inside:
 cloud/terraform/environments/dev/
 ```
 
+## Jenkins Cloud Analyzer Integration
+
+After Jenkins uploads raw validation artifacts to S3, it runs the cloud analyzer locally inside the Jenkins workspace.
+
+The analyzer reads:
+
+```text
+ansible/outputs/
+```
+
+and generates:
+
+```text
+summary.json
+decision.json
+analysis-report.txt
+```
+
+Jenkins then uploads those analyzer outputs to S3.
+
+Per-build analyzer outputs are stored under:
+
+```text
+processed-summaries/<jenkins-job-name>-<build-number>/
+anomaly-results/<jenkins-job-name>-<build-number>/
+```
+
+The most recent analyzer output is also copied to:
+
+```text
+latest/analyzer/
+```
+
+This provides two access patterns:
+
+* historical per-build anomaly decisions
+* stable latest anomaly decision for future dashboards or automation
+
+The analyzer is currently rule-based and explainable. It prepares the future AI/ML detection layer before Prometheus metrics and hybrid connectivity are fully enabled.
+
 ## Required Local Configuration
 
 The script expects an AWS CLI profile configured on the DevOps VM.

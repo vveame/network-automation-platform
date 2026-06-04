@@ -32,6 +32,9 @@ aws-credentials*
 *.pem
 *.key
 
+# Cloud analyzer local outputs
+cloud/analyzer/outputs/
+
 # Python
 __pycache__/
 *.pyc

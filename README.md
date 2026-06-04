@@ -592,6 +592,56 @@ Local routed lab space: 172.16.0.0/16
 
 A real AWS Site-to-Site VPN requires a reachable public IP address for the on-premises customer gateway. If the GNS3 EdgeRouter is behind VMware NAT or a home router without a stable public endpoint, another hybrid connectivity strategy may be required.
 
+### Cloud Analyzer and Anomaly Baseline
+
+The project includes a first cloud-side anomaly analysis baseline.
+
+Since the hybrid VPN is currently disabled, AWS cannot directly scrape the private GNS3 infrastructure. For this reason, the first monitoring/AI baseline uses Jenkins and Ansible validation artifacts exported to S3.
+
+The current flow is:
+
+```text
+Local GNS3 topology
+        ↓
+Ansible validation
+        ↓
+Jenkins pipeline
+        ↓
+Raw validation artifacts
+        ↓
+AWS S3 validation-artifacts/
+        ↓
+Cloud analyzer
+        ↓
+summary.json + decision.json + analysis-report.txt
+        ↓
+AWS S3 processed-summaries/ and anomaly-results/
+```
+
+The analyzer reads validation reports from `ansible/outputs/`, detects failed or warning reports, applies explainable rule-based anomaly scoring, and generates:
+
+* `summary.json`
+* `decision.json`
+* `analysis-report.txt`
+
+The latest analyzer result is also copied to:
+
+```text
+latest/analyzer/
+```
+
+This gives the cloud side a stable location for the most recent anomaly decision.
+
+The current analyzer is rule-based and explainable. It does not replace the final Prometheus-based monitoring architecture. Instead, it prepares the anomaly detection logic while the VPN/hybrid connectivity layer remains disabled.
+
+Future versions will extend this analyzer with:
+
+* Prometheus metrics
+* log events
+* historical trend comparison
+* statistical anomaly detection
+* machine learning models
+
 ### Terraform Structure
 
 The Terraform cloud baseline is stored under:

@@ -1005,7 +1005,87 @@ PY
             }
         }
 
-        stage('20 - Show Generated Reports') {
+        stage('20 - Run Cloud Analyzer and Upload Results') {
+            /*
+            * Purpose:
+            * Run the cloud anomaly baseline analyzer on Jenkins/Ansible validation outputs.
+            *
+            * This creates:
+            * - summary.json
+            * - decision.json
+            * - analysis-report.txt
+            *
+            * Then uploads them to S3 under:
+            * - processed-summaries/<build>/
+            * - anomaly-results/<build>/
+            * - latest/
+            */
+            when {
+                expression {
+                    return params.EXPORT_ARTIFACTS_TO_S3
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-pfe-artifacts-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                        set -e
+
+                        if [ "$S3_ARTIFACTS_BUCKET" = "CHANGE_ME" ] || [ -z "$S3_ARTIFACTS_BUCKET" ]; then
+                            echo "[ERROR] S3_ARTIFACTS_BUCKET must be set when EXPORT_ARTIFACTS_TO_S3=true."
+                            exit 1
+                        fi
+
+                        BUILD_LABEL="${JOB_NAME}-${BUILD_NUMBER}"
+                        ANALYZER_OUTPUT_DIR="cloud/analyzer/outputs/${BUILD_LABEL}"
+
+                        echo "[INFO] Running cloud analyzer for ${BUILD_LABEL}..."
+
+                        python3 cloud/analyzer/analyze_validation_artifacts.py \
+                        --input-dir ansible/outputs \
+                        --output-dir "$ANALYZER_OUTPUT_DIR" \
+                        --build-label "$BUILD_LABEL"
+
+                        echo "[INFO] Analyzer output:"
+                        ls -lah "$ANALYZER_OUTPUT_DIR"
+
+                        echo "[INFO] Uploading processed summary to S3..."
+                        aws s3 sync "$ANALYZER_OUTPUT_DIR" \
+                        "s3://${S3_ARTIFACTS_BUCKET}/processed-summaries/${BUILD_LABEL}/" \
+                        --region "$CLOUD_AWS_REGION"
+
+                        echo "[INFO] Uploading anomaly decision to S3..."
+                        aws s3 cp "$ANALYZER_OUTPUT_DIR/decision.json" \
+                        "s3://${S3_ARTIFACTS_BUCKET}/anomaly-results/${BUILD_LABEL}/decision.json" \
+                        --region "$CLOUD_AWS_REGION"
+
+                        aws s3 cp "$ANALYZER_OUTPUT_DIR/analysis-report.txt" \
+                        "s3://${S3_ARTIFACTS_BUCKET}/anomaly-results/${BUILD_LABEL}/analysis-report.txt" \
+                        --region "$CLOUD_AWS_REGION"
+
+                        echo "[INFO] Updating latest analyzer outputs..."
+                        aws s3 sync "$ANALYZER_OUTPUT_DIR" \
+                        "s3://${S3_ARTIFACTS_BUCKET}/latest/analyzer/" \
+                        --region "$CLOUD_AWS_REGION"
+
+                        echo "[OK] Cloud analyzer results uploaded."
+                    '''
+
+                    script {
+                        env.S3_ANALYZER_URI = "s3://${params.S3_ARTIFACTS_BUCKET}/anomaly-results/${env.JOB_NAME}-${env.BUILD_NUMBER}/"
+
+                        currentBuild.description = """${currentBuild.description ?: ''}
+        Analyzer results: ${env.S3_ANALYZER_URI}
+        """
+                    }
+                }
+            }
+        }
+
+        stage('21 - Show Generated Reports') {
             /*
              * Purpose:
              * Print the generated artifacts in the Jenkins console for quick verification.
@@ -1020,7 +1100,7 @@ PY
             }
         }
 
-        stage('21 - Set Jenkins Build Description') {
+        stage('22 - Set Jenkins Build Description') {
             /*
              * Purpose:
              * Add direct dashboard/artifact links to the Jenkins build page.
@@ -1028,12 +1108,14 @@ PY
             steps {
                 script {
                     def s3Line = env.S3_ARTIFACTS_URI ? "S3 artifacts: ${env.S3_ARTIFACTS_URI}" : "S3 artifacts: disabled"
+                    def analyzerLine = env.S3_ANALYZER_URI ? "Analyzer results: ${env.S3_ANALYZER_URI}" : "Analyzer results: disabled"
 
                     currentBuild.description = """Mode: ${params.PIPELINE_MODE}
 Dashboard: ${env.DASHBOARD_URL}
 HTML summary: ${env.BUILD_URL}artifact/ansible/outputs/index.html
 Reports folder: ${env.DASHBOARD_OUTPUTS_DIR}
 ${s3Line}
+${analyzerLine}
 """
                 }
             }
@@ -1048,12 +1130,14 @@ ${s3Line}
         success {
             script {
                 def s3Line = env.S3_ARTIFACTS_URI ? "S3 artifacts: ${env.S3_ARTIFACTS_URI}" : "S3 artifacts: disabled"
+                def analyzerLine = env.S3_ANALYZER_URI ? "Analyzer results: ${env.S3_ANALYZER_URI}" : "Analyzer results: disabled"
 
                 currentBuild.description = """SUCCESS - ${params.PIPELINE_MODE}
 Dashboard: ${env.DASHBOARD_URL}
 HTML summary: ${env.BUILD_URL}artifact/ansible/outputs/index.html
 Reports folder: ${env.DASHBOARD_OUTPUTS_DIR}
 ${s3Line}
+${analyzerLine}
 """
             }
             echo 'PFE local automation pipeline completed successfully.'
