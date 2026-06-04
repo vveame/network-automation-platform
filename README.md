@@ -725,6 +725,109 @@ tfplan
 
 Only example files such as `terraform.tfvars.example` are versioned.
 
+## S3-Backed Dashboard and Cloud Analyzer Visualization
+
+The platform now uses AWS S3 as the source of truth for validation and analyzer outputs.
+
+The local Flask dashboard does not depend only on temporary files generated inside the Jenkins workspace or the developer repository. Instead, Jenkins uploads validation and analyzer outputs to S3, then synchronizes the latest cloud-backed data into a stable local dashboard cache.
+
+### Source of Truth Model
+
+```text
+Jenkins validation
+        ↓
+Ansible validation reports
+        ↓
+AWS S3 artifacts bucket
+        ↓
+latest/validation-artifacts/
+latest/analyzer/
+        ↓
+/var/lib/pfe-dashboard/
+        ↓
+Flask dashboard visualization
+```
+
+In this model:
+
+* AWS S3 stores the durable validation and analyzer outputs.
+* `/var/lib/pfe-dashboard/` is only a local visualization cache.
+* The Flask dashboard reads from the synchronized local cache.
+* The GitHub repository does not store generated validation outputs.
+
+### Dashboard Cache Paths
+
+The local dashboard cache is stored in:
+
+```text
+/var/lib/pfe-dashboard/
+```
+
+Current structure:
+
+```text
+/var/lib/pfe-dashboard/
+├── outputs/
+│   ├── validation-summary.txt
+│   ├── security-validation.txt
+│   ├── dmz-services.txt
+│   └── other validation report files
+└── analyzer/
+    └── latest/
+        ├── decision.json
+        ├── summary.json
+        └── analysis-report.txt
+```
+
+### S3 Paths
+
+Jenkins uploads immutable per-build validation artifacts to:
+
+```text
+validation-artifacts/<jenkins-job-name>-<build-number>/
+```
+
+It also updates the latest validation cache in S3:
+
+```text
+latest/validation-artifacts/
+```
+
+The cloud analyzer outputs are uploaded to:
+
+```text
+processed-summaries/<jenkins-job-name>-<build-number>/
+anomaly-results/<jenkins-job-name>-<build-number>/
+latest/analyzer/
+```
+
+### Dashboard Content
+
+The Flask dashboard visualizes:
+
+* global infrastructure validation status
+* validation report counts
+* validation domains
+* infrastructure node status
+* validated DMZ services
+* readable report previews
+* latest cloud analyzer decision
+
+The cloud analyzer decision includes:
+
+* anomaly status
+* risk score
+* severity
+* build label
+* recommended action
+* failed and warning reports, if any
+
+### Current Status
+
+At the current checkpoint, the dashboard reads the latest validation reports from the S3-backed cache and displays the latest cloud analyzer decision.
+
+This provides a first monitoring/AI visualization layer while the VPN and Prometheus-based monitoring architecture are still being prepared.
+
 ## CI/CD Integration with Jenkins and GitHub Actions
 
 The project uses Jenkins as the main CI/CD automation server for validating and maintaining the local network automation platform.

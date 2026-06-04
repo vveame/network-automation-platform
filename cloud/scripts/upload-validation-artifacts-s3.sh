@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 # Upload local Ansible/Jenkins validation artifacts to the AWS S3 artifacts bucket.
-#
-# Hybrid Option :
+
 # - VPN remains disabled.
 # - Local validation outputs are exported to cloud storage over HTTPS.
 # - Future monitoring/AI services can consume these artifacts from S3.
+
+set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 TERRAFORM_ENV_DIR="${TERRAFORM_ENV_DIR:-$REPO_ROOT/cloud/terraform/environments/dev}"
@@ -17,13 +17,11 @@ AWS_PROFILE="${AWS_PROFILE:-}"
 
 if [ ! -d "$ANSIBLE_OUTPUTS_DIR" ]; then
   echo "[ERROR] Ansible outputs directory not found: $ANSIBLE_OUTPUTS_DIR"
-  echo "[INFO] Run the local validation pipeline first so ansible/outputs exists."
   exit 1
 fi
 
 if [ -z "$(ls -A "$ANSIBLE_OUTPUTS_DIR" 2>/dev/null)" ]; then
   echo "[ERROR] Ansible outputs directory is empty: $ANSIBLE_OUTPUTS_DIR"
-  echo "[INFO] Run Ansible/Jenkins validation before uploading artifacts."
   exit 1
 fi
 
@@ -47,16 +45,15 @@ fi
 
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BUILD_LABEL="${BUILD_TAG:-manual-$TIMESTAMP}"
-S3_PREFIX="validation-artifacts/$BUILD_LABEL"
+
+HISTORY_PREFIX="validation-artifacts/$BUILD_LABEL"
+LATEST_PREFIX="latest/validation-artifacts"
 
 echo "[INFO] AWS region:  $AWS_REGION"
-if [ -n "$AWS_PROFILE" ]; then
-  echo "[INFO] AWS profile: $AWS_PROFILE"
-else
-  echo "[INFO] AWS profile: not set, using environment credentials or default AWS chain"
-fi
 echo "[INFO] Bucket:      $ARTIFACTS_BUCKET"
-echo "[INFO] Prefix:      $S3_PREFIX"
+echo "[INFO] Build:       $BUILD_LABEL"
+echo "[INFO] History:     $HISTORY_PREFIX"
+echo "[INFO] Latest:      $LATEST_PREFIX"
 
 echo "[INFO] Checking AWS identity..."
 aws sts get-caller-identity "${AWS_ARGS[@]}" >/dev/null
@@ -69,17 +66,25 @@ cat > "$MANIFEST_FILE" <<MANIFEST
   "upload_time_utc": "$TIMESTAMP",
   "build_label": "$BUILD_LABEL",
   "s3_bucket": "$ARTIFACTS_BUCKET",
-  "s3_prefix": "$S3_PREFIX"
+  "history_prefix": "$HISTORY_PREFIX",
+  "latest_prefix": "$LATEST_PREFIX"
 }
 MANIFEST
 
-echo "[INFO] Uploading validation outputs..."
-aws s3 sync "$ANSIBLE_OUTPUTS_DIR" "s3://$ARTIFACTS_BUCKET/$S3_PREFIX/" "${AWS_ARGS[@]}"
+echo "[INFO] Uploading immutable per-build validation outputs..."
+aws s3 sync "$ANSIBLE_OUTPUTS_DIR" "s3://$ARTIFACTS_BUCKET/$HISTORY_PREFIX/" "${AWS_ARGS[@]}"
 
-echo "[INFO] Uploading manifest..."
-aws s3 cp "$MANIFEST_FILE" "s3://$ARTIFACTS_BUCKET/$S3_PREFIX/manifest.json" "${AWS_ARGS[@]}"
+echo "[INFO] Uploading per-build manifest..."
+aws s3 cp "$MANIFEST_FILE" "s3://$ARTIFACTS_BUCKET/$HISTORY_PREFIX/manifest.json" "${AWS_ARGS[@]}"
+
+echo "[INFO] Updating latest validation artifact cache in S3..."
+aws s3 sync "$ANSIBLE_OUTPUTS_DIR" "s3://$ARTIFACTS_BUCKET/$LATEST_PREFIX/" "${AWS_ARGS[@]}" --delete
+
+echo "[INFO] Uploading latest manifest..."
+aws s3 cp "$MANIFEST_FILE" "s3://$ARTIFACTS_BUCKET/$LATEST_PREFIX/manifest.json" "${AWS_ARGS[@]}"
 
 rm -f "$MANIFEST_FILE"
 
 echo "[OK] Validation artifacts uploaded successfully."
-echo "[INFO] S3 path: s3://$ARTIFACTS_BUCKET/$S3_PREFIX/"
+echo "[INFO] Per-build S3 path: s3://$ARTIFACTS_BUCKET/$HISTORY_PREFIX/"
+echo "[INFO] Latest S3 path:    s3://$ARTIFACTS_BUCKET/$LATEST_PREFIX/"

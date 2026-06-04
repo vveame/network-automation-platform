@@ -1069,7 +1069,8 @@ PY
                         echo "[INFO] Updating latest analyzer outputs..."
                         aws s3 sync "$ANALYZER_OUTPUT_DIR" \
                         "s3://${S3_ARTIFACTS_BUCKET}/latest/analyzer/" \
-                        --region "$CLOUD_AWS_REGION"
+                        --region "$CLOUD_AWS_REGION" \
+                        --delete
 
                         echo "[OK] Cloud analyzer results uploaded."
                     '''
@@ -1085,7 +1086,46 @@ PY
             }
         }
 
-        stage('21 - Show Generated Reports') {
+        stage('21 - Sync Dashboard Cache from AWS S3') {
+            /*
+            * Purpose:
+            * Make the local Flask dashboard cloud-backed.
+            *
+            * S3 is the source of truth.
+            * Local ansible/outputs and cloud/analyzer/outputs/latest are only cache.
+            */
+            when {
+                expression {
+                    return params.EXPORT_ARTIFACTS_TO_S3
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-pfe-artifacts-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                        set -e
+
+                        if [ "$S3_ARTIFACTS_BUCKET" = "CHANGE_ME" ] || [ -z "$S3_ARTIFACTS_BUCKET" ]; then
+                            echo "[ERROR] S3_ARTIFACTS_BUCKET must be set when EXPORT_ARTIFACTS_TO_S3=true."
+                            exit 1
+                        fi
+
+                        chmod +x cloud/scripts/sync-dashboard-cache-from-s3.sh
+
+                        AWS_REGION="${CLOUD_AWS_REGION}" \
+                        ARTIFACTS_BUCKET="${S3_ARTIFACTS_BUCKET}" \
+                        ANSIBLE_OUTPUTS_DIR="/var/lib/pfe-dashboard/outputs" \
+                        ANALYZER_LATEST_DIR="/var/lib/pfe-dashboard/analyzer/latest" \
+                        ./cloud/scripts/sync-dashboard-cache-from-s3.sh
+                    '''
+                }
+            }
+        }
+
+        stage('22 - Show Generated Reports') {
             /*
              * Purpose:
              * Print the generated artifacts in the Jenkins console for quick verification.

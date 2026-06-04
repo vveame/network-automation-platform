@@ -118,3 +118,36 @@ The S3 bucket is private and configured through Terraform with:
 - bucket owner enforced ownership
 - versioning
 - server-side encryption
+
+## S3-Backed Dashboard Cache
+
+The dashboard uses AWS S3 as the source of truth for generated validation and analyzer outputs.
+
+Jenkins uploads the latest validation artifacts to:
+
+```text
+latest/validation-artifacts/
+```
+
+and the latest analyzer outputs to:
+
+```text
+latest/analyzer/
+```
+
+The script:
+
+```text
+sync-dashboard-cache-from-s3.sh
+```
+
+synchronizes those latest S3 paths into the local dashboard cache:
+
+```text
+/var/lib/pfe-dashboard/outputs
+/var/lib/pfe-dashboard/analyzer/latest
+```
+
+This allows the Flask dashboard to visualize cloud-backed data without making the S3 bucket public and without requiring the dashboard itself to directly fetch AWS data.
+
+The dashboard cache can be restored even if local generated files are deleted, as long as the latest outputs still exist in S3.

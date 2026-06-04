@@ -131,4 +131,21 @@ resource "aws_s3_bucket_lifecycle_configuration" "artifacts" {
       days_after_initiation = 1
     }
   }
+  
+  rule {
+    id     = "expire-old-latest-validation-artifact-versions"
+    status = "Enabled"
+
+    filter {
+      prefix = "latest/validation-artifacts/"
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.noncurrent_version_retention_days
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
 }

@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Sync latest cloud-backed dashboard data from S3 to local dashboard cache paths.
+
+# S3 is the source of truth.
+# Local files are only cache for the Flask dashboard.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TERRAFORM_ENV_DIR="${TERRAFORM_ENV_DIR:-$REPO_ROOT/cloud/terraform/environments/dev}"
+
+ANSIBLE_OUTPUTS_DIR="${ANSIBLE_OUTPUTS_DIR:-$REPO_ROOT/ansible/outputs}"
+ANALYZER_LATEST_DIR="${ANALYZER_LATEST_DIR:-$REPO_ROOT/cloud/analyzer/outputs/latest}"
+
+AWS_REGION="${AWS_REGION:-eu-north-1}"
+AWS_PROFILE="${AWS_PROFILE:-}"
+
+AWS_ARGS=(--region "$AWS_REGION")
+
+if [ -n "$AWS_PROFILE" ]; then
+  AWS_ARGS+=(--profile "$AWS_PROFILE")
+fi
+
+if [ -n "${ARTIFACTS_BUCKET:-}" ]; then
+  echo "[INFO] Using S3 bucket from ARTIFACTS_BUCKET environment variable."
+else
+  echo "[INFO] ARTIFACTS_BUCKET not set. Reading S3 bucket name from Terraform outputs..."
+  ARTIFACTS_BUCKET="$(terraform -chdir="$TERRAFORM_ENV_DIR" output -raw artifacts_bucket_name)"
+fi
+
+if [ -z "$ARTIFACTS_BUCKET" ]; then
+  echo "[ERROR] Could not determine artifacts bucket name."
+  exit 1
+fi
+
+mkdir -p "$ANSIBLE_OUTPUTS_DIR"
+mkdir -p "$ANALYZER_LATEST_DIR"
+
+echo "[INFO] AWS region: $AWS_REGION"
+echo "[INFO] Bucket:     $ARTIFACTS_BUCKET"
+
+echo "[INFO] Checking AWS identity..."
+aws sts get-caller-identity "${AWS_ARGS[@]}" >/dev/null
+
+echo "[INFO] Syncing latest validation artifacts from S3 to local dashboard cache..."
+aws s3 sync \
+  "s3://$ARTIFACTS_BUCKET/latest/validation-artifacts/" \
+  "$ANSIBLE_OUTPUTS_DIR/" \
+  "${AWS_ARGS[@]}" \
+  --delete
+
+echo "[INFO] Syncing latest analyzer decision from S3 to local dashboard cache..."
+aws s3 sync \
+  "s3://$ARTIFACTS_BUCKET/latest/analyzer/" \
+  "$ANALYZER_LATEST_DIR/" \
+  "${AWS_ARGS[@]}" \
+  --delete
+
+echo "[OK] Dashboard cache synchronized from S3."
+echo "[INFO] Validation cache: $ANSIBLE_OUTPUTS_DIR"
+echo "[INFO] Analyzer cache:   $ANALYZER_LATEST_DIR"
+
+if [ -f "$ANALYZER_LATEST_DIR/decision.json" ]; then
+  echo "[INFO] Latest analyzer decision:"
+  python3 -m json.tool "$ANALYZER_LATEST_DIR/decision.json" || cat "$ANALYZER_LATEST_DIR/decision.json"
+fi

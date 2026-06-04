@@ -9,21 +9,22 @@ from service.service_health_service import ServiceHealthService
 
 
 class DashboardService:
-    def __init__(self, report_repository, vars_repository):
+    def __init__(self, report_repository, vars_repository, cloud_analyzer_service):
         self.report_service = ReportService(report_repository)
         self.vars_repository = vars_repository
+        self.cloud_analyzer_service = cloud_analyzer_service
         self.node_service = NodeService()
         self.service_health_service = ServiceHealthService()
 
     def build_dashboard(self) -> DashboardDTO:
         vars_data = self.vars_repository.load_all_vars()
-
         reports = self.report_service.get_all_reports()
         report_status_map = self.report_service.get_report_status_map()
 
         domains = self._build_domains(reports)
         nodes = self.node_service.build_nodes(vars_data, report_status_map)
         services = self.service_health_service.build_services(vars_data, report_status_map)
+        cloud_analyzer = self.cloud_analyzer_service.get_latest_decision()
 
         total = len(reports)
         passed = len([report for report in reports if report.status == "passed"])
@@ -46,6 +47,7 @@ class DashboardService:
             domains=domains,
             nodes=nodes,
             services=services,
+            cloud_analyzer=cloud_analyzer,
         )
 
     def get_report_content(self, filename: str):
@@ -61,7 +63,6 @@ class DashboardService:
 
         for domain_name in sorted(grouped.keys()):
             domain_reports = grouped[domain_name]
-
             total = len(domain_reports)
             passed = len([report for report in domain_reports if report.status == "passed"])
             failed = len([report for report in domain_reports if report.status == "failed"])
@@ -84,8 +85,6 @@ class DashboardService:
     def _global_status(self, failed: int, missing: int) -> str:
         if failed > 0:
             return "failed"
-
         if missing > 0:
             return "warning"
-
         return "passed"

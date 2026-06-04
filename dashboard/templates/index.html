@@ -13,7 +13,7 @@
     <p class="eyebrow">Intelligent Network Automation Platform</p>
     <h1>Infrastructure Validation Dashboard</h1>
     <p class="subtitle">
-      Dynamic visualization generated from Ansible output reports and Ansible variable files.
+      Dynamic visualization generated from the latest validation reports synchronized from AWS S3.
     </p>
   </div>
 
@@ -64,6 +64,82 @@
     <span>Missing</span>
     <strong>{{ dashboard.missing_reports }}</strong>
   </div>
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Cloud Analyzer Decision</h2>
+      <p>Latest anomaly decision synchronized from AWS S3 into the local dashboard cache.</p>
+    </div>
+
+    {% if dashboard.cloud_analyzer.available %}
+      <span class="status-pill {{ dashboard.cloud_analyzer.severity }}">
+        {{ dashboard.cloud_analyzer.severity | upper }}
+      </span>
+    {% else %}
+      <span class="status-pill warning">UNAVAILABLE</span>
+    {% endif %}
+  </div>
+
+  {% if dashboard.cloud_analyzer.available %}
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span>Anomaly status</span>
+        <strong>{{ dashboard.cloud_analyzer.anomaly_status | upper }}</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Risk score</span>
+        <strong>{{ dashboard.cloud_analyzer.risk_score }}/100</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Severity</span>
+        <strong>{{ dashboard.cloud_analyzer.severity | upper }}</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Build</span>
+        <strong style="font-size: 18px;">{{ dashboard.cloud_analyzer.build_label }}</strong>
+      </div>
+    </div>
+
+    <div class="domain-card">
+      <div class="domain-title">
+        <h3>Recommended Action</h3>
+        <span class="badge {{ dashboard.cloud_analyzer.severity }}">
+          {{ dashboard.cloud_analyzer.severity | upper }}
+        </span>
+      </div>
+
+      <p>{{ dashboard.cloud_analyzer.recommended_action }}</p>
+
+      {% if dashboard.cloud_analyzer.failed_reports %}
+        <p><strong>Failed reports:</strong></p>
+        <ul>
+          {% for report in dashboard.cloud_analyzer.failed_reports %}
+            <li>{{ report }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if dashboard.cloud_analyzer.warning_reports %}
+        <p><strong>Warning reports:</strong></p>
+        <ul>
+          {% for report in dashboard.cloud_analyzer.warning_reports %}
+            <li>{{ report }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <p class="subtitle">Source: {{ dashboard.cloud_analyzer.source_file }}</p>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      No cloud analyzer decision found. Sync the dashboard cache from S3 or run the Jenkins analyzer stage.
+    </div>
+  {% endif %}
 </section>
 
 <section class="section">

@@ -1,5 +1,5 @@
 # py -m venv dashboard/.venv
-# source dashboard/.venv/Scripts/activate
+# source dashboard/.venv/Scripts/activate (Win) - dashboard/.venv/bin/activate (Linux)
 # python -m pip install -r dashboard/requirements.txt
 # python dashboard/app.py
 
