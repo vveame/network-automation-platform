@@ -1,0 +1,7 @@
+- targets:
+    - "localhost:9100"
+  labels:
+    node_name: "devops-server"
+    role: "devops"
+    source: "node-exporter"
+    environment: "gns3-onprem-lab"

@@ -145,6 +145,90 @@
 <section class="section">
   <div class="section-header">
     <div>
+      <h2>Prometheus Metrics Snapshot</h2>
+      <p>Latest Prometheus metrics synchronized from AWS S3 into the local dashboard cache.</p>
+    </div>
+
+    {% if dashboard.prometheus_metrics.available %}
+      <span class="status-pill {{ dashboard.prometheus_metrics.status }}">
+        {{ dashboard.prometheus_metrics.status | upper }}
+      </span>
+    {% else %}
+      <span class="status-pill warning">UNAVAILABLE</span>
+    {% endif %}
+  </div>
+
+  {% if dashboard.prometheus_metrics.available %}
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span>Targets up</span>
+        <strong>{{ dashboard.prometheus_metrics.targets_up }}/{{ dashboard.prometheus_metrics.targets_total }}</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Memory used</span>
+        <strong>{{ dashboard.prometheus_metrics.memory_used_percent }}%</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Disk used</span>
+        <strong>{{ dashboard.prometheus_metrics.disk_used_percent }}%</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Snapshot</span>
+        <strong style="font-size: 18px;">{{ dashboard.prometheus_metrics.snapshot_time_utc }}</strong>
+      </div>
+    </div>
+
+    <div class="domain-card">
+      <div class="domain-title">
+        <h3>DevOps Monitoring Baseline</h3>
+        <span class="badge {{ dashboard.prometheus_metrics.status }}">
+          {{ dashboard.prometheus_metrics.status | upper }}
+        </span>
+      </div>
+
+      <p><strong>Prometheus URL:</strong> {{ dashboard.prometheus_metrics.prometheus_url }}</p>
+      <p><strong>System:</strong> {{ dashboard.prometheus_metrics.system_name }}</p>
+      <p><strong>Kernel:</strong> {{ dashboard.prometheus_metrics.kernel_release }}</p>
+
+      <p>
+        <strong>Memory:</strong>
+        {{ dashboard.prometheus_metrics.memory_available_gb }} GB available /
+        {{ dashboard.prometheus_metrics.memory_total_gb }} GB total
+      </p>
+
+      <p>
+        <strong>Root filesystem:</strong>
+        {{ dashboard.prometheus_metrics.disk_available_gb }} GB available /
+        {{ dashboard.prometheus_metrics.disk_total_gb }} GB total
+      </p>
+
+      {% if dashboard.prometheus_metrics.targets %}
+        <p><strong>Scrape targets:</strong></p>
+        <ul>
+          {% for target in dashboard.prometheus_metrics.targets %}
+            <li>
+              {{ target.job }} — {{ target.instance }} —
+              {{ target.status | upper }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <p class="subtitle">Source: {{ dashboard.prometheus_metrics.source_dir }}</p>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      No Prometheus metrics snapshot found. Run the Jenkins metrics stage or sync the dashboard cache from S3.
+    </div>
+  {% endif %}
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <div>
       <h2>Validation Domains</h2>
       <p>Generated automatically from the report files available in ansible/outputs.</p>
     </div>

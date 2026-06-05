@@ -15,6 +15,7 @@ sys.path.insert(0, str(CURRENT_DIR))
 
 from anomaly_rules import build_anomaly_decision
 from generate_summary import build_validation_summary, write_outputs
+from parse_prometheus_metrics import parse_prometheus_metrics
 from parse_validation_reports import parse_validation_reports
 
 
@@ -44,13 +45,19 @@ def download_s3_prefix(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Analyze PFE Jenkins/Ansible validation artifacts."
+        description="Analyze PFE Jenkins/Ansible validation artifacts and optional Prometheus metrics."
     )
 
     parser.add_argument(
         "--input-dir",
         default="ansible/outputs",
         help="Local validation artifact directory.",
+    )
+
+    parser.add_argument(
+        "--metrics-dir",
+        default="monitoring/outputs/latest",
+        help="Optional Prometheus metrics snapshot directory.",
     )
 
     parser.add_argument(
@@ -100,7 +107,7 @@ def main() -> int:
     try:
         if args.s3_bucket and args.s3_prefix:
             temp_dir = Path(tempfile.mkdtemp(prefix="pfe-analyzer-"))
-            print(f"[INFO] Downloading S3 artifacts to {temp_dir}")
+            print(f"[INFO] Downloading S3 validation artifacts to {temp_dir}")
 
             download_s3_prefix(
                 bucket=args.s3_bucket,
@@ -117,13 +124,26 @@ def main() -> int:
         else:
             input_dir = Path(args.input_dir)
 
+        metrics_dir = Path(args.metrics_dir) if args.metrics_dir else None
+
         if not input_dir.exists():
             print(f"[ERROR] Input directory does not exist: {input_dir}", file=sys.stderr)
             return 1
 
         reports = parse_validation_reports(input_dir)
-        summary = build_validation_summary(reports, build_label)
-        decision = build_anomaly_decision(reports, build_label)
+        prometheus_metrics = parse_prometheus_metrics(metrics_dir)
+
+        summary = build_validation_summary(
+            reports=reports,
+            build_label=build_label,
+            prometheus_metrics=prometheus_metrics,
+        )
+
+        decision = build_anomaly_decision(
+            reports=reports,
+            build_label=build_label,
+            metrics=prometheus_metrics,
+        )
 
         output_dir = Path(args.output_dir)
         write_outputs(output_dir, summary, decision)
@@ -134,6 +154,8 @@ def main() -> int:
         print(f"[INFO] Report:   {output_dir / 'analysis-report.txt'}")
         print(f"[INFO] Severity: {decision['severity']}")
         print(f"[INFO] Risk:     {decision['risk_score']}/100")
+        print(f"[INFO] Validation risk: {decision['validation_risk_score']}/100")
+        print(f"[INFO] Metrics risk:    {decision['metrics_risk_score']}/100")
 
         return 0
 

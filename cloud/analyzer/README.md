@@ -102,6 +102,50 @@ It checks validation reports for:
 
 Expected security-block tests are handled separately. For example, blocked SSH or HTTP tests may produce connection timeouts, but those timeouts are considered normal when they appear in explicit blocked-policy sections.
 
+## Metrics-Aware Analyzer
+
+The analyzer now uses two input sources:
+
+```text
+ansible/outputs/
+monitoring/outputs/latest/
+```
+
+The validation reports provide infrastructure validation status.
+
+The Prometheus metrics snapshot provides monitoring signals such as:
+
+* target up/down state
+* memory usage
+* disk usage
+* system information
+* metrics snapshot timestamp
+
+The analyzer calculates:
+
+```text
+validation_risk_score
+metrics_risk_score
+risk_score
+severity
+recommended_action
+```
+
+Example healthy output:
+
+```text
+Global validation status: passed
+Anomaly status: normal
+Risk score: 0/100
+Validation risk score: 0/100
+Metrics risk score: 0/100
+Severity: low
+Recommended action: no_action
+Targets up: 2/2
+```
+
+This is the first combined anomaly detection baseline before future ML integration.
+
 ## Analyzer Outputs in S3
 
 Jenkins uploads analyzer outputs to:

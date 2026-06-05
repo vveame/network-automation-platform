@@ -9,6 +9,7 @@ from typing import Any
 def build_validation_summary(
     reports: list[dict[str, Any]],
     build_label: str,
+    prometheus_metrics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     failed_reports = [
         report["file"]
@@ -24,7 +25,7 @@ def build_validation_summary(
 
     return {
         "project": "network-automation-platform",
-        "source": "jenkins_ansible_validation_artifacts",
+        "source": "jenkins_ansible_validation_and_prometheus_metrics",
         "analysis_time_utc": datetime.now(timezone.utc).isoformat(),
         "build_label": build_label,
         "global_status": "failed" if failed_reports else "passed",
@@ -33,6 +34,10 @@ def build_validation_summary(
         "warning_reports": warning_reports,
         "failed_reports": failed_reports,
         "reports": reports,
+        "prometheus_metrics": prometheus_metrics or {
+            "available": False,
+            "reason": "metrics_not_loaded",
+        },
     }
 
 
@@ -55,6 +60,24 @@ def write_outputs(
 
     failed_reports = "\n".join(summary["failed_reports"]) if summary["failed_reports"] else "None"
     warning_reports = "\n".join(summary["warning_reports"]) if summary["warning_reports"] else "None"
+    reasons = "\n".join(decision.get("detection_reasons", [])) if decision.get("detection_reasons") else "None"
+
+    metrics = summary.get("prometheus_metrics", {})
+    metrics_available = metrics.get("available", False)
+
+    if metrics_available:
+        metrics_block = f"""Prometheus metrics:
+Targets up: {metrics.get("targets_up", 0)}/{metrics.get("targets_total", 0)}
+Targets down: {metrics.get("targets_down", 0)}
+Memory used: {metrics.get("memory_used_percent", 0)}%
+Disk used: {metrics.get("disk_used_percent", 0)}%
+Snapshot: {metrics.get("snapshot_time_utc", "unknown")}
+"""
+    else:
+        metrics_block = f"""Prometheus metrics:
+Unavailable
+Reason: {metrics.get("reason", "unknown")}
+"""
 
     report = f"""PFE Cloud Analyzer Report
 
@@ -64,6 +87,8 @@ Analysis time: {summary["analysis_time_utc"]}
 Global validation status: {summary["global_status"]}
 Anomaly status: {decision["anomaly_status"]}
 Risk score: {decision["risk_score"]}/100
+Validation risk score: {decision.get("validation_risk_score", 0)}/100
+Metrics risk score: {decision.get("metrics_risk_score", 0)}/100
 Severity: {decision["severity"]}
 Recommended action: {decision["recommended_action"]}
 
@@ -77,6 +102,11 @@ Failed report files:
 
 Warning report files:
 {warning_reports}
+
+Detection reasons:
+{reasons}
+
+{metrics_block}
 """
 
     (output_dir / "analysis-report.txt").write_text(report, encoding="utf-8")

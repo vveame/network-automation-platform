@@ -9,10 +9,17 @@ from service.service_health_service import ServiceHealthService
 
 
 class DashboardService:
-    def __init__(self, report_repository, vars_repository, cloud_analyzer_service):
+    def __init__(
+        self,
+        report_repository,
+        vars_repository,
+        cloud_analyzer_service,
+        prometheus_metrics_service,
+    ):
         self.report_service = ReportService(report_repository)
         self.vars_repository = vars_repository
         self.cloud_analyzer_service = cloud_analyzer_service
+        self.prometheus_metrics_service = prometheus_metrics_service
         self.node_service = NodeService()
         self.service_health_service = ServiceHealthService()
 
@@ -25,6 +32,7 @@ class DashboardService:
         nodes = self.node_service.build_nodes(vars_data, report_status_map)
         services = self.service_health_service.build_services(vars_data, report_status_map)
         cloud_analyzer = self.cloud_analyzer_service.get_latest_decision()
+        prometheus_metrics = self.prometheus_metrics_service.get_latest_metrics()
 
         total = len(reports)
         passed = len([report for report in reports if report.status == "passed"])
@@ -48,6 +56,7 @@ class DashboardService:
             nodes=nodes,
             services=services,
             cloud_analyzer=cloud_analyzer,
+            prometheus_metrics=prometheus_metrics,
         )
 
     def get_report_content(self, filename: str):

@@ -930,24 +930,43 @@ PY
             }
         }
 
-        stage('18 - Publish Reports to Flask Dashboard') {
+        stage('18 - Validate Generated Dashboard Reports') {
             /*
-             * Purpose:
-             * Copy the latest Jenkins/Ansible reports into the dashboard output folder.
-             *
-             * This updates the dashboard content automatically after every validation.
-             */
-            when {
-                expression {
-                    return params.PUBLISH_DASHBOARD
-                }
-            }
+            * Purpose:
+            * Validate that Jenkins generated the local validation reports in the workspace.
+            *
+            * Important:
+            * This stage does NOT write directly to /var/lib/pfe-dashboard.
+            *
+            * CDashboard data flow:
+            * ansible/outputs/ in Jenkins workspace
+            *   -> upload to S3
+            *   -> sync latest S3 data to /var/lib/pfe-dashboard
+            *   -> Flask dashboard reads /var/lib/pfe-dashboard
+            */
             steps {
                 sh '''
-                    mkdir -p "$DASHBOARD_OUTPUTS_DIR"
-                    rsync -a --delete ansible/outputs/ "$DASHBOARD_OUTPUTS_DIR/"
-                    echo "[OK] Latest reports copied to $DASHBOARD_OUTPUTS_DIR"
-                    ls -lah "$DASHBOARD_OUTPUTS_DIR"
+                    set -e
+
+                    echo "[INFO] Validating generated report files in Jenkins workspace..."
+
+                    if [ ! -d "ansible/outputs" ]; then
+                        echo "[ERROR] ansible/outputs directory does not exist."
+                        exit 1
+                    fi
+
+                    if [ -z "$(ls -A ansible/outputs 2>/dev/null)" ]; then
+                        echo "[ERROR] ansible/outputs directory is empty."
+                        exit 1
+                    fi
+
+                    if [ ! -f "ansible/outputs/validation-summary.txt" ]; then
+                        echo "[ERROR] validation-summary.txt is missing."
+                        exit 1
+                    fi
+
+                    echo "[OK] Jenkins workspace reports are ready."
+                    ls -lah ansible/outputs
                 '''
             }
         }
@@ -1005,7 +1024,82 @@ PY
             }
         }
 
-        stage('20 - Run Cloud Analyzer and Upload Results') {
+        stage('20 - Export Prometheus Metrics Snapshot to AWS S3') {
+            /*
+            * Purpose:
+            * Export Prometheus metrics from the local monitoring baseline.
+            *
+            * Correct data flow:
+            * - Generate metrics snapshot inside the Jenkins workspace:
+            *   monitoring/outputs/latest/
+            * - Upload that snapshot to S3:
+            *   metrics-snapshots/<build>/
+            *   latest/metrics/
+            * - Dashboard cache is synced later from S3 into:
+            *   /var/lib/pfe-dashboard/metrics/latest/
+            *
+            * /var/lib/pfe-dashboard is only a cache, not the generation location.
+            */
+            when {
+                expression {
+                    return params.EXPORT_ARTIFACTS_TO_S3
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-pfe-artifacts-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh '''
+                        set -e
+
+                        if [ "$S3_ARTIFACTS_BUCKET" = "CHANGE_ME" ] || [ -z "$S3_ARTIFACTS_BUCKET" ]; then
+                            echo "[ERROR] S3_ARTIFACTS_BUCKET must be set when EXPORT_ARTIFACTS_TO_S3=true."
+                            exit 1
+                        fi
+
+                        if ! command -v aws >/dev/null 2>&1; then
+                            echo "[ERROR] AWS CLI is not installed or not available to the Jenkins user."
+                            exit 1
+                        fi
+
+                        if ! command -v curl >/dev/null 2>&1; then
+                            echo "[ERROR] curl is required to query Prometheus."
+                            exit 1
+                        fi
+
+                        echo "[INFO] Checking Prometheus readiness..."
+                        curl -fsS http://localhost:9090/-/ready
+
+                        chmod +x monitoring/scripts/export-prometheus-snapshot.sh
+                        chmod +x cloud/scripts/upload-prometheus-snapshot-s3.sh
+
+                        echo "[INFO] Exporting Prometheus metrics snapshot to Jenkins workspace..."
+                        PROMETHEUS_URL="http://localhost:9090" \
+                        OUTPUT_DIR="monitoring/outputs/latest" \
+                        ./monitoring/scripts/export-prometheus-snapshot.sh
+
+                        echo "[INFO] Uploading Prometheus metrics snapshot to S3..."
+                        AWS_REGION="${CLOUD_AWS_REGION}" \
+                        ARTIFACTS_BUCKET="${S3_ARTIFACTS_BUCKET}" \
+                        METRICS_SNAPSHOT_DIR="monitoring/outputs/latest" \
+                        BUILD_TAG="${JOB_NAME}-${BUILD_NUMBER}" \
+                        ./cloud/scripts/upload-prometheus-snapshot-s3.sh
+                    '''
+
+                    script {
+                        env.S3_METRICS_URI = "s3://${params.S3_ARTIFACTS_BUCKET}/metrics-snapshots/${env.JOB_NAME}-${env.BUILD_NUMBER}/"
+
+                        currentBuild.description = """${currentBuild.description ?: ''}
+        Metrics snapshot: ${env.S3_METRICS_URI}
+        """
+                    }
+                }
+            }
+        }
+
+        stage('21 - Run Cloud Analyzer and Upload Results') {
             /*
             * Purpose:
             * Run the cloud anomaly baseline analyzer on Jenkins/Ansible validation outputs.
@@ -1046,6 +1140,7 @@ PY
 
                         python3 cloud/analyzer/analyze_validation_artifacts.py \
                         --input-dir ansible/outputs \
+                        --metrics-dir monitoring/outputs/latest \
                         --output-dir "$ANALYZER_OUTPUT_DIR" \
                         --build-label "$BUILD_LABEL"
 
@@ -1086,13 +1181,18 @@ PY
             }
         }
 
-        stage('21 - Sync Dashboard Cache from AWS S3') {
+        stage('22 - Sync Dashboard Cache from AWS S3') {
             /*
             * Purpose:
-            * Make the local Flask dashboard cloud-backed.
+            * Restore the local Flask dashboard cache from S3.
             *
             * S3 is the source of truth.
-            * Local ansible/outputs and cloud/analyzer/outputs/latest are only cache.
+            * /var/lib/pfe-dashboard is only the dashboard cache.
+            *
+            * This stage must run after:
+            * - validation artifacts are uploaded
+            * - analyzer outputs are uploaded
+            * - Prometheus metrics snapshots are uploaded
             */
             when {
                 expression {
@@ -1119,13 +1219,14 @@ PY
                         ARTIFACTS_BUCKET="${S3_ARTIFACTS_BUCKET}" \
                         ANSIBLE_OUTPUTS_DIR="/var/lib/pfe-dashboard/outputs" \
                         ANALYZER_LATEST_DIR="/var/lib/pfe-dashboard/analyzer/latest" \
+                        METRICS_LATEST_DIR="/var/lib/pfe-dashboard/metrics/latest" \
                         ./cloud/scripts/sync-dashboard-cache-from-s3.sh
                     '''
                 }
             }
         }
 
-        stage('22 - Show Generated Reports') {
+        stage('23 - Show Generated Reports') {
             /*
              * Purpose:
              * Print the generated artifacts in the Jenkins console for quick verification.
@@ -1140,7 +1241,7 @@ PY
             }
         }
 
-        stage('22 - Set Jenkins Build Description') {
+        stage('24 - Set Jenkins Build Description') {
             /*
              * Purpose:
              * Add direct dashboard/artifact links to the Jenkins build page.
@@ -1149,6 +1250,7 @@ PY
                 script {
                     def s3Line = env.S3_ARTIFACTS_URI ? "S3 artifacts: ${env.S3_ARTIFACTS_URI}" : "S3 artifacts: disabled"
                     def analyzerLine = env.S3_ANALYZER_URI ? "Analyzer results: ${env.S3_ANALYZER_URI}" : "Analyzer results: disabled"
+                    def metricsLine = env.S3_METRICS_URI ? "Metrics snapshot: ${env.S3_METRICS_URI}" : "Metrics snapshot: disabled"
 
                     currentBuild.description = """Mode: ${params.PIPELINE_MODE}
 Dashboard: ${env.DASHBOARD_URL}
@@ -1156,6 +1258,7 @@ HTML summary: ${env.BUILD_URL}artifact/ansible/outputs/index.html
 Reports folder: ${env.DASHBOARD_OUTPUTS_DIR}
 ${s3Line}
 ${analyzerLine}
+${metricsLine}
 """
                 }
             }
@@ -1171,6 +1274,7 @@ ${analyzerLine}
             script {
                 def s3Line = env.S3_ARTIFACTS_URI ? "S3 artifacts: ${env.S3_ARTIFACTS_URI}" : "S3 artifacts: disabled"
                 def analyzerLine = env.S3_ANALYZER_URI ? "Analyzer results: ${env.S3_ANALYZER_URI}" : "Analyzer results: disabled"
+                def metricsLine = env.S3_METRICS_URI ? "Metrics snapshot: ${env.S3_METRICS_URI}" : "Metrics snapshot: disabled"
 
                 currentBuild.description = """SUCCESS - ${params.PIPELINE_MODE}
 Dashboard: ${env.DASHBOARD_URL}
@@ -1178,6 +1282,7 @@ HTML summary: ${env.BUILD_URL}artifact/ansible/outputs/index.html
 Reports folder: ${env.DASHBOARD_OUTPUTS_DIR}
 ${s3Line}
 ${analyzerLine}
+${metricsLine}
 """
             }
             echo 'PFE local automation pipeline completed successfully.'
@@ -1186,11 +1291,15 @@ ${analyzerLine}
         failure {
             script {
                 def s3Line = env.S3_ARTIFACTS_URI ? "S3 artifacts: ${env.S3_ARTIFACTS_URI}" : "S3 artifacts: not uploaded"
+                def analyzerLine = env.S3_ANALYZER_URI ? "Analyzer results: ${env.S3_ANALYZER_URI}" : "Analyzer results: not uploaded"
+                def metricsLine = env.S3_METRICS_URI ? "Metrics snapshot: ${env.S3_METRICS_URI}" : "Metrics snapshot: not uploaded"
 
                 currentBuild.description = """FAILED - ${params.PIPELINE_MODE}
 Check console output and archived artifacts.
 HTML summary if generated: ${env.BUILD_URL}artifact/ansible/outputs/index.html
 ${s3Line}
+${analyzerLine}
+${metricsLine}
 """
             }
             echo 'PFE local automation pipeline failed. Check Jenkins console output and reports.'

@@ -10,6 +10,7 @@ class Config:
     DASHBOARD_DIR = Path(__file__).resolve().parent
     REPO_ROOT = DASHBOARD_DIR.parent
 
+    # S3-backed local dashboard cache.
     DASHBOARD_CACHE_DIR = Path("/var/lib/pfe-dashboard")
 
     ANSIBLE_DIR = REPO_ROOT / "ansible"
@@ -18,4 +19,8 @@ class Config:
 
     CLOUD_ANALYZER_LATEST_DECISION_FILE = (
         DASHBOARD_CACHE_DIR / "analyzer" / "latest" / "decision.json"
+    )
+
+    PROMETHEUS_METRICS_LATEST_DIR = (
+        DASHBOARD_CACHE_DIR / "metrics" / "latest"
     )

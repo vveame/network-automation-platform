@@ -828,6 +828,246 @@ At the current checkpoint, the dashboard reads the latest validation reports fro
 
 This provides a first monitoring/AI visualization layer while the VPN and Prometheus-based monitoring architecture are still being prepared.
 
+## S3-Backed Monitoring and Dashboard Workflow
+
+The platform uses AWS S3 as the durable source of truth for generated validation, analyzer and monitoring outputs.
+
+Generated files are not committed to GitHub. They are produced during Jenkins pipeline execution, uploaded to S3, then synchronized back into a stable local cache used by the Flask dashboard.
+
+### Global Data Flow
+
+```text
+Jenkins workspace
+        ↓
+Generated validation / analyzer / Prometheus outputs
+        ↓
+AWS S3 artifacts bucket
+        ↓
+latest/* prefixes
+        ↓
+/var/lib/pfe-dashboard/
+        ↓
+Flask dashboard visualization
+```
+
+### Source of Truth Model
+
+The project follows this rule:
+
+```text
+S3 = source of truth
+/var/lib/pfe-dashboard = local dashboard cache
+Jenkins workspace = temporary generation area
+GitHub = source code only
+```
+
+This prevents generated reports and monitoring data from being lost if the Jenkins workspace or local repository is cleaned.
+
+### Validation Artifacts
+
+Ansible validation reports are generated in the Jenkins workspace under:
+
+```text
+ansible/outputs/
+```
+
+Jenkins uploads them to S3 under:
+
+```text
+validation-artifacts/<jenkins-job-name>-<build-number>/
+latest/validation-artifacts/
+```
+
+Then Jenkins synchronizes the latest validation artifacts from S3 to:
+
+```text
+/var/lib/pfe-dashboard/outputs/
+```
+
+The Flask dashboard reads validation reports from this local cache.
+
+### Cloud Analyzer Outputs
+
+The cloud analyzer runs after validation and generates:
+
+```text
+summary.json
+decision.json
+analysis-report.txt
+```
+
+Per-build analyzer outputs are uploaded to:
+
+```text
+processed-summaries/<jenkins-job-name>-<build-number>/
+anomaly-results/<jenkins-job-name>-<build-number>/
+latest/analyzer/
+```
+
+The latest analyzer output is synchronized to:
+
+```text
+/var/lib/pfe-dashboard/analyzer/latest/
+```
+
+The dashboard displays the latest anomaly decision, including anomaly status, risk score, severity, build label and recommended action.
+
+### Prometheus Metrics Snapshot
+
+The local Prometheus baseline exports metrics snapshots from the Prometheus HTTP API.
+
+Metrics are generated temporarily in the Jenkins workspace under:
+
+```text
+monitoring/outputs/latest/
+```
+
+Jenkins uploads the snapshot to S3 under:
+
+```text
+metrics-snapshots/<jenkins-job-name>-<build-number>/
+latest/metrics/
+```
+
+Then Jenkins synchronizes the latest metrics snapshot from S3 to:
+
+```text
+/var/lib/pfe-dashboard/metrics/latest/
+```
+
+This prepares the future monitoring and AI layer by making Prometheus metrics available in the same S3-backed workflow as validation reports and analyzer decisions.
+
+### Prometheus Metrics Visualization
+
+The Flask dashboard now displays the latest Prometheus metrics snapshot.
+
+The metrics are generated from the local Prometheus baseline, uploaded to S3, and restored into the local dashboard cache.
+
+```text
+Prometheus
+        ↓
+monitoring/outputs/latest/
+        ↓
+S3 metrics-snapshots/<build>/
+S3 latest/metrics/
+        ↓
+/var/lib/pfe-dashboard/metrics/latest/
+        ↓
+Flask dashboard
+```
+
+The dashboard visualizes:
+
+* Prometheus scrape target status
+* number of targets up and down
+* memory usage
+* root filesystem usage
+* system and kernel information
+* metrics snapshot timestamp
+
+This is the first step toward the final monitoring architecture where Prometheus metrics will be combined with analyzer logic and later extended toward AI/ML anomaly detection.
+
+### Metrics-Aware Anomaly Analyzer
+
+The cloud analyzer now combines infrastructure validation reports with Prometheus metrics snapshots.
+
+The analyzer reads:
+
+```text
+ansible/outputs/
+monitoring/outputs/latest/
+```
+
+and generates:
+
+```text
+summary.json
+decision.json
+analysis-report.txt
+```
+
+The anomaly decision now includes:
+
+* validation risk score
+* metrics risk score
+* total risk score
+* severity
+* anomaly status
+* recommended action
+* detection reasons
+* Prometheus target status
+* memory usage
+* disk usage
+
+Current analyzer flow:
+
+```text
+Ansible validation reports
+        +
+Prometheus metrics snapshot
+        ↓
+Cloud analyzer
+        ↓
+summary.json / decision.json / analysis-report.txt
+        ↓
+AWS S3 latest/analyzer/
+        ↓
+/var/lib/pfe-dashboard/analyzer/latest/
+        ↓
+Flask dashboard
+```
+
+This connects the original monitoring architecture to the anomaly detection layer:
+
+```text
+Prometheus metrics → anomaly analysis → dashboard decision
+```s
+
+### Dashboard Cache Structure
+
+The dashboard cache is stored in:
+
+```text
+/var/lib/pfe-dashboard/
+```
+
+Current structure:
+
+```text
+/var/lib/pfe-dashboard/
+├── outputs/
+│   └── latest validation reports
+├── analyzer/
+│   └── latest/
+│       ├── decision.json
+│       ├── summary.json
+│       └── analysis-report.txt
+└── metrics/
+    └── latest/
+        ├── manifest.json
+        ├── up.json
+        ├── node_uname_info.json
+        ├── node_memory_available_bytes.json
+        ├── node_memory_total_bytes.json
+        ├── node_filesystem_available_bytes.json
+        └── node_filesystem_size_bytes.json
+```
+
+### Current Monitoring Status
+
+At this checkpoint, the platform provides:
+
+* Jenkins validation pipeline
+* S3-backed validation artifact storage
+* cloud analyzer anomaly baseline
+* S3-backed analyzer results
+* local Prometheus monitoring baseline
+* Prometheus metrics snapshot export
+* S3-backed dashboard cache
+* Flask dashboard visualization
+
+The next step is to display Prometheus metrics directly in the Flask dashboard and later extend the anomaly analyzer to use both validation reports and Prometheus metrics.
+
 ## CI/CD Integration with Jenkins and GitHub Actions
 
 The project uses Jenkins as the main CI/CD automation server for validating and maintaining the local network automation platform.

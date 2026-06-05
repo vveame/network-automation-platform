@@ -151,3 +151,55 @@ synchronizes those latest S3 paths into the local dashboard cache:
 This allows the Flask dashboard to visualize cloud-backed data without making the S3 bucket public and without requiring the dashboard itself to directly fetch AWS data.
 
 The dashboard cache can be restored even if local generated files are deleted, as long as the latest outputs still exist in S3.
+
+## Prometheus Metrics Snapshot Scripts
+
+The cloud scripts also support Prometheus metrics snapshots.
+
+The script:
+
+```text
+upload-prometheus-snapshot-s3.sh
+```
+
+uploads metrics generated in:
+
+```text
+monitoring/outputs/latest/
+```
+
+to S3 under:
+
+```text
+metrics-snapshots/<jenkins-job-name>-<build-number>/
+latest/metrics/
+```
+
+This follows the same source-of-truth model used for validation artifacts and analyzer outputs.
+
+The script:
+
+```text
+sync-dashboard-cache-from-s3.sh
+```
+
+restores the latest dashboard cache from S3 into:
+
+```text
+/var/lib/pfe-dashboard/outputs
+/var/lib/pfe-dashboard/analyzer/latest
+/var/lib/pfe-dashboard/metrics/latest
+```
+
+The script does not generate data. It only synchronizes the local dashboard cache from S3.
+
+This keeps the architecture clean:
+
+```text
+Generate in Jenkins workspace
+Upload to S3
+Restore dashboard cache from S3
+Visualize in Flask
+```
+
+The dashboard cache is recoverable as long as the latest outputs exist in S3.

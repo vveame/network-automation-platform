@@ -3,14 +3,18 @@ set -euo pipefail
 
 # Sync latest cloud-backed dashboard data from S3 to local dashboard cache paths.
 
-# S3 is the source of truth.
-# Local files are only cache for the Flask dashboard.
+# - S3 is the source of truth.
+# - /var/lib/pfe-dashboard is only the local Flask dashboard cache.
+# - This script restores the cache from S3.
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 TERRAFORM_ENV_DIR="${TERRAFORM_ENV_DIR:-$REPO_ROOT/cloud/terraform/environments/dev}"
 
-ANSIBLE_OUTPUTS_DIR="${ANSIBLE_OUTPUTS_DIR:-$REPO_ROOT/ansible/outputs}"
-ANALYZER_LATEST_DIR="${ANALYZER_LATEST_DIR:-$REPO_ROOT/cloud/analyzer/outputs/latest}"
+DASHBOARD_CACHE_DIR="${DASHBOARD_CACHE_DIR:-/var/lib/pfe-dashboard}"
+
+ANSIBLE_OUTPUTS_DIR="${ANSIBLE_OUTPUTS_DIR:-$DASHBOARD_CACHE_DIR/outputs}"
+ANALYZER_LATEST_DIR="${ANALYZER_LATEST_DIR:-$DASHBOARD_CACHE_DIR/analyzer/latest}"
+METRICS_LATEST_DIR="${METRICS_LATEST_DIR:-$DASHBOARD_CACHE_DIR/metrics/latest}"
 
 AWS_REGION="${AWS_REGION:-eu-north-1}"
 AWS_PROFILE="${AWS_PROFILE:-}"
@@ -35,32 +39,47 @@ fi
 
 mkdir -p "$ANSIBLE_OUTPUTS_DIR"
 mkdir -p "$ANALYZER_LATEST_DIR"
+mkdir -p "$METRICS_LATEST_DIR"
 
-echo "[INFO] AWS region: $AWS_REGION"
-echo "[INFO] Bucket:     $ARTIFACTS_BUCKET"
+echo "[INFO] AWS region:       $AWS_REGION"
+echo "[INFO] Bucket:           $ARTIFACTS_BUCKET"
+echo "[INFO] Dashboard cache:  $DASHBOARD_CACHE_DIR"
 
 echo "[INFO] Checking AWS identity..."
 aws sts get-caller-identity "${AWS_ARGS[@]}" >/dev/null
 
-echo "[INFO] Syncing latest validation artifacts from S3 to local dashboard cache..."
+echo "[INFO] Syncing latest validation artifacts from S3 to dashboard cache..."
 aws s3 sync \
   "s3://$ARTIFACTS_BUCKET/latest/validation-artifacts/" \
   "$ANSIBLE_OUTPUTS_DIR/" \
   "${AWS_ARGS[@]}" \
   --delete
 
-echo "[INFO] Syncing latest analyzer decision from S3 to local dashboard cache..."
+echo "[INFO] Syncing latest analyzer outputs from S3 to dashboard cache..."
 aws s3 sync \
   "s3://$ARTIFACTS_BUCKET/latest/analyzer/" \
   "$ANALYZER_LATEST_DIR/" \
   "${AWS_ARGS[@]}" \
   --delete
 
+echo "[INFO] Syncing latest Prometheus metrics snapshot from S3 to dashboard cache..."
+aws s3 sync \
+  "s3://$ARTIFACTS_BUCKET/latest/metrics/" \
+  "$METRICS_LATEST_DIR/" \
+  "${AWS_ARGS[@]}" \
+  --delete
+
 echo "[OK] Dashboard cache synchronized from S3."
 echo "[INFO] Validation cache: $ANSIBLE_OUTPUTS_DIR"
 echo "[INFO] Analyzer cache:   $ANALYZER_LATEST_DIR"
+echo "[INFO] Metrics cache:    $METRICS_LATEST_DIR"
 
 if [ -f "$ANALYZER_LATEST_DIR/decision.json" ]; then
   echo "[INFO] Latest analyzer decision:"
   python3 -m json.tool "$ANALYZER_LATEST_DIR/decision.json" || cat "$ANALYZER_LATEST_DIR/decision.json"
+fi
+
+if [ -f "$METRICS_LATEST_DIR/manifest.json" ]; then
+  echo "[INFO] Latest metrics manifest:"
+  python3 -m json.tool "$METRICS_LATEST_DIR/manifest.json" || cat "$METRICS_LATEST_DIR/manifest.json"
 fi

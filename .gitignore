@@ -32,8 +32,14 @@ aws-credentials*
 *.pem
 *.key
 
+# Ansible generated outputs
+ansible/outputs/
+
 # Cloud analyzer local outputs
 cloud/analyzer/outputs/
+
+# Monitoring generated outputs
+monitoring/outputs/
 
 # Python
 __pycache__/
