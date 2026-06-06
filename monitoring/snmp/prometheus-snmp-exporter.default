@@ -1,0 +1,7 @@
+# Systemd environment file for prometheus-snmp-exporter.
+# Safe to commit because it contains no secrets.
+#
+# Deployed to:
+# /etc/default/prometheus-snmp-exporter
+
+ARGS="--config.file=/etc/prometheus/snmp.yml"

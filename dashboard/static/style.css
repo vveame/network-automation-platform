@@ -384,3 +384,15 @@ td {
   color: #1f2937;
   font-size: 14px;
 }
+
+.snmp-router-block {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.snmp-router-block h4 {
+  margin: 0 0 10px;
+  color: #1f2937;
+  font-size: 18px;
+}

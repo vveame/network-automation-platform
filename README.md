@@ -1021,7 +1021,7 @@ This connects the original monitoring architecture to the anomaly detection laye
 
 ```text
 Prometheus metrics → anomaly analysis → dashboard decision
-```s
+```
 
 ### Dashboard Cache Structure
 
@@ -1067,6 +1067,103 @@ At this checkpoint, the platform provides:
 * Flask dashboard visualization
 
 The next step is to display Prometheus metrics directly in the Flask dashboard and later extend the anomaly analyzer to use both validation reports and Prometheus metrics.
+
+## Monitoring, SNMP and Analyzer Baseline
+
+The platform now includes a local Prometheus monitoring baseline connected to the same cloud-backed artifact workflow used by validation reports and analyzer outputs.
+
+### Monitoring Stack
+
+The current monitoring layer includes:
+
+```text
+Prometheus
+Node Exporter
+Blackbox Exporter
+SNMP Exporter
+```
+
+The monitoring data is exported as JSON snapshots and uploaded to AWS S3.
+
+### Monitored Data
+
+Current monitored sources:
+
+```text
+DevOps VM host metrics
+GNS3 VM host metrics
+DMZ Web HTTP/TCP probes
+DMZ DNS TCP/DNS probes
+EdgeRouter SNMPv3 interface metrics
+```
+
+### SNMPv3 Network Monitoring
+
+The EdgeRouter is monitored through SNMPv3 using SNMP Exporter.
+
+```text
+SNMP target: 10.200.0.30:1161
+SNMP mode: authPriv
+SNMP authentication: SHA
+SNMP privacy: AES
+Prometheus job: snmp-network-devices
+SNMP Exporter module: if_mib
+```
+
+SNMPv3 credentials are local-only and are not committed to GitHub.
+
+### Metrics Snapshot Flow
+
+```text
+Prometheus HTTP API
+        ↓
+monitoring/outputs/latest/
+        ↓
+Jenkins upload
+        ↓
+AWS S3 latest/metrics/
+        ↓
+/var/lib/pfe-dashboard/metrics/latest/
+        ↓
+Flask dashboard + cloud analyzer
+```
+
+### Dashboard Integration
+
+The Flask dashboard now visualizes:
+
+```text
+validation report status
+cloud analyzer decision
+Prometheus target health
+per-node memory and disk usage
+Blackbox service probes
+SNMP edge-router interface status and counters
+```
+
+### Analyzer Integration
+
+The analyzer now combines validation reports with Prometheus metrics.
+
+It scores:
+
+```text
+validation failures
+Prometheus targets down
+Blackbox probe failures
+memory/disk pressure
+SNMP target down
+SNMP interface unexpectedly down
+SNMP interface errorsvalidation failures
+Prometheus targets down
+Blackbox probe failures
+memory/disk pressure
+SNMP target down
+SNMP interface unexpectedly down
+SNMP interface errors
+```
+
+This creates the first explainable anomaly-detection baseline before future ML-based analysis.
 
 ## CI/CD Integration with Jenkins and GitHub Actions
 

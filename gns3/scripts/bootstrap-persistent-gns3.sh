@@ -67,6 +67,38 @@ prepare_frr_common() {
   fi
 }
 
+install_frr_snmp() {
+    LOCAL_DIR="$1"
+    SNMP_ENV_REL_PATH="$2"
+
+    if [ -z "$SNMP_ENV_REL_PATH" ]; then
+        return 0
+    fi
+
+    SNMP_TEMPLATE="$REPO/frr/snmp/templates/snmpd.conf.template"
+    SNMP_ENV_FILE="$REPO/$SNMP_ENV_REL_PATH"
+
+    echo "[INFO] Preparing SNMPv3 persistent config..."
+
+    if [ ! -f "$SNMP_TEMPLATE" ]; then
+        echo "[ERROR] Missing SNMP template: $SNMP_TEMPLATE"
+        exit 1
+    fi
+
+    if [ ! -f "$SNMP_ENV_FILE" ]; then
+        echo "[WARN] Local SNMP env file not found: $SNMP_ENV_FILE"
+        echo "[WARN] SNMP will stay disabled for this FRR node."
+        return 0
+    fi
+
+    sudo mkdir -p "$LOCAL_DIR/snmp"
+
+    install_file "$SNMP_TEMPLATE" "$LOCAL_DIR/snmp/snmpd.conf.template" "644"
+    install_file "$SNMP_ENV_FILE" "$LOCAL_DIR/snmp/snmp.env" "600"
+
+    echo "[OK] SNMPv3 config installed into persistent local directory."
+}
+
 prepare_ovs_common() {
   LOCAL_DIR="$1"
   ROOT_DIR="$2"
@@ -87,6 +119,7 @@ deploy_frr() {
   INTERFACES_FILE="$3"
   FRR_CONF="$4"
   EXTRA_SECURITY="$5"
+  SNMP_ENV="${6:-}"
 
   CONTAINER="$(find_container_any_state "$NODE_NAME")"
 
@@ -120,6 +153,8 @@ deploy_frr() {
   for SEC in $EXTRA_SECURITY; do
     install_file "$REPO/security/$SEC" "$LOCAL_DIR/security/$SEC" "755"
   done
+
+  install_frr_snmp "$LOCAL_DIR" "$SNMP_ENV"
 }
 
 deploy_ovs() {
@@ -210,35 +245,40 @@ deploy_frr \
   "frr/env/core-frr-1.router-env" \
   "frr/interfaces/core-frr-1-interfaces.sh" \
   "frr/routing/core-frr-1.conf" \
-  ""
+  "" \
+  "frr/snmp/env/frr-routers.snmp.env"
 
 deploy_frr \
   "Core-FRR-2" \
   "frr/env/core-frr-2.router-env" \
   "frr/interfaces/core-frr-2-interfaces.sh" \
   "frr/routing/core-frr-2.conf" \
-  ""
+  "" \
+  "frr/snmp/env/frr-routers.snmp.env"
 
 deploy_frr \
   "Dist-FRR-1" \
   "frr/env/dist-frr-1.router-env" \
   "frr/interfaces/dist-frr-1-interfaces.sh" \
   "frr/routing/dist-frr-1.conf" \
-  "management-vlan-protection.sh"
+  "management-vlan-protection.sh" \
+  "frr/snmp/env/frr-routers.snmp.env"
 
 deploy_frr \
   "Dist-FRR-2" \
   "frr/env/dist-frr-2.router-env" \
   "frr/interfaces/dist-frr-2-interfaces.sh" \
   "frr/routing/dist-frr-2.conf" \
-  "management-vlan-protection.sh"
+  "management-vlan-protection.sh" \
+  "frr/snmp/env/frr-routers.snmp.env"
 
 deploy_frr \
   "EdgeRouter-VPNGateway" \
   "frr/env/edge-router.router-env" \
   "frr/interfaces/edge-router-interfaces.sh" \
   "frr/routing/edge-router.conf" \
-  "dmz-isolation.sh nat-control.sh"
+  "dmz-isolation.sh nat-control.sh" \
+  "frr/snmp/env/frr-routers.snmp.env"
 
 echo "[INFO] Deploying OVS nodes..."
 

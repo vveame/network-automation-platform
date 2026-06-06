@@ -63,6 +63,10 @@ def calculate_metrics_risk(metrics: dict[str, Any] | None) -> tuple[int, list[st
     memory_used = float(metrics.get("memory_used_percent", 0))
     disk_used = float(metrics.get("disk_used_percent", 0))
 
+    snmp_targets_down = int(metrics.get("snmp_targets_down", 0))
+    snmp_unexpected_down = int(metrics.get("snmp_interfaces_unexpected_down_count", 0))
+    snmp_interfaces_with_errors = int(metrics.get("snmp_interfaces_with_errors_count", 0))
+
     if targets_down > 0:
         score += min(targets_down * 25, 50)
         reasons.append(f"prometheus_targets_down:{targets_down}")
@@ -70,6 +74,18 @@ def calculate_metrics_risk(metrics: dict[str, Any] | None) -> tuple[int, list[st
     if blackbox_failed > 0:
         score += min(blackbox_failed * 20, 60)
         reasons.append(f"blackbox_probes_failed:{blackbox_failed}")
+
+    if snmp_targets_down > 0:
+        score += min(snmp_targets_down * 25, 50)
+        reasons.append(f"snmp_targets_down:{snmp_targets_down}")
+
+    if snmp_unexpected_down > 0:
+        score += min(snmp_unexpected_down * 15, 45)
+        reasons.append(f"snmp_interfaces_unexpected_down:{snmp_unexpected_down}")
+
+    if snmp_interfaces_with_errors > 0:
+        score += min(snmp_interfaces_with_errors * 10, 30)
+        reasons.append(f"snmp_interfaces_with_errors:{snmp_interfaces_with_errors}")
 
     if memory_used >= 95:
         score += 35

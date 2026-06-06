@@ -3,6 +3,7 @@ from typing import List
 
 from dto.dashboard_dto import DashboardDTO
 from dto.domain_dto import DomainDTO
+
 from service.report_service import ReportService
 from service.node_service import NodeService
 from service.service_health_service import ServiceHealthService
@@ -72,6 +73,7 @@ class DashboardService:
 
         for domain_name in sorted(grouped.keys()):
             domain_reports = grouped[domain_name]
+
             total = len(domain_reports)
             passed = len([report for report in domain_reports if report.status == "passed"])
             failed = len([report for report in domain_reports if report.status == "failed"])
@@ -94,6 +96,8 @@ class DashboardService:
     def _global_status(self, failed: int, missing: int) -> str:
         if failed > 0:
             return "failed"
+
         if missing > 0:
             return "warning"
+
         return "passed"

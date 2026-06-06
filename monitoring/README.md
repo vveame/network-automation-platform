@@ -1,70 +1,70 @@
 # Monitoring Baseline
 
-This directory contains the first Prometheus monitoring baseline for the intelligent network automation platform.
+This directory contains the local Prometheus monitoring baseline for the intelligent network automation platform.
 
 ## Objective
 
-The final monitoring architecture is based on:
+The monitoring layer collects infrastructure, service and network-device metrics from the local GNS3/DevOps environment.
+
+The monitoring data is used by:
 
 ```text
-Infrastructure metrics and logs
+Prometheus
         ↓
-Prometheus / exporters
+metrics snapshot export
         ↓
-AI anomaly detection
+AWS S3 source of truth
         ↓
-Dashboard and remediation workflow
+Flask dashboard visualization
+        ↓
+cloud analyzer risk scoring
 ```
 
-At this stage, the AWS VPN is still disabled, so cloud-side services cannot directly scrape private GNS3 targets.
+This baseline prepares the project for future AI/ML anomaly detection by producing structured and repeatable metrics snapshots.
 
-For this reason, the first monitoring baseline is local. Prometheus runs in the local DevOps environment, exports metrics snapshots, and Jenkins uploads those snapshots to AWS S3.
+## Architecture
 
-## Current Architecture
+The current monitoring architecture is local because the hybrid VPN/cloud link is not yet the active scraping path.
 
 ```text
 DevOps VM
-        ↓
-Prometheus
-        ↓
-Node Exporter
-        ↓
-monitoring/outputs/latest/
-        ↓
-AWS S3
-        ↓
-latest/metrics/
-        ↓
-/var/lib/pfe-dashboard/metrics/latest/
-        ↓
-Flask dashboard / future analyzer
+├── Prometheus
+├── Node Exporter
+├── Blackbox Exporter
+└── SNMP Exporter
+
+GNS3 lab
+├── GNS3 VM Node Exporter target
+├── DMZ Web service probes
+├── DMZ DNS service probes
+└── EdgeRouter SNMPv3 interface metrics
 ```
 
 ## Source of Truth Model
 
-The monitoring workflow follows the same model as validation and analyzer outputs:
+The monitoring workflow follows the same source-of-truth model as validation reports and analyzer outputs.
 
 ```text
 Jenkins workspace = temporary generation area
-S3 = source of truth
+AWS S3 = durable source of truth
 /var/lib/pfe-dashboard = local dashboard cache
-GitHub = source code only
+GitHub = source code, templates and scripts only
 ```
 
-Metrics are generated temporarily in:
+Generated local metrics are stored temporarily in:
 
 ```text
 monitoring/outputs/latest/
 ```
 
-They are uploaded to S3 under:
+Jenkins uploads them to S3 under:
 
 ```text
-metrics-snapshots/<jenkins-job-name>-<build-number>/
+metrics-snapshots/<build-label>/
 latest/metrics/
 ```
 
-Then the latest metrics are restored from S3 into:
+Then the dashboard cache is synchronized to:
 
 ```text
 /var/lib/pfe-dashboard/metrics/latest/
@@ -77,31 +77,103 @@ monitoring/
 ├── prometheus/
 │   ├── prometheus.yml
 │   └── targets/
-│       └── node-targets.yml
-├── exporters/
-│   └── README.md
+│       ├── node-targets.yml
+│       ├── blackbox-http-targets.yml
+│       ├── blackbox-tcp-targets.yml
+│       ├── blackbox-dns-targets.yml
+│       └── snmp-targets.yml
+├── blackbox/
+│   └── blackbox.yml
+├── snmp/
+│   ├── README.md
+│   ├── snmp-auth.local.yml.example
+│   ├── snmp.yml.example
+│   └── prometheus-snmp-exporter.default
 └── scripts/
     ├── apply-local-prometheus-baseline.sh
+    ├── build-local-snmp-exporter-config.sh
     └── export-prometheus-snapshot.sh
 ```
 
-## Current Scope
+## Monitored Sources
 
-The current baseline monitors:
+### Prometheus self-monitoring
 
-* Prometheus server health
-* DevOps VM Linux metrics through Node Exporter
+```text
+Prometheus target health
+Prometheus scrape status
+```
 
-The exported snapshot currently includes:
+### Node Exporter
 
-* target up/down state
-* node system information
-* available memory
-* total memory
-* available root filesystem space
-* total root filesystem size
+Current host targets:
 
-## Apply Local Monitoring Baseline
+```text
+devops-server
+gns3-vm
+```
+
+Collected metrics include:
+
+```text
+node_uname_info
+node_memory_MemAvailable_bytes
+node_memory_MemTotal_bytes
+node_filesystem_avail_bytes
+node_filesystem_size_bytes
+```
+
+### Blackbox Exporter
+
+Current probes:
+
+```text
+DMZ Web HTTP: http://172.16.50.10
+DMZ Web TCP/80: 172.16.50.10:80
+DMZ DNS TCP/53: 172.16.50.20:53
+DNS query: web.pfe.local via 172.16.50.20
+```
+
+Collected metrics include:
+
+```text
+probe_success
+probe_duration_seconds
+probe_http_status_code
+```
+
+### SNMP Exporter
+
+Current SNMP target:
+
+```text
+EdgeRouter-VPNGateway: 10.200.0.30:1161
+```
+
+Security:
+
+```text
+SNMPv3 authPriv
+SHA authentication
+AES privacy
+Read-only access
+UDP/1161 allowed only from DevOps OOB IP
+```
+
+Collected metrics include:
+
+```text
+up{job="snmp-network-devices"}
+sysUpTime
+ifAdminStatus
+ifOperStatus
+ifHCInOctets
+ifHCOutOctets
+ifInErrors
+ifOutErrors
+```
+
+## Apply Monitoring Baseline
 
 From the repository root:
 
@@ -109,16 +181,36 @@ From the repository root:
 ./monitoring/scripts/apply-local-prometheus-baseline.sh
 ```
 
-Prometheus UI:
+This script installs/restarts:
 
 ```text
-http://localhost:9090
+prometheus
+prometheus-node-exporter
+prometheus-blackbox-exporter
+prometheus-snmp-exporter
+snmp tools
 ```
 
-Node Exporter endpoint:
+It copies versioned Prometheus/Blackbox/target files, but it does not overwrite:
 
 ```text
-http://localhost:9100/metrics
+/etc/prometheus/snmp.yml
+```
+
+That file is generated locally because it contains SNMPv3 credentials.
+
+## Build Local SNMP Exporter Config
+
+Before applying SNMP monitoring for the first time:
+
+```bash
+./monitoring/scripts/build-local-snmp-exporter-config.sh
+```
+
+The generated file is:
+
+```text
+/etc/prometheus/snmp.yml
 ```
 
 ## Export Metrics Snapshot
@@ -129,150 +221,94 @@ From the repository root:
 ./monitoring/scripts/export-prometheus-snapshot.sh
 ```
 
-Default temporary output:
+Default output:
 
 ```text
 monitoring/outputs/latest/
 ```
 
-This directory is generated and must not be committed to GitHub.
+The snapshot includes:
+
+```text
+up.json
+node_uname_info.json
+node_memory_available_bytes.json
+node_memory_total_bytes.json
+node_filesystem_available_bytes.json
+node_filesystem_size_bytes.json
+blackbox_probe_success.json
+blackbox_probe_duration_seconds.json
+blackbox_http_status_code.json
+snmp_up.json
+snmp_sys_uptime.json
+snmp_if_admin_status.json
+snmp_if_oper_status.json
+snmp_if_hc_in_octets.json
+snmp_if_hc_out_octets.json
+snmp_if_in_errors.json
+snmp_if_out_errors.json
+```
 
 ## Jenkins Integration
 
-Jenkins exports the Prometheus snapshot after the validation and analyzer stages.
+The Jenkins pipeline exports a Prometheus snapshot after validation/analyzer stages.
 
-Correct Jenkins flow:
+Expected flow:
 
 ```text
 1. Generate validation reports
 2. Upload validation artifacts to S3
-3. Run cloud analyzer
-4. Upload analyzer results to S3
-5. Export Prometheus metrics snapshot
+3. Export Prometheus metrics snapshot
+4. Run cloud analyzer with validation + metrics inputs
+5. Upload analyzer outputs to S3
 6. Upload metrics snapshot to S3
 7. Sync dashboard cache from S3
 ```
 
-The dashboard cache sync stage restores:
+## Dashboard Integration
 
-```text
-latest/validation-artifacts/ → /var/lib/pfe-dashboard/outputs/
-latest/analyzer/             → /var/lib/pfe-dashboard/analyzer/latest/
-latest/metrics/              → /var/lib/pfe-dashboard/metrics/latest/
-```
-
-## Integration with Cloud Analyzer
-
-Prometheus metrics are now consumed by the cloud analyzer.
-
-The metrics snapshot is generated in:
-
-```text
-monitoring/outputs/latest/
-```
-
-Then Jenkins uploads it to:
-
-```text
-metrics-snapshots/<build>/
-latest/metrics/
-```
-
-The analyzer reads the local generated metrics snapshot before producing the final anomaly decision.
-
-This means Prometheus is no longer only visualized in the dashboard. It is now part of the anomaly scoring process.
-
-## Future Extensions
-
-Future monitoring work will add:
-
-* GNS3 VM Node Exporter target
-* SNMP Exporter for network equipment
-* Blackbox Exporter for HTTP/DNS/ICMP checks
-* Grafana dashboards
-* analyzer rules based on Prometheus metrics
-* ML anomaly detection after enough historical data is collected
-
-## Dashboard Visualization
-
-The Flask dashboard reads the latest metrics snapshot from:
+The Flask dashboard reads the latest metrics from:
 
 ```text
 /var/lib/pfe-dashboard/metrics/latest/
 ```
 
-This directory is not generated directly by Prometheus.
-
-It is restored from S3 using:
+It visualizes:
 
 ```text
-cloud/scripts/sync-dashboard-cache-from-s3.sh
+Prometheus target availability
+Node memory/disk usage
+Blackbox service probes
+SNMP edge-router interface status
+SNMP interface counters
 ```
 
-Flow:
+## Analyzer Integration
+
+The analyzer uses monitoring metrics as part of its rule-based risk score.
+
+Current metrics-based risk inputs:
 
 ```text
-Prometheus HTTP API
-        ↓
-monitoring/outputs/latest/
-        ↓
-S3 metrics-snapshots/<build>/
-S3 latest/metrics/
-        ↓
-/var/lib/pfe-dashboard/metrics/latest/
-        ↓
-Flask dashboard
+Prometheus targets down
+Blackbox probes failed
+High memory usage
+High disk usage
+SNMP target down
+SNMP interface unexpectedly down
+SNMP interface errors
 ```
-
-The dashboard currently visualizes:
-
-* target availability
-* memory usage
-* disk usage
-* system information
-* snapshot timestamp
-
-This connects the monitoring baseline to the same S3-backed dashboard model used by validation reports and analyzer outputs.
-
-## GNS3 VM Metrics Target
-
-The monitoring baseline can also scrape the GNS3 VM host through Node Exporter.
-
-Prometheus target example:
-
-```text
-192.168.248.131:9100
-```
-
-This monitors the GNS3 VM host resource usage, including CPU/memory/disk metrics exposed by Node Exporter.
-
-It does not directly monitor every FRR/OVS container inside the GNS3 topology. Those can be added later using SNMP Exporter, Blackbox Exporter, or custom exporters.
-
-## Blackbox Exporter Service Probes
-
-The monitoring baseline includes Blackbox Exporter service checks.
-
-Current probes:
-
-```text
-DMZ Web HTTP       http://172.16.50.10
-DMZ Web TCP/80     172.16.50.10:80
-DMZ DNS TCP/53     172.16.50.20:53
-DNS query          web.pfe.local via 172.16.50.20
-```
-
-Blackbox Exporter provides service-level metrics such as:
-
-```text
-probe_success
-probe_duration_seconds
-probe_http_status_code
-```
-
-Unlike the Prometheus `up` metric, which only confirms that Prometheus scraped the exporter, `probe_success` confirms whether the actual service probe succeeded.
 
 ## Notes
 
-This monitoring baseline does not replace the validation-artifact analyzer.
+Generated monitoring outputs are not committed to GitHub.
 
-It complements it by introducing real metrics into the same S3-backed source-of-truth workflow.
+GitHub stores only:
+
+```text
+Prometheus configuration
+Exporter target definitions
+Safe examples
+Automation scripts
+Documentation
+```

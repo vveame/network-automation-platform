@@ -1,14 +1,23 @@
 # Cloud Analyzer
 
-This directory contains the first anomaly-detection baseline for the cloud phase of the intelligent network automation platform.
+This directory contains the first anomaly-detection baseline for the intelligent network automation platform.
 
 ## Purpose
 
-The final target architecture is based on monitoring metrics and logs collected from the local infrastructure and analyzed by an AI/anomaly-detection module.
+The final project objective is to analyze monitoring metrics and logs collected from the infrastructure and use them to detect anomalies.
 
-However, while the VPN/hybrid link is disabled, the cloud cannot directly scrape private GNS3 nodes.
+At this stage, the analyzer uses an explainable rule-based baseline.
 
-For this reason, the first analyzer works with Jenkins/Ansible validation artifacts exported to S3.
+It combines:
+
+```text
+Ansible validation reports
+Prometheus monitoring metrics
+Blackbox service probes
+SNMP network interface metrics
+```
+
+This creates a structured baseline before future historical/statistical or machine-learning anomaly detection.
 
 ## Current Flow
 
@@ -21,13 +30,17 @@ Jenkins pipeline
         ↓
 ansible/outputs/
         ↓
-AWS S3 validation-artifacts/
+Prometheus metrics snapshot
+        ↓
+monitoring/outputs/latest/
         ↓
 Cloud analyzer
         ↓
 summary.json + decision.json + analysis-report.txt
         ↓
-AWS S3 processed-summaries/ and anomaly-results/
+AWS S3 latest/analyzer/
+        ↓
+Flask dashboard
 ```
 
 ## Structure
@@ -36,6 +49,7 @@ AWS S3 processed-summaries/ and anomaly-results/
 cloud/analyzer/
 ├── analyze_validation_artifacts.py
 ├── parse_validation_reports.py
+├── parse_prometheus_metrics.py
 ├── anomaly_rules.py
 ├── generate_summary.py
 ├── requirements.txt
@@ -48,7 +62,7 @@ cloud/analyzer/
 
 Main CLI entrypoint.
 
-It can analyze local `ansible/outputs/` or download a validation artifact prefix from S3 before analysis.
+It can analyze local validation artifacts and optionally include a Prometheus metrics snapshot.
 
 ### parse_validation_reports.py
 
@@ -56,72 +70,36 @@ Parses raw validation report files.
 
 Responsibilities:
 
-* read `.txt` reports
-* classify report category
-* detect critical patterns
-* detect warning patterns
-* handle expected security-block test results
-* mark each report as passed, warning, failed or empty
+```text
+read .txt reports
+classify report category
+detect critical patterns
+detect warning patterns
+handle expected security-block test results
+mark reports as passed, warning, failed or empty
+```
+
+### parse_prometheus_metrics.py
+
+Parses exported Prometheus metric JSON files.
+
+Current parsed metric groups:
+
+```text
+Prometheus target health
+Node memory/disk/system metrics
+Blackbox service probes
+SNMP target health
+SNMP interface status
+SNMP interface counters
+SNMP interface errors
+```
 
 ### anomaly_rules.py
 
 Contains explainable anomaly scoring logic.
 
-Responsibilities:
-
-* calculate risk score
-* assign severity
-* recommend action
-* generate anomaly decision object
-
-### generate_summary.py
-
-Generates analyzer output files.
-
-Outputs:
-
-* `summary.json`
-* `decision.json`
-* `analysis-report.txt`
-
-## Current Detection Logic
-
-The first version uses explainable rule-based anomaly scoring.
-
-It checks validation reports for:
-
-* failed Ansible tasks
-* unreachable nodes
-* security validation failures
-* DMZ service failures
-* OOB management failures
-* FRR/routing validation issues
-* OVS/switching validation issues
-* end-to-end validation failures
-* warning patterns
-
-Expected security-block tests are handled separately. For example, blocked SSH or HTTP tests may produce connection timeouts, but those timeouts are considered normal when they appear in explicit blocked-policy sections.
-
-## Metrics-Aware Analyzer
-
-The analyzer now uses two input sources:
-
-```text
-ansible/outputs/
-monitoring/outputs/latest/
-```
-
-The validation reports provide infrastructure validation status.
-
-The Prometheus metrics snapshot provides monitoring signals such as:
-
-* target up/down state
-* memory usage
-* disk usage
-* system information
-* metrics snapshot timestamp
-
-The analyzer calculates:
+It calculates:
 
 ```text
 validation_risk_score
@@ -129,92 +107,87 @@ metrics_risk_score
 risk_score
 severity
 recommended_action
+detection_reasons
 ```
 
-Example healthy output:
+### generate_summary.py
+
+Generates analyzer output files:
 
 ```text
-Global validation status: passed
-Anomaly status: normal
-Risk score: 0/100
-Validation risk score: 0/100
-Metrics risk score: 0/100
-Severity: low
-Recommended action: no_action
-Targets up: 2/2
+summary.json
+decision.json
+analysis-report.txt
 ```
 
-This is the first combined anomaly detection baseline before future ML integration.
+## Detection Logic
 
-## Blackbox Probe Risk Scoring
+The analyzer uses rule-based risk scoring.
 
-The anomaly analyzer uses Blackbox probe results as part of the metrics risk score.
+### Validation risk
 
-If one or more service probes fail, the analyzer increases the metrics risk score and records a detection reason such as:
+Validation reports increase risk when they show:
 
 ```text
-blackbox_probes_failed:1
+security validation failure
+end-to-end validation failure
+OOB management failure
+FRR/routing validation failure
+OVS/switching validation failure
+DMZ validation failure
+critical error patterns
+warning patterns
 ```
+Expected blocked-policy tests are handled separately. For example, blocked SSH or HTTP tests can produce timeouts, but those timeouts are normal when they appear in explicit blocked-policy sections.
 
-This connects service availability monitoring to the anomaly detection baseline.
+### Metrics risk
 
-## Analyzer Outputs in S3
-
-Jenkins uploads analyzer outputs to:
+Prometheus metrics increase risk when they show:
 
 ```text
-processed-summaries/<jenkins-job-name>-<build-number>/
-anomaly-results/<jenkins-job-name>-<build-number>/
-latest/analyzer/
+Prometheus targets down
+Blackbox probes failed
+high memory usage
+high disk usage
+SNMP target down
+SNMP interface unexpectedly down
+SNMP interface errors
 ```
 
-Example:
+SNMP interface status is interpreted using IF-MIB values:
 
 ```text
-processed-summaries/pfe-network-validation-48/
-anomaly-results/pfe-network-validation-48/
-latest/analyzer/decision.json
+1 = up
+2 = down
+3 = testing
+4 = unknown
+5 = dormant
+6 = notPresent
+7 = lowerLayerDown
 ```
+
+The analyzer treats an interface as unexpected down when:
+
+```text
+admin_status = up
+oper_status != up
+interface != lo
+```
+
+The loopback interface is parsed but ignored for unexpected-down risk.
 
 ## Why Rule-Based First
 
-A full ML model requires historical metrics and enough clean time-series data.
+A full ML model needs historical metrics, repeated normal baselines and enough anomaly examples.
 
-This first analyzer creates a structured baseline that can later be extended with:
+This rule-based analyzer creates the first structured anomaly baseline and prepares the project for later ML work.
 
-* Prometheus metrics
-* log events
-* historical trends
-* statistical anomaly detection
-* machine learning models
+Future extensions can add:
 
-## Run Locally from Current Ansible Outputs
-
-```bash
-python3 cloud/analyzer/analyze_validation_artifacts.py \
-  --input-dir ansible/outputs \
-  --output-dir cloud/analyzer/outputs \
-  --build-label local-test
+```text
+historical Prometheus trend analysis
+statistical thresholds
+log-event correlation
+ML anomaly detection
+automated remediation proposals
 ```
-
-## Run from S3 Artifacts
-
-```bash
-BUCKET="$(terraform -chdir=cloud/terraform/environments/dev output -raw artifacts_bucket_name)"
-
-python3 cloud/analyzer/analyze_validation_artifacts.py \
-  --s3-bucket "$BUCKET" \
-  --s3-prefix validation-artifacts/pfe-network-validation-48 \
-  --aws-profile vviam-student \
-  --aws-region eu-north-1 \
-  --output-dir cloud/analyzer/outputs \
-  --build-label pfe-network-validation-48
-```
-
-## Current Status
-
-This analyzer is a baseline.
-
-It does not replace the final Prometheus-based monitoring architecture.
-
-It prepares the anomaly detection logic while the hybrid connectivity layer is still disabled.

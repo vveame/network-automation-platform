@@ -196,7 +196,14 @@ if [ -f /etc/shadow ]; then
   sed -i 's/^root:[!*][^:]*:/root::/' /etc/shadow
 fi
 
-# 9. Start SSH daemon
+# Start SNMP agent if /etc/local/snmp/snmp.env exists.
+# SNMP is optional and must never prevent the router from starting.
+if [ -x /start-snmp.sh ]; then
+    echo "[BOOT] Starting optional SNMP service..."
+    /start-snmp.sh || echo "[BOOT][WARN] SNMP startup failed, continuing router startup."
+fi
+
+# 10. Start SSH daemon
 
 if command -v sshd >/dev/null 2>&1; then
   echo "[BOOT] Starting SSH daemon..."

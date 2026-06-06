@@ -3,10 +3,21 @@ from dto.prometheus_metrics_dto import (
     PrometheusTargetDTO,
     PrometheusNodeMetricDTO,
     BlackboxProbeDTO,
+    SNMPInterfaceDTO,
 )
 
 
 BYTES_IN_GB = 1024 ** 3
+
+SNMP_STATUS_MAP = {
+    1: "up",
+    2: "down",
+    3: "testing",
+    4: "unknown",
+    5: "dormant",
+    6: "not_present",
+    7: "lower_layer_down",
+}
 
 
 class PrometheusMetricsService:
@@ -16,14 +27,24 @@ class PrometheusMetricsService:
     def get_latest_metrics(self) -> PrometheusMetricsDTO:
         manifest = self.repository.load_manifest()
         up_query = self.repository.load_query("up")
+
         uname_query = self.repository.load_query("node_uname_info")
         memory_available_query = self.repository.load_query("node_memory_available_bytes")
         memory_total_query = self.repository.load_query("node_memory_total_bytes")
         disk_available_query = self.repository.load_query("node_filesystem_available_bytes")
         disk_total_query = self.repository.load_query("node_filesystem_size_bytes")
+
         blackbox_success_query = self.repository.load_query("blackbox_probe_success")
         blackbox_duration_query = self.repository.load_query("blackbox_probe_duration_seconds")
         blackbox_http_status_query = self.repository.load_query("blackbox_http_status_code")
+
+        snmp_up_query = self.repository.load_query("snmp_up")
+        snmp_admin_query = self.repository.load_query("snmp_if_admin_status")
+        snmp_oper_query = self.repository.load_query("snmp_if_oper_status")
+        snmp_in_octets_query = self.repository.load_query("snmp_if_hc_in_octets")
+        snmp_out_octets_query = self.repository.load_query("snmp_if_hc_out_octets")
+        snmp_in_errors_query = self.repository.load_query("snmp_if_in_errors")
+        snmp_out_errors_query = self.repository.load_query("snmp_if_out_errors")
 
         if not manifest or not up_query:
             return self._unavailable()
@@ -47,6 +68,33 @@ class PrometheusMetricsService:
             http_status_query=blackbox_http_status_query,
         )
 
+        snmp_targets = self._parse_targets(snmp_up_query)
+        snmp_targets_total = len(snmp_targets)
+        snmp_targets_up = len([target for target in snmp_targets if target.status == "up"])
+        snmp_targets_down = max(snmp_targets_total - snmp_targets_up, 0)
+
+        snmp_interfaces = self._parse_snmp_interfaces(
+            admin_query=snmp_admin_query,
+            oper_query=snmp_oper_query,
+            in_octets_query=snmp_in_octets_query,
+            out_octets_query=snmp_out_octets_query,
+            in_errors_query=snmp_in_errors_query,
+            out_errors_query=snmp_out_errors_query,
+        )
+
+        snmp_health_interfaces = [
+            iface for iface in snmp_interfaces
+            if self._is_health_relevant_snmp_interface(iface.if_name)
+        ]
+
+        snmp_interfaces_total = len(snmp_health_interfaces)
+        snmp_interfaces_up = len(
+            [iface for iface in snmp_health_interfaces if iface.oper_status == "up"]
+        )
+        snmp_interfaces_down = len(
+            [iface for iface in snmp_health_interfaces if iface.oper_status != "up"]
+        )
+
         memory_available = sum(node.memory_available_gb for node in node_metrics)
         memory_total = sum(node.memory_total_gb for node in node_metrics)
         disk_available = sum(node.disk_available_gb for node in node_metrics)
@@ -58,7 +106,7 @@ class PrometheusMetricsService:
         failed_probes = len([probe for probe in blackbox_probes if probe.status != "success"])
 
         status = "passed"
-        if targets_total == 0 or targets_down > 0 or failed_probes > 0:
+        if targets_total == 0 or targets_down > 0 or failed_probes > 0 or snmp_targets_down > 0 or snmp_interfaces_down > 0:
             status = "warning"
 
         first_node = node_metrics[0] if node_metrics else None
@@ -83,6 +131,14 @@ class PrometheusMetricsService:
             targets=targets,
             node_metrics=node_metrics,
             blackbox_probes=blackbox_probes,
+            snmp_available=snmp_targets_total > 0 or snmp_interfaces_total > 0,
+            snmp_targets_total=snmp_targets_total,
+            snmp_targets_up=snmp_targets_up,
+            snmp_targets_down=snmp_targets_down,
+            snmp_interfaces_total=snmp_interfaces_total,
+            snmp_interfaces_up=snmp_interfaces_up,
+            snmp_interfaces_down=snmp_interfaces_down,
+            snmp_interfaces=snmp_interfaces,
         )
 
     def _unavailable(self) -> PrometheusMetricsDTO:
@@ -106,7 +162,57 @@ class PrometheusMetricsService:
             targets=[],
             node_metrics=[],
             blackbox_probes=[],
+            snmp_available=False,
+            snmp_targets_total=0,
+            snmp_targets_up=0,
+            snmp_targets_down=0,
+            snmp_interfaces_total=0,
+            snmp_interfaces_up=0,
+            snmp_interfaces_down=0,
+            snmp_interfaces=[],
         )
+
+    def _parse_snmp_interfaces(
+        self,
+        admin_query,
+        oper_query,
+        in_octets_query,
+        out_octets_query,
+        in_errors_query,
+        out_errors_query,
+    ):
+        admin_by_key = self._values_by_snmp_interface_key(admin_query)
+        in_octets_by_key = self._values_by_snmp_interface_key(in_octets_query)
+        out_octets_by_key = self._values_by_snmp_interface_key(out_octets_query)
+        in_errors_by_key = self._values_by_snmp_interface_key(in_errors_query)
+        out_errors_by_key = self._values_by_snmp_interface_key(out_errors_query)
+
+        interfaces = []
+
+        for item in self._result_items(oper_query):
+            metric = item.get("metric", {})
+            key = self._snmp_interface_key(metric)
+
+            admin_value = int(admin_by_key.get(key, 0))
+            oper_value = int(self._item_value(item))
+
+            interfaces.append(
+                SNMPInterfaceDTO(
+                    node_name=metric.get("node_name", metric.get("instance", "unknown")),
+                    instance=metric.get("instance", "unknown"),
+                    if_name=metric.get("ifName", metric.get("ifDescr", "unknown")),
+                    if_descr=metric.get("ifDescr", "unknown"),
+                    if_index=metric.get("ifIndex", "unknown"),
+                    admin_status=SNMP_STATUS_MAP.get(admin_value, f"unknown_{admin_value}"),
+                    oper_status=SNMP_STATUS_MAP.get(oper_value, f"unknown_{oper_value}"),
+                    in_octets=int(in_octets_by_key.get(key, 0)),
+                    out_octets=int(out_octets_by_key.get(key, 0)),
+                    in_errors=int(in_errors_by_key.get(key, 0)),
+                    out_errors=int(out_errors_by_key.get(key, 0)),
+                )
+            )
+
+        return sorted(interfaces, key=lambda iface: (iface.node_name, iface.if_name))
 
     def _parse_blackbox_probes(self, success_query, duration_query, http_status_query):
         duration_by_key = self._values_by_blackbox_key(duration_query)
@@ -231,11 +337,27 @@ class PrometheusMetricsService:
 
         return result
 
+    def _values_by_snmp_interface_key(self, query_data):
+        result = {}
+
+        for item in self._result_items(query_data):
+            metric = item.get("metric", {})
+            result[self._snmp_interface_key(metric)] = self._item_value(item)
+
+        return result
+
     def _blackbox_key(self, metric):
         return (
             metric.get("job", "unknown"),
             metric.get("instance", "unknown"),
             metric.get("service_name", "unknown"),
+        )
+
+    def _snmp_interface_key(self, metric):
+        return (
+            metric.get("instance", "unknown"),
+            metric.get("ifIndex", "unknown"),
+            metric.get("ifName", metric.get("ifDescr", "unknown")),
         )
 
     def _result_items(self, query_data):
@@ -256,6 +378,21 @@ class PrometheusMetricsService:
 
         used = max(total - available, 0)
         return round((used / total) * 100, 2)
+
+    def _is_health_relevant_snmp_interface(self, if_name):
+        if not if_name:
+            return False
+
+        ignored_exact = {"lo"}
+        ignored_prefixes = ("vrrp",)
+
+        if if_name in ignored_exact:
+            return False
+
+        if if_name.startswith(ignored_prefixes):
+            return False
+
+        return True
 
     def _guess_role(self, instance):
         if "192.168.248.131" in instance:

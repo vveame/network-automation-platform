@@ -2,6 +2,7 @@ from repository.report_repository import ReportRepository
 from repository.ansible_vars_repository import AnsibleVarsRepository
 from repository.cloud_analyzer_repository import CloudAnalyzerRepository
 from repository.prometheus_metrics_repository import PrometheusMetricsRepository
+
 from service.dashboard_service import DashboardService
 from service.cloud_analyzer_service import CloudAnalyzerService
 from service.prometheus_metrics_service import PrometheusMetricsService
@@ -19,7 +20,9 @@ def init_services(app):
     prometheus_metrics_repository = PrometheusMetricsRepository(
         app.config["PROMETHEUS_METRICS_LATEST_DIR"]
     )
-    prometheus_metrics_service = PrometheusMetricsService(prometheus_metrics_repository)
+    prometheus_metrics_service = PrometheusMetricsService(
+        prometheus_metrics_repository=prometheus_metrics_repository
+    )
 
     dashboard_service = DashboardService(
         report_repository=report_repository,

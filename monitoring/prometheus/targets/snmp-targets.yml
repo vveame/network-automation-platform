@@ -1,0 +1,39 @@
+- targets:
+    - "10.200.0.11:1161"
+  labels:
+    node_name: "core-frr-1"
+    role: "core-router"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.12:1161"
+  labels:
+    node_name: "core-frr-2"
+    role: "core-router"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.21:1161"
+  labels:
+    node_name: "dist-frr-1"
+    role: "distribution-router"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.22:1161"
+  labels:
+    node_name: "dist-frr-2"
+    role: "distribution-router"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.30:1161"
+  labels:
+    node_name: "edge-router"
+    role: "edge-router"
+    source: "snmp"
+    environment: "gns3-onprem-lab"

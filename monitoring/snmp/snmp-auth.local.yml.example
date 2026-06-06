@@ -1,0 +1,18 @@
+# Example local SNMPv3 auth file.
+# Safe to commit because it contains placeholders only.
+#
+# Real local file on DevOps VM:
+# monitoring/snmp/snmp-auth.local.yml
+#
+# This file is used by:
+# monitoring/scripts/build-local-snmp-exporter-config.sh
+
+auths:
+  pfe_snmpv3_authpriv:
+    version: 3
+    security_level: authPriv
+    username: pfe_snmp_ro
+    password: CHANGE_ME_AUTH_PASSWORD_16PLUS
+    auth_protocol: SHA
+    priv_protocol: AES
+    priv_password: CHANGE_ME_PRIV_PASSWORD_16PLUS

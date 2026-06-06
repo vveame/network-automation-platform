@@ -1,0 +1,20 @@
+# Versioned SNMPv3 configuration template for FRR network nodes.
+# Real credentials are loaded from /etc/local/snmp/snmp.env.
+#
+# Listen address/port is passed by start-snmp.sh as a CLI argument.
+#
+# Security model:
+# - SNMPv3 only
+# - authPriv only
+# - read-only access
+# - OOB management access only through firewall rule
+# - limited MIB view
+
+view pfeView included .1.3.6.1.2.1.1
+view pfeView included .1.3.6.1.2.1.2
+view pfeView included .1.3.6.1.2.1.31.1.1
+
+rouser __SNMP_V3_USERNAME__ priv -V pfeView
+
+sysLocation PFE-GNS3-Lab
+sysContact pfe-admin
