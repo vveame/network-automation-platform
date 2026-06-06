@@ -1027,11 +1027,11 @@ PY
         stage('20 - Apply Prometheus Target Configuration') {
             /*
             * Purpose:
-            * Apply Prometheus target files from the Git repository to the active
-            * Prometheus target directory.
+            * Apply Prometheus file_sd target files from the Git repository to
+            * /etc/prometheus/targets.
             *
-            * Prometheus uses file_sd_configs with refresh_interval=30s,
-            * so changing /etc/prometheus/targets/node-targets.yml is enough.
+            * Prometheus uses refresh_interval=30s, so no restart is required
+            * when only target files change.
             */
             when {
                 expression {
@@ -1042,31 +1042,39 @@ PY
                 sh '''
                     set -e
 
-                    TARGET_SRC="monitoring/prometheus/targets/node-targets.yml"
-                    TARGET_DST="/etc/prometheus/targets/node-targets.yml"
-                    TARGET_TMP="/etc/prometheus/targets/node-targets.yml.tmp"
+                    TARGET_SRC_DIR="monitoring/prometheus/targets"
+                    TARGET_DST_DIR="/etc/prometheus/targets"
 
                     echo "[INFO] Applying Prometheus target configuration..."
 
-                    if [ ! -f "$TARGET_SRC" ]; then
-                        echo "[ERROR] Missing Prometheus target file: $TARGET_SRC"
+                    if [ ! -d "$TARGET_SRC_DIR" ]; then
+                        echo "[ERROR] Missing Prometheus target directory: $TARGET_SRC_DIR"
                         exit 1
                     fi
 
-                    if [ ! -d "/etc/prometheus/targets" ]; then
-                        echo "[ERROR] /etc/prometheus/targets does not exist."
+                    if [ ! -d "$TARGET_DST_DIR" ]; then
+                        echo "[ERROR] $TARGET_DST_DIR does not exist."
+                        echo "[INFO] Run monitoring/scripts/apply-local-prometheus-baseline.sh once on the DevOps VM."
                         exit 1
                     fi
-
-                    echo "[INFO] Copying $TARGET_SRC to $TARGET_DST"
 
                     umask 002
-                    cp "$TARGET_SRC" "$TARGET_TMP"
-                    mv "$TARGET_TMP" "$TARGET_DST"
 
-                    echo "[INFO] Active Prometheus targets file:"
-                    ls -lah "$TARGET_DST"
-                    cat "$TARGET_DST"
+                    for file in "$TARGET_SRC_DIR"/*.yml; do
+                        name="$(basename "$file")"
+                        echo "[INFO] Applying target file: $name"
+                        cp "$file" "$TARGET_DST_DIR/$name.tmp"
+                        mv "$TARGET_DST_DIR/$name.tmp" "$TARGET_DST_DIR/$name"
+                    done
+
+                    echo "[INFO] Active target files:"
+                    ls -lah "$TARGET_DST_DIR"
+
+                    echo "[INFO] Active target content:"
+                    for file in "$TARGET_DST_DIR"/*.yml; do
+                        echo "----- $file -----"
+                        cat "$file"
+                    done
 
                     echo "[INFO] Checking Prometheus readiness..."
                     curl -fsS http://localhost:9090/-/ready
@@ -1075,9 +1083,13 @@ PY
                     echo "[INFO] Waiting for Prometheus file_sd refresh..."
                     sleep 35
 
-                    echo "[INFO] Current Prometheus up targets:"
+                    echo "[INFO] Current Prometheus target health:"
                     curl -fsS --get "http://localhost:9090/api/v1/query" \
                     --data-urlencode "query=up" | python3 -m json.tool
+
+                    echo "[INFO] Current Blackbox probe health:"
+                    curl -fsS --get "http://localhost:9090/api/v1/query" \
+                    --data-urlencode "query=probe_success" | python3 -m json.tool || true
 
                     echo "[OK] Prometheus target configuration applied."
                 '''

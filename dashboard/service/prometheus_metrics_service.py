@@ -2,6 +2,7 @@ from dto.prometheus_metrics_dto import (
     PrometheusMetricsDTO,
     PrometheusTargetDTO,
     PrometheusNodeMetricDTO,
+    BlackboxProbeDTO,
 )
 
 
@@ -20,6 +21,9 @@ class PrometheusMetricsService:
         memory_total_query = self.repository.load_query("node_memory_total_bytes")
         disk_available_query = self.repository.load_query("node_filesystem_available_bytes")
         disk_total_query = self.repository.load_query("node_filesystem_size_bytes")
+        blackbox_success_query = self.repository.load_query("blackbox_probe_success")
+        blackbox_duration_query = self.repository.load_query("blackbox_probe_duration_seconds")
+        blackbox_http_status_query = self.repository.load_query("blackbox_http_status_code")
 
         if not manifest or not up_query:
             return self._unavailable()
@@ -37,6 +41,12 @@ class PrometheusMetricsService:
             disk_total_query=disk_total_query,
         )
 
+        blackbox_probes = self._parse_blackbox_probes(
+            success_query=blackbox_success_query,
+            duration_query=blackbox_duration_query,
+            http_status_query=blackbox_http_status_query,
+        )
+
         memory_available = sum(node.memory_available_gb for node in node_metrics)
         memory_total = sum(node.memory_total_gb for node in node_metrics)
         disk_available = sum(node.disk_available_gb for node in node_metrics)
@@ -45,7 +55,11 @@ class PrometheusMetricsService:
         memory_used_percent = self._used_percent(memory_available, memory_total)
         disk_used_percent = self._used_percent(disk_available, disk_total)
 
-        status = "passed" if targets_total > 0 and targets_down == 0 else "warning"
+        failed_probes = len([probe for probe in blackbox_probes if probe.status != "success"])
+
+        status = "passed"
+        if targets_total == 0 or targets_down > 0 or failed_probes > 0:
+            status = "warning"
 
         first_node = node_metrics[0] if node_metrics else None
 
@@ -68,6 +82,7 @@ class PrometheusMetricsService:
             source_dir=str(self.repository.metrics_dir),
             targets=targets,
             node_metrics=node_metrics,
+            blackbox_probes=blackbox_probes,
         )
 
     def _unavailable(self) -> PrometheusMetricsDTO:
@@ -90,7 +105,39 @@ class PrometheusMetricsService:
             source_dir=str(self.repository.metrics_dir),
             targets=[],
             node_metrics=[],
+            blackbox_probes=[],
         )
+
+    def _parse_blackbox_probes(self, success_query, duration_query, http_status_query):
+        duration_by_key = self._values_by_blackbox_key(duration_query)
+        http_status_by_key = self._values_by_blackbox_key(http_status_query)
+
+        probes = []
+
+        for item in self._result_items(success_query):
+            metric = item.get("metric", {})
+            value = self._item_value(item)
+
+            key = self._blackbox_key(metric)
+            duration = duration_by_key.get(key, 0.0)
+            http_status_code = int(http_status_by_key.get(key, 0))
+
+            service_name = metric.get("service_name", metric.get("instance", "unknown"))
+
+            probes.append(
+                BlackboxProbeDTO(
+                    service_name=service_name,
+                    job=metric.get("job", "unknown"),
+                    instance=metric.get("instance", "unknown"),
+                    role=metric.get("role", "unknown"),
+                    probe_type=metric.get("probe_type", "unknown"),
+                    status="success" if value == 1 else "failed",
+                    duration_seconds=round(duration, 4),
+                    http_status_code=http_status_code,
+                )
+            )
+
+        return sorted(probes, key=lambda probe: probe.service_name)
 
     def _build_node_metrics(
         self,
@@ -107,7 +154,6 @@ class PrometheusMetricsService:
         disk_total_by_instance = self._values_by_instance(disk_total_query)
 
         instances = sorted(memory_total_by_instance.keys())
-
         nodes = []
 
         for instance in instances:
@@ -126,7 +172,7 @@ class PrometheusMetricsService:
             nodes.append(
                 PrometheusNodeMetricDTO(
                     instance=instance,
-                    node_name=uname_metric.get("nodename", instance),
+                    node_name=uname_metric.get("node_name", uname_metric.get("nodename", instance)),
                     role=uname_metric.get("role", self._guess_role(instance)),
                     system_name=uname_metric.get("sysname", "unknown"),
                     kernel_release=uname_metric.get("release", "unknown"),
@@ -175,6 +221,22 @@ class PrometheusMetricsService:
             result[instance] = self._item_value(item)
 
         return result
+
+    def _values_by_blackbox_key(self, query_data):
+        result = {}
+
+        for item in self._result_items(query_data):
+            metric = item.get("metric", {})
+            result[self._blackbox_key(metric)] = self._item_value(item)
+
+        return result
+
+    def _blackbox_key(self, metric):
+        return (
+            metric.get("job", "unknown"),
+            metric.get("instance", "unknown"),
+            metric.get("service_name", "unknown"),
+        )
 
     def _result_items(self, query_data):
         if not query_data:

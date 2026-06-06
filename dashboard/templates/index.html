@@ -250,6 +250,47 @@
         </div>
       {% endif %}
 
+      {% if dashboard.prometheus_metrics.blackbox_probes %}
+        <p><strong>Blackbox service probes:</strong></p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Target</th>
+                <th>Probe type</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>HTTP status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for probe in dashboard.prometheus_metrics.blackbox_probes %}
+                <tr>
+                  <td>{{ probe.service_name }}</td>
+                  <td>{{ probe.instance }}</td>
+                  <td>{{ probe.probe_type }}</td>
+                  <td>
+                    <span class="badge {{ 'passed' if probe.status == 'success' else 'failed' }}">
+                      {{ probe.status | upper }}
+                    </span>
+                  </td>
+                  <td>{{ probe.duration_seconds }}s</td>
+                  <td>
+                    {% if probe.http_status_code > 0 %}
+                      {{ probe.http_status_code }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
       {% if dashboard.prometheus_metrics.targets %}
         <p><strong>Scrape targets:</strong></p>
         <ul>

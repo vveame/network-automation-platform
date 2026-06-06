@@ -1,0 +1,8 @@
+- targets:
+    - "172.16.50.20"
+  labels:
+    service_name: "dmz-dns-query-web-pfe-local"
+    role: "dmz-dns"
+    probe_type: "dns"
+    expected_record: "web.pfe.local -> 172.16.50.10"
+    environment: "gns3-onprem-lab"

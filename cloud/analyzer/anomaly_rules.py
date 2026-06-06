@@ -59,12 +59,17 @@ def calculate_metrics_risk(metrics: dict[str, Any] | None) -> tuple[int, list[st
     reasons = []
 
     targets_down = int(metrics.get("targets_down", 0))
+    blackbox_failed = int(metrics.get("blackbox_probes_failed", 0))
     memory_used = float(metrics.get("memory_used_percent", 0))
     disk_used = float(metrics.get("disk_used_percent", 0))
 
     if targets_down > 0:
         score += min(targets_down * 25, 50)
         reasons.append(f"prometheus_targets_down:{targets_down}")
+
+    if blackbox_failed > 0:
+        score += min(blackbox_failed * 20, 60)
+        reasons.append(f"blackbox_probes_failed:{blackbox_failed}")
 
     if memory_used >= 95:
         score += 35

@@ -84,6 +84,55 @@ def parse_uname(uname_query: dict[str, Any] | None) -> dict[str, str]:
     }
 
 
+def blackbox_key(metric: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        metric.get("job", "unknown"),
+        metric.get("instance", "unknown"),
+        metric.get("service_name", "unknown"),
+    )
+
+
+def values_by_blackbox_key(query_data: dict[str, Any] | None) -> dict[tuple[str, str, str], float]:
+    values = {}
+
+    for item in result_items(query_data):
+        metric = item.get("metric", {})
+        values[blackbox_key(metric)] = item_value(item)
+
+    return values
+
+
+def parse_blackbox_probes(
+    success_query: dict[str, Any] | None,
+    duration_query: dict[str, Any] | None,
+    http_status_query: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    duration_by_key = values_by_blackbox_key(duration_query)
+    http_status_by_key = values_by_blackbox_key(http_status_query)
+
+    probes = []
+
+    for item in result_items(success_query):
+        metric = item.get("metric", {})
+        value = item_value(item)
+        key = blackbox_key(metric)
+
+        probes.append(
+            {
+                "service_name": metric.get("service_name", metric.get("instance", "unknown")),
+                "job": metric.get("job", "unknown"),
+                "instance": metric.get("instance", "unknown"),
+                "role": metric.get("role", "unknown"),
+                "probe_type": metric.get("probe_type", "unknown"),
+                "status": "success" if value == 1 else "failed",
+                "duration_seconds": round(duration_by_key.get(key, 0.0), 4),
+                "http_status_code": int(http_status_by_key.get(key, 0)),
+            }
+        )
+
+    return sorted(probes, key=lambda probe: probe["service_name"])
+
+
 def parse_prometheus_metrics(metrics_dir: Path | None) -> dict[str, Any]:
     if not metrics_dir:
         return {
@@ -104,6 +153,9 @@ def parse_prometheus_metrics(metrics_dir: Path | None) -> dict[str, Any]:
     memory_total_query = load_json(metrics_dir / "node_memory_total_bytes.json")
     disk_available_query = load_json(metrics_dir / "node_filesystem_available_bytes.json")
     disk_total_query = load_json(metrics_dir / "node_filesystem_size_bytes.json")
+    blackbox_success_query = load_json(metrics_dir / "blackbox_probe_success.json")
+    blackbox_duration_query = load_json(metrics_dir / "blackbox_probe_duration_seconds.json")
+    blackbox_http_status_query = load_json(metrics_dir / "blackbox_http_status_code.json")
 
     if not manifest or not up_query:
         return {
@@ -126,6 +178,15 @@ def parse_prometheus_metrics(metrics_dir: Path | None) -> dict[str, Any]:
     disk_used = used_percent(disk_available, disk_total)
 
     uname = parse_uname(uname_query)
+    blackbox_probes = parse_blackbox_probes(
+        success_query=blackbox_success_query,
+        duration_query=blackbox_duration_query,
+        http_status_query=blackbox_http_status_query,
+    )
+
+    blackbox_total = len(blackbox_probes)
+    blackbox_success = len([probe for probe in blackbox_probes if probe["status"] == "success"])
+    blackbox_failed = max(blackbox_total - blackbox_success, 0)
 
     return {
         "available": True,
@@ -145,4 +206,8 @@ def parse_prometheus_metrics(metrics_dir: Path | None) -> dict[str, Any]:
         "disk_used_percent": disk_used,
         "system_name": uname["system_name"],
         "kernel_release": uname["kernel_release"],
+        "blackbox_probes_total": blackbox_total,
+        "blackbox_probes_success": blackbox_success,
+        "blackbox_probes_failed": blackbox_failed,
+        "blackbox_probes": blackbox_probes,
     }

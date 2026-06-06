@@ -146,6 +146,18 @@ Targets up: 2/2
 
 This is the first combined anomaly detection baseline before future ML integration.
 
+## Blackbox Probe Risk Scoring
+
+The anomaly analyzer uses Blackbox probe results as part of the metrics risk score.
+
+If one or more service probes fail, the analyzer increases the metrics risk score and records a detection reason such as:
+
+```text
+blackbox_probes_failed:1
+```
+
+This connects service availability monitoring to the anomaly detection baseline.
+
 ## Analyzer Outputs in S3
 
 Jenkins uploads analyzer outputs to:

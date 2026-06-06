@@ -25,6 +25,18 @@ class PrometheusNodeMetricDTO:
 
 
 @dataclass
+class BlackboxProbeDTO:
+    service_name: str
+    job: str
+    instance: str
+    role: str
+    probe_type: str
+    status: str
+    duration_seconds: float
+    http_status_code: int
+
+
+@dataclass
 class PrometheusMetricsDTO:
     available: bool
     status: str
@@ -44,3 +56,4 @@ class PrometheusMetricsDTO:
     source_dir: str
     targets: List[PrometheusTargetDTO]
     node_metrics: List[PrometheusNodeMetricDTO]
+    blackbox_probes: List[BlackboxProbeDTO]

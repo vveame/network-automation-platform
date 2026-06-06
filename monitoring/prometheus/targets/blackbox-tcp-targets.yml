@@ -1,0 +1,15 @@
+- targets:
+    - "172.16.50.10:80"
+  labels:
+    service_name: "dmz-web-tcp-80"
+    role: "dmz-web"
+    probe_type: "tcp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "172.16.50.20:53"
+  labels:
+    service_name: "dmz-dns-tcp-53"
+    role: "dmz-dns"
+    probe_type: "tcp"
+    environment: "gns3-onprem-lab"

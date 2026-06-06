@@ -69,6 +69,8 @@ def write_outputs(
         metrics_block = f"""Prometheus metrics:
 Targets up: {metrics.get("targets_up", 0)}/{metrics.get("targets_total", 0)}
 Targets down: {metrics.get("targets_down", 0)}
+Blackbox probes success: {metrics.get("blackbox_probes_success", 0)}/{metrics.get("blackbox_probes_total", 0)}
+Blackbox probes failed: {metrics.get("blackbox_probes_failed", 0)}
 Memory used: {metrics.get("memory_used_percent", 0)}%
 Disk used: {metrics.get("disk_used_percent", 0)}%
 Snapshot: {metrics.get("snapshot_time_utc", "unknown")}

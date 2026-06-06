@@ -44,6 +44,9 @@ query_prometheus "node_memory_available_bytes" 'node_memory_MemAvailable_bytes'
 query_prometheus "node_memory_total_bytes" 'node_memory_MemTotal_bytes'
 query_prometheus "node_filesystem_available_bytes" 'node_filesystem_avail_bytes{mountpoint="/"}'
 query_prometheus "node_filesystem_size_bytes" 'node_filesystem_size_bytes{mountpoint="/"}'
+query_prometheus "blackbox_probe_success" 'probe_success'
+query_prometheus "blackbox_probe_duration_seconds" 'probe_duration_seconds'
+query_prometheus "blackbox_http_status_code" 'probe_http_status_code'
 
 cat > "$OUTPUT_DIR/README.txt" <<README
 Prometheus snapshot generated at $TIMESTAMP.

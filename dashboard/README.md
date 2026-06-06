@@ -183,6 +183,21 @@ devops-server
 gns3-vm
 ```
 
+## Blackbox Service Probe Visualization
+
+The dashboard displays Blackbox service probe results from the latest S3-backed Prometheus metrics snapshot.
+
+The dashboard shows:
+
+- service name
+- target
+- probe type
+- probe status
+- probe duration
+- HTTP status code when available
+
+This allows the platform to visualize service availability, not only host availability.
+
 ## Notes
 
 Generated validation reports are not committed to GitHub.

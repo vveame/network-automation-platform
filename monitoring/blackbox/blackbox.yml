@@ -1,0 +1,27 @@
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      preferred_ip_protocol: "ip4"
+      valid_status_codes:
+        - 200
+
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      preferred_ip_protocol: "ip4"
+
+  dns_web_pfe_local:
+    prober: dns
+    timeout: 5s
+    dns:
+      query_name: "web.pfe.local"
+      query_type: "A"
+      valid_rcodes:
+        - NOERROR
+      validate_answer_rrs:
+        fail_if_not_matches_regexp:
+          - "web\\.pfe\\.local\\..*IN.*A.*172\\.16\\.50\\.10"

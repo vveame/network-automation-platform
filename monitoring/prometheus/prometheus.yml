@@ -20,3 +20,54 @@ scrape_configs:
       - files:
           - "/etc/prometheus/targets/node-targets.yml"
         refresh_interval: 30s
+
+  - job_name: "blackbox-http"
+    metrics_path: /probe
+    params:
+      module:
+        - http_2xx
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/blackbox-http-targets.yml"
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "localhost:9115"
+
+  - job_name: "blackbox-tcp"
+    metrics_path: /probe
+    params:
+      module:
+        - tcp_connect
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/blackbox-tcp-targets.yml"
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "localhost:9115"
+
+  - job_name: "blackbox-dns"
+    metrics_path: /probe
+    params:
+      module:
+        - dns_web_pfe_local
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/blackbox-dns-targets.yml"
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "localhost:9115"

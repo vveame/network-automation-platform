@@ -1,0 +1,7 @@
+- targets:
+    - "http://172.16.50.10"
+  labels:
+    service_name: "dmz-web-http"
+    role: "dmz-web"
+    probe_type: "http"
+    environment: "gns3-onprem-lab"

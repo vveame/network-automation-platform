@@ -248,6 +248,29 @@ This monitors the GNS3 VM host resource usage, including CPU/memory/disk metrics
 
 It does not directly monitor every FRR/OVS container inside the GNS3 topology. Those can be added later using SNMP Exporter, Blackbox Exporter, or custom exporters.
 
+## Blackbox Exporter Service Probes
+
+The monitoring baseline includes Blackbox Exporter service checks.
+
+Current probes:
+
+```text
+DMZ Web HTTP       http://172.16.50.10
+DMZ Web TCP/80     172.16.50.10:80
+DMZ DNS TCP/53     172.16.50.20:53
+DNS query          web.pfe.local via 172.16.50.20
+```
+
+Blackbox Exporter provides service-level metrics such as:
+
+```text
+probe_success
+probe_duration_seconds
+probe_http_status_code
+```
+
+Unlike the Prometheus `up` metric, which only confirms that Prometheus scraped the exporter, `probe_success` confirms whether the actual service probe succeeded.
+
 ## Notes
 
 This monitoring baseline does not replace the validation-artifact analyzer.
