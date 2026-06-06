@@ -1024,7 +1024,67 @@ PY
             }
         }
 
-        stage('20 - Export Prometheus Metrics Snapshot to AWS S3') {
+        stage('20 - Apply Prometheus Target Configuration') {
+            /*
+            * Purpose:
+            * Apply Prometheus target files from the Git repository to the active
+            * Prometheus target directory.
+            *
+            * Prometheus uses file_sd_configs with refresh_interval=30s,
+            * so changing /etc/prometheus/targets/node-targets.yml is enough.
+            */
+            when {
+                expression {
+                    return params.EXPORT_ARTIFACTS_TO_S3
+                }
+            }
+            steps {
+                sh '''
+                    set -e
+
+                    TARGET_SRC="monitoring/prometheus/targets/node-targets.yml"
+                    TARGET_DST="/etc/prometheus/targets/node-targets.yml"
+                    TARGET_TMP="/etc/prometheus/targets/node-targets.yml.tmp"
+
+                    echo "[INFO] Applying Prometheus target configuration..."
+
+                    if [ ! -f "$TARGET_SRC" ]; then
+                        echo "[ERROR] Missing Prometheus target file: $TARGET_SRC"
+                        exit 1
+                    fi
+
+                    if [ ! -d "/etc/prometheus/targets" ]; then
+                        echo "[ERROR] /etc/prometheus/targets does not exist."
+                        exit 1
+                    fi
+
+                    echo "[INFO] Copying $TARGET_SRC to $TARGET_DST"
+
+                    umask 002
+                    cp "$TARGET_SRC" "$TARGET_TMP"
+                    mv "$TARGET_TMP" "$TARGET_DST"
+
+                    echo "[INFO] Active Prometheus targets file:"
+                    ls -lah "$TARGET_DST"
+                    cat "$TARGET_DST"
+
+                    echo "[INFO] Checking Prometheus readiness..."
+                    curl -fsS http://localhost:9090/-/ready
+
+                    echo
+                    echo "[INFO] Waiting for Prometheus file_sd refresh..."
+                    sleep 35
+
+                    echo "[INFO] Current Prometheus up targets:"
+                    curl -fsS --get "http://localhost:9090/api/v1/query" \
+                    --data-urlencode "query=up" | python3 -m json.tool
+
+                    echo "[OK] Prometheus target configuration applied."
+                '''
+            }
+        }
+
+        stage('21 - Export Prometheus Metrics Snapshot to AWS S3') {
             /*
             * Purpose:
             * Export Prometheus metrics from the local monitoring baseline.
@@ -1099,7 +1159,7 @@ PY
             }
         }
 
-        stage('21 - Run Cloud Analyzer and Upload Results') {
+        stage('22 - Run Cloud Analyzer and Upload Results') {
             /*
             * Purpose:
             * Run the cloud anomaly baseline analyzer on Jenkins/Ansible validation outputs.
@@ -1181,7 +1241,7 @@ PY
             }
         }
 
-        stage('22 - Sync Dashboard Cache from AWS S3') {
+        stage('23 - Sync Dashboard Cache from AWS S3') {
             /*
             * Purpose:
             * Restore the local Flask dashboard cache from S3.
@@ -1226,7 +1286,7 @@ PY
             }
         }
 
-        stage('23 - Show Generated Reports') {
+        stage('24 - Show Generated Reports') {
             /*
              * Purpose:
              * Print the generated artifacts in the Jenkins console for quick verification.
@@ -1241,7 +1301,7 @@ PY
             }
         }
 
-        stage('24 - Set Jenkins Build Description') {
+        stage('25 - Set Jenkins Build Description') {
             /*
              * Purpose:
              * Add direct dashboard/artifact links to the Jenkins build page.

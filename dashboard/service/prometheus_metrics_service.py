@@ -1,4 +1,8 @@
-from dto.prometheus_metrics_dto import PrometheusMetricsDTO, PrometheusTargetDTO
+from dto.prometheus_metrics_dto import (
+    PrometheusMetricsDTO,
+    PrometheusTargetDTO,
+    PrometheusNodeMetricDTO,
+)
 
 
 BYTES_IN_GB = 1024 ** 3
@@ -25,17 +29,25 @@ class PrometheusMetricsService:
         targets_up = len([target for target in targets if target.status == "up"])
         targets_down = max(targets_total - targets_up, 0)
 
-        memory_available = self._first_value(memory_available_query)
-        memory_total = self._first_value(memory_total_query)
-        disk_available = self._first_value(disk_available_query)
-        disk_total = self._first_value(disk_total_query)
+        node_metrics = self._build_node_metrics(
+            uname_query=uname_query,
+            memory_available_query=memory_available_query,
+            memory_total_query=memory_total_query,
+            disk_available_query=disk_available_query,
+            disk_total_query=disk_total_query,
+        )
+
+        memory_available = sum(node.memory_available_gb for node in node_metrics)
+        memory_total = sum(node.memory_total_gb for node in node_metrics)
+        disk_available = sum(node.disk_available_gb for node in node_metrics)
+        disk_total = sum(node.disk_total_gb for node in node_metrics)
 
         memory_used_percent = self._used_percent(memory_available, memory_total)
         disk_used_percent = self._used_percent(disk_available, disk_total)
 
-        uname = self._parse_uname(uname_query)
-
         status = "passed" if targets_total > 0 and targets_down == 0 else "warning"
+
+        first_node = node_metrics[0] if node_metrics else None
 
         return PrometheusMetricsDTO(
             available=True,
@@ -45,16 +57,17 @@ class PrometheusMetricsService:
             targets_total=targets_total,
             targets_up=targets_up,
             targets_down=targets_down,
-            memory_available_gb=round(memory_available / BYTES_IN_GB, 2) if memory_available else 0,
-            memory_total_gb=round(memory_total / BYTES_IN_GB, 2) if memory_total else 0,
+            memory_available_gb=round(memory_available, 2),
+            memory_total_gb=round(memory_total, 2),
             memory_used_percent=memory_used_percent,
-            disk_available_gb=round(disk_available / BYTES_IN_GB, 2) if disk_available else 0,
-            disk_total_gb=round(disk_total / BYTES_IN_GB, 2) if disk_total else 0,
+            disk_available_gb=round(disk_available, 2),
+            disk_total_gb=round(disk_total, 2),
             disk_used_percent=disk_used_percent,
-            system_name=uname.get("system_name", "unknown"),
-            kernel_release=uname.get("kernel_release", "unknown"),
+            system_name=first_node.system_name if first_node else "multiple-nodes",
+            kernel_release=first_node.kernel_release if first_node else "unknown",
             source_dir=str(self.repository.metrics_dir),
             targets=targets,
+            node_metrics=node_metrics,
         )
 
     def _unavailable(self) -> PrometheusMetricsDTO:
@@ -76,7 +89,57 @@ class PrometheusMetricsService:
             kernel_release="unknown",
             source_dir=str(self.repository.metrics_dir),
             targets=[],
+            node_metrics=[],
         )
+
+    def _build_node_metrics(
+        self,
+        uname_query,
+        memory_available_query,
+        memory_total_query,
+        disk_available_query,
+        disk_total_query,
+    ):
+        uname_by_instance = self._items_by_instance(uname_query)
+        memory_available_by_instance = self._values_by_instance(memory_available_query)
+        memory_total_by_instance = self._values_by_instance(memory_total_query)
+        disk_available_by_instance = self._values_by_instance(disk_available_query)
+        disk_total_by_instance = self._values_by_instance(disk_total_query)
+
+        instances = sorted(memory_total_by_instance.keys())
+
+        nodes = []
+
+        for instance in instances:
+            memory_available_bytes = memory_available_by_instance.get(instance, 0)
+            memory_total_bytes = memory_total_by_instance.get(instance, 0)
+            disk_available_bytes = disk_available_by_instance.get(instance, 0)
+            disk_total_bytes = disk_total_by_instance.get(instance, 0)
+
+            uname_metric = uname_by_instance.get(instance, {}).get("metric", {})
+
+            memory_available_gb = memory_available_bytes / BYTES_IN_GB if memory_available_bytes else 0
+            memory_total_gb = memory_total_bytes / BYTES_IN_GB if memory_total_bytes else 0
+            disk_available_gb = disk_available_bytes / BYTES_IN_GB if disk_available_bytes else 0
+            disk_total_gb = disk_total_bytes / BYTES_IN_GB if disk_total_bytes else 0
+
+            nodes.append(
+                PrometheusNodeMetricDTO(
+                    instance=instance,
+                    node_name=uname_metric.get("nodename", instance),
+                    role=uname_metric.get("role", self._guess_role(instance)),
+                    system_name=uname_metric.get("sysname", "unknown"),
+                    kernel_release=uname_metric.get("release", "unknown"),
+                    memory_available_gb=round(memory_available_gb, 2),
+                    memory_total_gb=round(memory_total_gb, 2),
+                    memory_used_percent=self._used_percent(memory_available_gb, memory_total_gb),
+                    disk_available_gb=round(disk_available_gb, 2),
+                    disk_total_gb=round(disk_total_gb, 2),
+                    disk_used_percent=self._used_percent(disk_available_gb, disk_total_gb),
+                )
+            )
+
+        return nodes
 
     def _parse_targets(self, query_data):
         targets = []
@@ -95,26 +158,23 @@ class PrometheusMetricsService:
 
         return targets
 
-    def _parse_uname(self, query_data):
-        items = self._result_items(query_data)
+    def _items_by_instance(self, query_data):
+        result = {}
 
-        if not items:
-            return {"system_name": "unknown", "kernel_release": "unknown"}
+        for item in self._result_items(query_data):
+            instance = item.get("metric", {}).get("instance", "unknown")
+            result[instance] = item
 
-        metric = items[0].get("metric", {})
+        return result
 
-        return {
-            "system_name": metric.get("nodename", metric.get("sysname", "unknown")),
-            "kernel_release": metric.get("release", "unknown"),
-        }
+    def _values_by_instance(self, query_data):
+        result = {}
 
-    def _first_value(self, query_data):
-        items = self._result_items(query_data)
+        for item in self._result_items(query_data):
+            instance = item.get("metric", {}).get("instance", "unknown")
+            result[instance] = self._item_value(item)
 
-        if not items:
-            return 0.0
-
-        return self._item_value(items[0])
+        return result
 
     def _result_items(self, query_data):
         if not query_data:
@@ -134,3 +194,10 @@ class PrometheusMetricsService:
 
         used = max(total - available, 0)
         return round((used / total) * 100, 2)
+
+    def _guess_role(self, instance):
+        if "192.168.248.131" in instance:
+            return "gns3-host"
+        if "localhost" in instance or "127.0.0.1" in instance:
+            return "devops"
+        return "node-exporter"

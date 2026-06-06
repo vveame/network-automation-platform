@@ -5,3 +5,11 @@
     role: "devops"
     source: "node-exporter"
     environment: "gns3-onprem-lab"
+
+- targets:
+    - "192.168.248.131:9100"
+  labels:
+    node_name: "gns3-vm"
+    role: "gns3-host"
+    source: "node-exporter"
+    environment: "gns3-onprem-lab"

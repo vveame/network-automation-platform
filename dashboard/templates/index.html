@@ -205,6 +205,51 @@
         {{ dashboard.prometheus_metrics.disk_total_gb }} GB total
       </p>
 
+        {% if dashboard.prometheus_metrics.node_metrics %}
+        <p><strong>Per-node metrics:</strong></p>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Node</th>
+                <th>Instance</th>
+                <th>Role</th>
+                <th>Memory used</th>
+                <th>Disk used</th>
+                <th>Kernel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for node in dashboard.prometheus_metrics.node_metrics %}
+                <tr>
+                  <td>{{ node.node_name }}</td>
+                  <td>{{ node.instance }}</td>
+                  <td>{{ node.role }}</td>
+                  <td>
+                    {{ node.memory_used_percent }}%
+                    <br>
+                    <span class="subtitle">
+                      {{ node.memory_available_gb }} GB free /
+                      {{ node.memory_total_gb }} GB total
+                    </span>
+                  </td>
+                  <td>
+                    {{ node.disk_used_percent }}%
+                    <br>
+                    <span class="subtitle">
+                      {{ node.disk_available_gb }} GB free /
+                      {{ node.disk_total_gb }} GB total
+                    </span>
+                  </td>
+                  <td>{{ node.kernel_release }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
       {% if dashboard.prometheus_metrics.targets %}
         <p><strong>Scrape targets:</strong></p>
         <ul>

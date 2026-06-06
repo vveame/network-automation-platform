@@ -161,6 +161,28 @@ Cloud analyzer decision
 Prometheus monitoring snapshot
 ```
 
+## Per-Node Prometheus Metrics
+
+The dashboard displays Prometheus metrics per monitored node.
+
+The current per-node metrics table includes:
+
+- node name
+- Prometheus instance
+- role
+- memory usage
+- disk usage
+- kernel release
+
+This makes it possible to compare the DevOps VM and the GNS3 VM from the same S3-backed metrics snapshot.
+
+Current monitored nodes:
+
+```text
+devops-server
+gns3-vm
+```
+
 ## Notes
 
 Generated validation reports are not committed to GitHub.

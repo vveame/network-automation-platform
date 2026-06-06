@@ -234,6 +234,20 @@ The dashboard currently visualizes:
 
 This connects the monitoring baseline to the same S3-backed dashboard model used by validation reports and analyzer outputs.
 
+## GNS3 VM Metrics Target
+
+The monitoring baseline can also scrape the GNS3 VM host through Node Exporter.
+
+Prometheus target example:
+
+```text
+192.168.248.131:9100
+```
+
+This monitors the GNS3 VM host resource usage, including CPU/memory/disk metrics exposed by Node Exporter.
+
+It does not directly monitor every FRR/OVS container inside the GNS3 topology. Those can be added later using SNMP Exporter, Blackbox Exporter, or custom exporters.
+
 ## Notes
 
 This monitoring baseline does not replace the validation-artifact analyzer.
