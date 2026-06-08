@@ -47,6 +47,9 @@ cloud/analyzer/ml/data/features/*
 cloud/analyzer/ml/models/*
 cloud/analyzer/ml/outputs/*
 
+# Remediation generated outputs
+cloud/analyzer/outputs/remediation/*
+
 # Python
 __pycache__/
 *.pyc

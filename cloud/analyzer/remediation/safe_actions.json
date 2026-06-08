@@ -1,0 +1,51 @@
+{
+  "description": "Allowlisted safe remediation actions for the PFE anomaly detection pipeline.",
+  "safety_policy": {
+    "default_mode": "plan",
+    "apply_requires_confirm_apply": true,
+    "ml_only_anomalies_are_advisory": true,
+    "automated_remediation_requires_rule_confirmation": true
+  },
+  "actions": {
+    "no_action": {
+      "type": "noop",
+      "modifies_infrastructure": false,
+      "description": "Do nothing because the final decision is normal or no safe action is required."
+    },
+    "collect_host_diagnostics": {
+      "type": "local_diagnostics",
+      "modifies_infrastructure": false,
+      "description": "Collect local DevOps host diagnostics such as uptime, memory, disk, network interfaces and service status."
+    },
+    "collect_network_diagnostics": {
+      "type": "network_diagnostics",
+      "modifies_infrastructure": false,
+      "description": "Collect network-side diagnostic information without modifying routers, switches or services."
+    },
+    "refresh_monitoring_snapshot": {
+      "type": "local_command",
+      "modifies_infrastructure": false,
+      "description": "Re-export the latest Prometheus snapshot for dashboard/analyzer refresh."
+    },
+    "run_validation_gate": {
+      "type": "ansible_validation",
+      "modifies_infrastructure": false,
+      "description": "Run the existing Ansible validation gate to confirm the current topology state."
+    },
+    "restart_dmz_web": {
+      "type": "gns3_docker_restart",
+      "modifies_infrastructure": true,
+      "description": "Restart only the DMZ Web/Nginx container on the GNS3 host."
+    },
+    "restart_dmz_dns": {
+      "type": "gns3_docker_restart",
+      "modifies_infrastructure": true,
+      "description": "Restart only the DMZ DNS container on the GNS3 host."
+    },
+    "restart_dmz_services": {
+      "type": "gns3_docker_restart",
+      "modifies_infrastructure": true,
+      "description": "Restart the DMZ Web and DNS containers on the GNS3 host."
+    }
+  }
+}
