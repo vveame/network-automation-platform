@@ -1,8 +1,9 @@
 from flask import Blueprint, jsonify, current_app, abort
+
 from service.report_parser_service import ReportParserService
 
-api_bp = Blueprint("api", __name__, url_prefix="/api")
 
+api_bp = Blueprint("api", __name__, url_prefix="/api")
 parser = ReportParserService()
 
 
@@ -10,8 +11,25 @@ parser = ReportParserService()
 def get_dashboard():
     dashboard_service = current_app.extensions["dashboard_service"]
     dashboard = dashboard_service.build_dashboard()
-
     return jsonify(dashboard.to_dict())
+
+
+@api_bp.route("/final-decision")
+def get_final_decision():
+    runtime_artifact_service = current_app.extensions["runtime_artifact_service"]
+    return jsonify(runtime_artifact_service.get_final_decision())
+
+
+@api_bp.route("/ml-decision")
+def get_ml_decision():
+    runtime_artifact_service = current_app.extensions["runtime_artifact_service"]
+    return jsonify(runtime_artifact_service.get_ml_decision())
+
+
+@api_bp.route("/remediation")
+def get_remediation():
+    runtime_artifact_service = current_app.extensions["runtime_artifact_service"]
+    return jsonify(runtime_artifact_service.get_remediation())
 
 
 @api_bp.route("/report/<path:filename>")
@@ -22,18 +40,22 @@ def get_report(filename):
     if content is None:
         abort(404)
 
-    return jsonify({
-        "filename": filename,
-        "title": parser.title_from_filename(filename),
-        "category": parser.detect_category(filename),
-        "status": parser.detect_status(content),
-        "content": content,
-    })
+    return jsonify(
+        {
+            "filename": filename,
+            "title": parser.title_from_filename(filename),
+            "category": parser.detect_category(filename),
+            "status": parser.detect_status(content),
+            "content": content,
+        }
+    )
 
 
 @api_bp.route("/health")
 def health():
-    return jsonify({
-        "status": "UP",
-        "service": "validation-dashboard",
-    })
+    return jsonify(
+        {
+            "status": "UP",
+            "service": "validation-dashboard",
+        }
+    )

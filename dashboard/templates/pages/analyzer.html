@@ -1,110 +1,215 @@
 {% extends "base.html" %}
 
-{% block page_title %}Cloud Analyzer{% endblock %}
-
-{% block hero_title %}Cloud Analyzer Decision{% endblock %}
-
+{% block page_title %}Analyzer{% endblock %}
+{% block hero_title %}Hybrid Analyzer Decision{% endblock %}
 {% block hero_subtitle %}
-  Latest anomaly decision synchronized from AWS S3 into the local dashboard cache.
+Rule-based analyzer, ML Isolation Forest signal and final merged decision synchronized from AWS S3.
 {% endblock %}
 
 {% block content %}
 
 <section class="section">
-  <div class="section-header">
-    <div>
-      <h2>Analyzer Result</h2>
-      <p>Decision generated from validation reports and Prometheus monitoring metrics.</p>
+    <div class="section-header">
+        <div>
+            <h2>Final Hybrid Decision</h2>
+            <p>Decision produced by merging the rule-based analyzer and ML anomaly detector.</p>
+        </div>
+        {% if dashboard.final_decision.available %}
+            <span class="badge {{ dashboard.final_decision.final_severity }}">{{ dashboard.final_decision.final_severity | upper }}</span>
+        {% else %}
+            <span class="badge missing">UNAVAILABLE</span>
+        {% endif %}
+    </div>
+
+    {% if dashboard.final_decision.available %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span>Classification</span>
+                <strong>{{ dashboard.final_decision.classification }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Status</span>
+                <strong>{{ dashboard.final_decision.final_status }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Risk score</span>
+                <strong>{{ dashboard.final_decision.final_risk_score }}/100</strong>
+            </div>
+            <div class="stat-card">
+                <span>Confidence</span>
+                <strong>{{ dashboard.final_decision.confidence }}</strong>
+            </div>
+        </div>
+
+        <div class="context-grid">
+            <div class="context-card">
+                <span>Recommended action</span>
+                <strong>{{ dashboard.final_decision.recommended_action }}</strong>
+            </div>
+            <div class="context-card">
+                <span>Remediation allowed</span>
+                <strong>{{ dashboard.final_decision.remediation_allowed }}</strong>
+            </div>
+            <div class="context-card">
+                <span>Rule anomalous</span>
+                <strong>{{ dashboard.final_decision.rule_anomalous }}</strong>
+            </div>
+            <div class="context-card">
+                <span>ML anomalous</span>
+                <strong>{{ dashboard.final_decision.ml_anomalous }}</strong>
+            </div>
+        </div>
+
+        <div class="preview-card">
+            <h3>Decision Reason</h3>
+            <p>{{ dashboard.final_decision.decision_reason }}</p>
+        </div>
+
+        <p class="muted">Source: {{ dashboard.final_decision.source_file }}</p>
+    {% else %}
+        <div class="empty-state">
+            No final hybrid decision found. Run Jenkins stages for analyzer, ML merge and S3 dashboard sync.
+        </div>
+    {% endif %}
+</section>
+
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h2>Rule-Based Analyzer</h2>
+            <p>Deterministic explainable analyzer based on validation reports and Prometheus metric snapshot.</p>
+        </div>
+        {% if dashboard.cloud_analyzer.available %}
+            <span class="badge {{ dashboard.cloud_analyzer.severity }}">{{ dashboard.cloud_analyzer.severity | upper }}</span>
+        {% else %}
+            <span class="badge missing">UNAVAILABLE</span>
+        {% endif %}
     </div>
 
     {% if dashboard.cloud_analyzer.available %}
-      <span class="status-pill {{ dashboard.cloud_analyzer.severity }}">
-        {{ dashboard.cloud_analyzer.severity | upper }}
-      </span>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span>Anomaly status</span>
+                <strong>{{ dashboard.cloud_analyzer.anomaly_status | upper }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Risk score</span>
+                <strong>{{ dashboard.cloud_analyzer.risk_score }}/100</strong>
+            </div>
+            <div class="stat-card">
+                <span>Severity</span>
+                <strong>{{ dashboard.cloud_analyzer.severity | upper }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Build</span>
+                <strong>{{ dashboard.cloud_analyzer.build_label }}</strong>
+            </div>
+        </div>
+
+        <div class="preview-card">
+            <h3>Recommended Action</h3>
+            <p>{{ dashboard.cloud_analyzer.recommended_action }}</p>
+        </div>
+
+        <div class="domain-grid">
+            <div class="domain-card">
+                <h3>Failed Reports</h3>
+                <p>{{ dashboard.cloud_analyzer.failed_reports | length }}</p>
+                {% if dashboard.cloud_analyzer.failed_reports %}
+                    <ul>
+                        {% for report in dashboard.cloud_analyzer.failed_reports %}
+                            <li>{{ report }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No failed reports.</p>
+                {% endif %}
+            </div>
+
+            <div class="domain-card">
+                <h3>Warning Reports</h3>
+                <p>{{ dashboard.cloud_analyzer.warning_reports | length }}</p>
+                {% if dashboard.cloud_analyzer.warning_reports %}
+                    <ul>
+                        {% for report in dashboard.cloud_analyzer.warning_reports %}
+                            <li>{{ report }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No warning reports.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <p class="muted">Source: {{ dashboard.cloud_analyzer.source_file }}</p>
     {% else %}
-      <span class="status-pill warning">UNAVAILABLE</span>
+        <div class="empty-state">No rule-based analyzer decision found.</div>
     {% endif %}
-  </div>
+</section>
 
-  {% if dashboard.cloud_analyzer.available %}
-    <div class="stats-grid">
-      <div class="stat-card">
-        <span>Anomaly Status</span>
-        <strong>{{ dashboard.cloud_analyzer.anomaly_status | upper }}</strong>
-      </div>
-
-      <div class="stat-card">
-        <span>Risk Score</span>
-        <strong>{{ dashboard.cloud_analyzer.risk_score }}/100</strong>
-      </div>
-
-      <div class="stat-card">
-        <span>Severity</span>
-        <strong>{{ dashboard.cloud_analyzer.severity | upper }}</strong>
-      </div>
-
-      <div class="stat-card">
-        <span>Build</span>
-        <strong class="small-strong">{{ dashboard.cloud_analyzer.build_label }}</strong>
-      </div>
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h2>ML Signal Summary</h2>
+            <p>Isolation Forest advisory anomaly signal.</p>
+        </div>
+        {% if dashboard.ml_decision.available %}
+            <span class="badge {{ dashboard.ml_decision.severity }}">{{ dashboard.ml_decision.severity | upper }}</span>
+        {% else %}
+            <span class="badge missing">UNAVAILABLE</span>
+        {% endif %}
     </div>
 
-    <article class="domain-card">
-      <div class="domain-title">
-        <h3>Recommended Action</h3>
-        <span class="badge {{ dashboard.cloud_analyzer.severity }}">
-          {{ dashboard.cloud_analyzer.severity | upper }}
-        </span>
-      </div>
-
-      <p>{{ dashboard.cloud_analyzer.recommended_action }}</p>
-      <p class="subtitle">Source: {{ dashboard.cloud_analyzer.source_file }}</p>
-    </article>
-
-    <div class="summary-grid">
-      <article class="domain-card">
-        <div class="domain-title">
-          <h3>Failed Reports</h3>
-          <span class="badge {{ 'failed' if dashboard.cloud_analyzer.failed_reports else 'passed' }}">
-            {{ dashboard.cloud_analyzer.failed_reports | length }}
-          </span>
+    {% if dashboard.ml_decision.available %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span>ML status</span>
+                <strong>{{ dashboard.ml_decision.ml_status }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>ML risk</span>
+                <strong>{{ dashboard.ml_decision.ml_risk_score }}/100</strong>
+            </div>
+            <div class="stat-card">
+                <span>Prediction</span>
+                <strong>{{ dashboard.ml_decision.latest_prediction }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Outliers</span>
+                <strong>{{ dashboard.ml_decision.outlier_rows }}/{{ dashboard.ml_decision.scored_rows }}</strong>
+            </div>
         </div>
 
-        {% if dashboard.cloud_analyzer.failed_reports %}
-          <ul class="clean-list">
-            {% for report in dashboard.cloud_analyzer.failed_reports %}
-              <li>{{ report }}</li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p>No failed reports.</p>
+        {% if dashboard.ml_decision.top_unusual_features %}
+            <h3>Top Unusual Features</h3>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Value</th>
+                            <th>Training median</th>
+                            <th>Z-score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in dashboard.ml_decision.top_unusual_features %}
+                            <tr>
+                                <td>{{ item.feature }}</td>
+                                <td>{{ item.value }}</td>
+                                <td>{{ item.training_median }}</td>
+                                <td>{{ item.absolute_z_score }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% endif %}
-      </article>
 
-      <article class="domain-card">
-        <div class="domain-title">
-          <h3>Warning Reports</h3>
-          <span class="badge {{ 'warning' if dashboard.cloud_analyzer.warning_reports else 'passed' }}">
-            {{ dashboard.cloud_analyzer.warning_reports | length }}
-          </span>
-        </div>
-
-        {% if dashboard.cloud_analyzer.warning_reports %}
-          <ul class="clean-list">
-            {% for report in dashboard.cloud_analyzer.warning_reports %}
-              <li>{{ report }}</li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p>No warning reports.</p>
-        {% endif %}
-      </article>
-    </div>
-  {% else %}
-    <div class="empty-state">
-      No cloud analyzer decision found. Sync the dashboard cache from S3 or run the Jenkins analyzer stage.
-    </div>
-  {% endif %}
+        <p class="muted">Source: {{ dashboard.ml_decision.source_file }}</p>
+    {% else %}
+        <div class="empty-state">No ML decision found.</div>
+    {% endif %}
 </section>
 
 {% endblock %}

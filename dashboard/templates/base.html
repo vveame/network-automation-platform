@@ -1,64 +1,43 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>{% block page_title %}PFE Dashboard{% endblock %} - PFE Validation Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script defer src="{{ url_for('static', filename='dashboard.js') }}"></script>
+    <meta charset="utf-8">
+    <title>{% block page_title %}PFE Dashboard{% endblock %} - PFE Validation Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <header class="hero">
+        <div>
+            <p class="eyebrow">Intelligent Network Automation Platform</p>
+            <h1>{% block hero_title %}Infrastructure Validation Dashboard{% endblock %}</h1>
+            <p class="subtitle">
+                {% block hero_subtitle %}
+                Cloud-backed visualization of validation reports, monitoring metrics, ML decisions and safe remediation outputs.
+                {% endblock %}
+            </p>
+        </div>
 
-<header class="hero">
-  <div>
-    <p class="eyebrow">Intelligent Network Automation Platform</p>
-    <h1>{% block hero_title %}Infrastructure Validation Dashboard{% endblock %}</h1>
-    <p class="subtitle">
-      {% block hero_subtitle %}
-        Cloud-backed visualization of validation reports, monitoring metrics and analyzer decisions.
-      {% endblock %}
-    </p>
-  </div>
+        <div class="status-pill {{ dashboard.global_status }}">
+            {{ dashboard.global_status | upper }}
+        </div>
+    </header>
 
-  <div class="status-pill {{ dashboard.global_status }}">
-    {{ dashboard.global_status | upper }}
-  </div>
-</header>
+    <nav class="top-nav">
+        <a class="nav-link {% if active_page == 'overview' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">Overview</a>
+        <a class="nav-link {% if active_page == 'analyzer' %}active{% endif %}" href="{{ url_for('dashboard.analyzer') }}">Analyzer</a>
+        <a class="nav-link {% if active_page == 'ml' %}active{% endif %}" href="{{ url_for('dashboard.ml') }}">ML</a>
+        <a class="nav-link {% if active_page == 'remediation' %}active{% endif %}" href="{{ url_for('dashboard.remediation') }}">Remediation</a>
+        <a class="nav-link {% if active_page == 'monitoring' %}active{% endif %}" href="{{ url_for('dashboard.monitoring') }}">Monitoring</a>
+        <a class="nav-link {% if active_page == 'validation' %}active{% endif %}" href="{{ url_for('dashboard.validation') }}">Validation</a>
+        <a class="nav-link {% if active_page == 'infrastructure' %}active{% endif %}" href="{{ url_for('dashboard.infrastructure') }}">Infrastructure</a>
+        <a class="nav-link {% if active_page == 'services' %}active{% endif %}" href="{{ url_for('dashboard.services') }}">Services</a>
+    </nav>
 
-<nav class="dashboard-nav">
-  <a class="{{ 'active' if active_page == 'overview' else '' }}"
-     href="{{ url_for('dashboard.index') }}">
-    Overview
-  </a>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
 
-  <a class="{{ 'active' if active_page == 'analyzer' else '' }}"
-     href="{{ url_for('dashboard.analyzer') }}">
-    Analyzer
-  </a>
-
-  <a class="{{ 'active' if active_page == 'monitoring' else '' }}"
-     href="{{ url_for('dashboard.monitoring') }}">
-    Monitoring
-  </a>
-
-  <a class="{{ 'active' if active_page == 'validation' else '' }}"
-     href="{{ url_for('dashboard.validation') }}">
-    Validation
-  </a>
-
-  <a class="{{ 'active' if active_page == 'infrastructure' else '' }}"
-     href="{{ url_for('dashboard.infrastructure') }}">
-    Infrastructure
-  </a>
-
-  <a class="{{ 'active' if active_page == 'services' else '' }}"
-     href="{{ url_for('dashboard.services') }}">
-    Services
-  </a>
-</nav>
-
-<main>
-  {% block content %}{% endblock %}
-</main>
-
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 </body>
 </html>

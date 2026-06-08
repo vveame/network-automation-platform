@@ -1,159 +1,174 @@
 {% extends "base.html" %}
 
 {% block page_title %}Overview{% endblock %}
-
 {% block hero_title %}Infrastructure Validation Dashboard{% endblock %}
-
 {% block hero_subtitle %}
-  High-level status of the PFE network automation platform.
+High-level status of the PFE network automation platform, including validation, monitoring, ML analysis and safe remediation.
 {% endblock %}
 
 {% block content %}
 
 <section class="context-grid">
-  <div class="context-card">
-    <span>Project</span>
-    <strong>{{ dashboard.project_name }}</strong>
-  </div>
-
-  <div class="context-card">
-    <span>Environment</span>
-    <strong>{{ dashboard.lab_environment }}</strong>
-  </div>
-
-  <div class="context-card">
-    <span>DevOps OOB IP</span>
-    <strong>{{ dashboard.devops_ip }}</strong>
-  </div>
-
-  <div class="context-card">
-    <span>OOB Network</span>
-    <strong>{{ dashboard.oob_network }}</strong>
-  </div>
+    <div class="context-card">
+        <span>Project</span>
+        <strong>{{ dashboard.project_name }}</strong>
+    </div>
+    <div class="context-card">
+        <span>Environment</span>
+        <strong>{{ dashboard.lab_environment }}</strong>
+    </div>
+    <div class="context-card">
+        <span>DevOps OOB IP</span>
+        <strong>{{ dashboard.devops_ip }}</strong>
+    </div>
+    <div class="context-card">
+        <span>OOB Network</span>
+        <strong>{{ dashboard.oob_network }}</strong>
+    </div>
 </section>
 
 <section class="stats-grid">
-  <div class="stat-card">
-    <span>Total reports</span>
-    <strong>{{ dashboard.total_reports }}</strong>
-  </div>
-
-  <div class="stat-card passed">
-    <span>Passed</span>
-    <strong>{{ dashboard.passed_reports }}</strong>
-  </div>
-
-  <div class="stat-card failed">
-    <span>Failed</span>
-    <strong>{{ dashboard.failed_reports }}</strong>
-  </div>
-
-  <div class="stat-card warning">
-    <span>Missing</span>
-    <strong>{{ dashboard.missing_reports }}</strong>
-  </div>
+    <div class="stat-card">
+        <span>Total reports</span>
+        <strong>{{ dashboard.total_reports }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>Passed</span>
+        <strong>{{ dashboard.passed_reports }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>Failed</span>
+        <strong>{{ dashboard.failed_reports }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>Missing</span>
+        <strong>{{ dashboard.missing_reports }}</strong>
+    </div>
 </section>
 
 <section class="section">
-  <div class="section-header">
-    <div>
-      <h2>Platform Sections</h2>
-      <p>Use these pages to inspect each part of the platform clearly.</p>
+    <div class="section-header">
+        <div>
+            <h2>Automation Decision Chain</h2>
+            <p>Latest synchronized state from S3 into /var/lib/pfe-dashboard.</p>
+        </div>
     </div>
-  </div>
 
-  <div class="quick-actions">
-    <a class="action-card" href="{{ url_for('dashboard.analyzer') }}">
-      <span>Decision and risk scoring</span>
-      <strong>Cloud Analyzer</strong>
-      {% if dashboard.cloud_analyzer.available %}
-        <em>{{ dashboard.cloud_analyzer.severity | upper }} / {{ dashboard.cloud_analyzer.risk_score }}/100</em>
-      {% else %}
-        <em>Unavailable</em>
-      {% endif %}
-    </a>
+    <div class="domain-grid">
+        <a class="domain-card dashboard-link" href="{{ url_for('dashboard.analyzer') }}">
+            <div class="domain-title">
+                <h3>Rule-Based Analyzer</h3>
+                {% if dashboard.cloud_analyzer.available %}
+                    <span class="badge {{ dashboard.cloud_analyzer.severity }}">{{ dashboard.cloud_analyzer.severity | upper }}</span>
+                {% else %}
+                    <span class="badge missing">UNAVAILABLE</span>
+                {% endif %}
+            </div>
+            {% if dashboard.cloud_analyzer.available %}
+                <p>Status: {{ dashboard.cloud_analyzer.anomaly_status | upper }}</p>
+                <p>Risk: {{ dashboard.cloud_analyzer.risk_score }}/100</p>
+                <p>Action: {{ dashboard.cloud_analyzer.recommended_action }}</p>
+            {% else %}
+                <p>No rule-based analyzer decision found.</p>
+            {% endif %}
+        </a>
 
-    <a class="action-card" href="{{ url_for('dashboard.monitoring') }}">
-      <span>Prometheus, Blackbox and SNMP</span>
-      <strong>Monitoring</strong>
-      {% if dashboard.prometheus_metrics.available %}
-        <em>{{ dashboard.prometheus_metrics.targets_up }}/{{ dashboard.prometheus_metrics.targets_total }} targets up</em>
-      {% else %}
-        <em>Unavailable</em>
-      {% endif %}
-    </a>
+        <a class="domain-card dashboard-link" href="{{ url_for('dashboard.ml') }}">
+            <div class="domain-title">
+                <h3>ML Isolation Forest</h3>
+                {% if dashboard.ml_decision.available %}
+                    <span class="badge {{ dashboard.ml_decision.severity }}">{{ dashboard.ml_decision.severity | upper }}</span>
+                {% else %}
+                    <span class="badge missing">UNAVAILABLE</span>
+                {% endif %}
+            </div>
+            {% if dashboard.ml_decision.available %}
+                <p>Status: {{ dashboard.ml_decision.ml_status | upper }}</p>
+                <p>ML risk: {{ dashboard.ml_decision.ml_risk_score }}/100</p>
+                <p>Prediction: {{ dashboard.ml_decision.latest_prediction }}</p>
+            {% else %}
+                <p>No ML decision found.</p>
+            {% endif %}
+        </a>
 
-    <a class="action-card" href="{{ url_for('dashboard.validation') }}">
-      <span>Generated validation reports</span>
-      <strong>Validation</strong>
-      <em>{{ dashboard.passed_reports }} passed / {{ dashboard.failed_reports }} failed</em>
-    </a>
+        <a class="domain-card dashboard-link" href="{{ url_for('dashboard.analyzer') }}">
+            <div class="domain-title">
+                <h3>Final Hybrid Decision</h3>
+                {% if dashboard.final_decision.available %}
+                    <span class="badge {{ dashboard.final_decision.final_severity }}">{{ dashboard.final_decision.final_severity | upper }}</span>
+                {% else %}
+                    <span class="badge missing">UNAVAILABLE</span>
+                {% endif %}
+            </div>
+            {% if dashboard.final_decision.available %}
+                <p>Classification: {{ dashboard.final_decision.classification }}</p>
+                <p>Risk: {{ dashboard.final_decision.final_risk_score }}/100</p>
+                <p>Remediation allowed: {{ dashboard.final_decision.remediation_allowed }}</p>
+            {% else %}
+                <p>No final decision found.</p>
+            {% endif %}
+        </a>
 
-    <a class="action-card" href="{{ url_for('dashboard.infrastructure') }}">
-      <span>FRR and OVS topology nodes</span>
-      <strong>Infrastructure</strong>
-      <em>{{ dashboard.nodes | length }} nodes</em>
-    </a>
-
-    <a class="action-card" href="{{ url_for('dashboard.services') }}">
-      <span>DMZ and expected services</span>
-      <strong>Services</strong>
-      <em>{{ dashboard.services | length }} services</em>
-    </a>
-  </div>
+        <a class="domain-card dashboard-link" href="{{ url_for('dashboard.remediation') }}">
+            <div class="domain-title">
+                <h3>Safe Remediation</h3>
+                {% if dashboard.remediation.available %}
+                    {% if dashboard.remediation.latest.success %}
+                        <span class="badge passed">READY</span>
+                    {% else %}
+                        <span class="badge warning">CHECK</span>
+                    {% endif %}
+                {% else %}
+                    <span class="badge missing">UNAVAILABLE</span>
+                {% endif %}
+            </div>
+            {% if dashboard.remediation.available %}
+                <p>Mode: {{ dashboard.remediation.latest.mode }}</p>
+                <p>Action: {{ dashboard.remediation.latest.selected_action }}</p>
+                <p>Executed: {{ dashboard.remediation.latest.executed }}</p>
+            {% else %}
+                <p>No remediation plan found.</p>
+            {% endif %}
+        </a>
+    </div>
 </section>
 
 <section class="section">
-  <div class="section-header">
-    <div>
-      <h2>Latest Snapshot Summary</h2>
-      <p>Fast summary of the latest synchronized dashboard cache.</p>
-    </div>
-  </div>
-
-  <div class="summary-grid">
-    <article class="domain-card">
-      <div class="domain-title">
-        <h3>Analyzer</h3>
-        {% if dashboard.cloud_analyzer.available %}
-          <span class="badge {{ dashboard.cloud_analyzer.severity }}">
-            {{ dashboard.cloud_analyzer.severity | upper }}
-          </span>
-        {% else %}
-          <span class="badge warning">UNAVAILABLE</span>
-        {% endif %}
-      </div>
-
-      {% if dashboard.cloud_analyzer.available %}
-        <p><strong>Status:</strong> {{ dashboard.cloud_analyzer.anomaly_status | upper }}</p>
-        <p><strong>Risk:</strong> {{ dashboard.cloud_analyzer.risk_score }}/100</p>
-        <p><strong>Action:</strong> {{ dashboard.cloud_analyzer.recommended_action }}</p>
-      {% else %}
-        <p>No analyzer decision is available.</p>
-      {% endif %}
-    </article>
-
-    <article class="domain-card">
-      <div class="domain-title">
-        <h3>Monitoring</h3>
+    <div class="section-header">
+        <div>
+            <h2>Monitoring Summary</h2>
+            <p>Prometheus snapshot synchronized from S3.</p>
+        </div>
         {% if dashboard.prometheus_metrics.available %}
-          <span class="badge {{ dashboard.prometheus_metrics.status }}">
-            {{ dashboard.prometheus_metrics.status | upper }}
-          </span>
+            <span class="badge {{ dashboard.prometheus_metrics.status }}">{{ dashboard.prometheus_metrics.status | upper }}</span>
         {% else %}
-          <span class="badge warning">UNAVAILABLE</span>
+            <span class="badge missing">UNAVAILABLE</span>
         {% endif %}
-      </div>
+    </div>
 
-      {% if dashboard.prometheus_metrics.available %}
-        <p><strong>Targets:</strong> {{ dashboard.prometheus_metrics.targets_up }}/{{ dashboard.prometheus_metrics.targets_total }} up</p>
-        <p><strong>SNMP:</strong> {{ dashboard.prometheus_metrics.snmp_targets_up }}/{{ dashboard.prometheus_metrics.snmp_targets_total }} routers up</p>
-        <p><strong>Snapshot:</strong> {{ dashboard.prometheus_metrics.snapshot_time_utc }}</p>
-      {% else %}
-        <p>No monitoring snapshot is available.</p>
-      {% endif %}
-    </article>
-  </div>
+    {% if dashboard.prometheus_metrics.available %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span>Targets up</span>
+                <strong>{{ dashboard.prometheus_metrics.targets_up }}/{{ dashboard.prometheus_metrics.targets_total }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>SNMP devices up</span>
+                <strong>{{ dashboard.prometheus_metrics.snmp_targets_up }}/{{ dashboard.prometheus_metrics.snmp_targets_total }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Blackbox probes</span>
+                <strong>{{ dashboard.prometheus_metrics.blackbox_probes_success }}/{{ dashboard.prometheus_metrics.blackbox_probes_total }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Max CPU</span>
+                <strong>{{ dashboard.prometheus_metrics.max_cpu_usage_percent }}%</strong>
+            </div>
+        </div>
+        <p class="muted">Snapshot: {{ dashboard.prometheus_metrics.snapshot_time_utc }}</p>
+    {% else %}
+        <div class="empty-state">No monitoring snapshot is available.</div>
+    {% endif %}
 </section>
 
 {% endblock %}

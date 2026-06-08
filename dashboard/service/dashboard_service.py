@@ -3,7 +3,6 @@ from typing import List
 
 from dto.dashboard_dto import DashboardDTO
 from dto.domain_dto import DomainDTO
-
 from service.report_service import ReportService
 from service.node_service import NodeService
 from service.service_health_service import ServiceHealthService
@@ -16,11 +15,13 @@ class DashboardService:
         vars_repository,
         cloud_analyzer_service,
         prometheus_metrics_service,
+        runtime_artifact_service,
     ):
         self.report_service = ReportService(report_repository)
         self.vars_repository = vars_repository
         self.cloud_analyzer_service = cloud_analyzer_service
         self.prometheus_metrics_service = prometheus_metrics_service
+        self.runtime_artifact_service = runtime_artifact_service
         self.node_service = NodeService()
         self.service_health_service = ServiceHealthService()
 
@@ -32,8 +33,13 @@ class DashboardService:
         domains = self._build_domains(reports)
         nodes = self.node_service.build_nodes(vars_data, report_status_map)
         services = self.service_health_service.build_services(vars_data, report_status_map)
+
         cloud_analyzer = self.cloud_analyzer_service.get_latest_decision()
         prometheus_metrics = self.prometheus_metrics_service.get_latest_metrics()
+
+        final_decision = self.runtime_artifact_service.get_final_decision()
+        ml_decision = self.runtime_artifact_service.get_ml_decision()
+        remediation = self.runtime_artifact_service.get_remediation()
 
         total = len(reports)
         passed = len([report for report in reports if report.status == "passed"])
@@ -52,12 +58,18 @@ class DashboardService:
             failed_reports=failed,
             missing_reports=missing,
             oob_network=oob_management.get("network", "N/A"),
-            devops_ip=devops_server.get("oob_ip", oob_management.get("devops_ip", "N/A")),
+            devops_ip=devops_server.get(
+                "oob_ip",
+                oob_management.get("devops_ip", "N/A"),
+            ),
             domains=domains,
             nodes=nodes,
             services=services,
             cloud_analyzer=cloud_analyzer,
             prometheus_metrics=prometheus_metrics,
+            final_decision=final_decision,
+            ml_decision=ml_decision,
+            remediation=remediation,
         )
 
     def get_report_content(self, filename: str):
@@ -73,7 +85,6 @@ class DashboardService:
 
         for domain_name in sorted(grouped.keys()):
             domain_reports = grouped[domain_name]
-
             total = len(domain_reports)
             passed = len([report for report in domain_reports if report.status == "passed"])
             failed = len([report for report in domain_reports if report.status == "failed"])
@@ -96,8 +107,6 @@ class DashboardService:
     def _global_status(self, failed: int, missing: int) -> str:
         if failed > 0:
             return "failed"
-
         if missing > 0:
             return "warning"
-
         return "passed"

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block page_title %}ML Analyzer{% endblock %}
+{% block hero_title %}ML Anomaly Detection{% endblock %}
+{% block hero_subtitle %}
+Isolation Forest anomaly detection based on historical Prometheus feature windows.
+{% endblock %}
+
+{% block content %}
+
+<section class="section">
+    <div class="section-header">
+        <div>
+            <h2>Isolation Forest Decision</h2>
+            <p>Advisory ML signal generated from Prometheus query_range features.</p>
+        </div>
+        {% if dashboard.ml_decision.available %}
+            <span class="badge {{ dashboard.ml_decision.severity }}">{{ dashboard.ml_decision.severity | upper }}</span>
+        {% else %}
+            <span class="badge missing">UNAVAILABLE</span>
+        {% endif %}
+    </div>
+
+    {% if dashboard.ml_decision.available %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span>ML status</span>
+                <strong>{{ dashboard.ml_decision.ml_status }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Risk score</span>
+                <strong>{{ dashboard.ml_decision.ml_risk_score }}/100</strong>
+            </div>
+            <div class="stat-card">
+                <span>Prediction</span>
+                <strong>{{ dashboard.ml_decision.latest_prediction }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Outlier ratio</span>
+                <strong>{{ dashboard.ml_decision.outlier_ratio }}</strong>
+            </div>
+        </div>
+
+        <div class="context-grid">
+            <div class="context-card">
+                <span>Model</span>
+                <strong>{{ dashboard.ml_decision.model_type }}</strong>
+            </div>
+            <div class="context-card">
+                <span>Scored rows</span>
+                <strong>{{ dashboard.ml_decision.scored_rows }}</strong>
+            </div>
+            <div class="context-card">
+                <span>Dataset rows</span>
+                <strong>{{ dashboard.ml_decision.dataset_rows }}</strong>
+            </div>
+            <div class="context-card">
+                <span>Latest timestamp</span>
+                <strong>{{ dashboard.ml_decision.latest_timestamp }}</strong>
+            </div>
+        </div>
+
+        <div class="domain-grid">
+            <div class="domain-card">
+                <h3>Decision Score</h3>
+                <p>{{ dashboard.ml_decision.latest_decision_score }}</p>
+                <p class="muted">Positive values usually mean normal behavior. Lower values are more anomalous.</p>
+            </div>
+            <div class="domain-card">
+                <h3>Sample Score</h3>
+                <p>{{ dashboard.ml_decision.latest_sample_score }}</p>
+                <p class="muted">Internal Isolation Forest scoring value.</p>
+            </div>
+        </div>
+
+        <h3>Top Unusual Features</h3>
+
+        {% if dashboard.ml_decision.top_unusual_features %}
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Value</th>
+                            <th>Training median</th>
+                            <th>Training std</th>
+                            <th>Z-score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in dashboard.ml_decision.top_unusual_features %}
+                            <tr>
+                                <td>{{ item.feature }}</td>
+                                <td>{{ item.value }}</td>
+                                <td>{{ item.training_median }}</td>
+                                <td>{{ item.training_std }}</td>
+                                <td>{{ item.absolute_z_score }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">No unusual feature list available.</div>
+        {% endif %}
+
+        <div class="preview-card">
+            <h3>ML Artifacts</h3>
+            <p>Decision file: {{ dashboard.ml_decision.source_file }}</p>
+            <p>Scores file: {{ dashboard.ml_decision.scores_file }}</p>
+            <p>Dataset file: {{ dashboard.ml_decision.dataset_file }}</p>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            No ML decision found. Run Jenkins ML stages and sync latest/ml from S3.
+        </div>
+    {% endif %}
+</section>
+
+{% endblock %}

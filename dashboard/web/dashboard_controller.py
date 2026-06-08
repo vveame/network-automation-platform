@@ -29,6 +29,16 @@ def analyzer():
     return _render_dashboard_page("pages/analyzer.html", "analyzer")
 
 
+@dashboard_bp.route("/ml")
+def ml():
+    return _render_dashboard_page("pages/ml.html", "ml")
+
+
+@dashboard_bp.route("/remediation")
+def remediation():
+    return _render_dashboard_page("pages/remediation.html", "remediation")
+
+
 @dashboard_bp.route("/monitoring")
 def monitoring():
     return _render_dashboard_page("pages/monitoring.html", "monitoring")
