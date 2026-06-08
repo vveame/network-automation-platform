@@ -41,6 +41,12 @@ cloud/analyzer/outputs/
 # Monitoring generated outputs
 monitoring/outputs/
 
+# ML anomaly detection generated data
+cloud/analyzer/ml/data/raw/*
+cloud/analyzer/ml/data/features/*
+cloud/analyzer/ml/models/*
+cloud/analyzer/ml/outputs/*
+
 # Python
 __pycache__/
 *.pyc
