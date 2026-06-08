@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block page_title %}Monitoring{% endblock %}
+
+{% block hero_title %}Monitoring Snapshot{% endblock %}
+
+{% block hero_subtitle %}
+  Prometheus, Node Exporter, Blackbox Exporter and SNMPv3 metrics from the latest S3-backed snapshot.
+{% endblock %}
+
+{% block content %}
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Prometheus Metrics Snapshot</h2>
+      <p>
+        Host metrics, service probes and SNMPv3 interface metrics collected from the local GNS3 lab.
+      </p>
+    </div>
+
+    {% if dashboard.prometheus_metrics.available %}
+      <span class="status-pill {{ dashboard.prometheus_metrics.status }}">
+        {{ dashboard.prometheus_metrics.status | upper }}
+      </span>
+    {% else %}
+      <span class="status-pill warning">UNAVAILABLE</span>
+    {% endif %}
+  </div>
+
+  {% if dashboard.prometheus_metrics.available %}
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span>Targets UP</span>
+        <strong>{{ dashboard.prometheus_metrics.targets_up }}/{{ dashboard.prometheus_metrics.targets_total }}</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Memory Used</span>
+        <strong>{{ dashboard.prometheus_metrics.memory_used_percent }}%</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Disk Used</span>
+        <strong>{{ dashboard.prometheus_metrics.disk_used_percent }}%</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Snapshot</span>
+        <strong class="small-strong">{{ dashboard.prometheus_metrics.snapshot_time_utc }}</strong>
+      </div>
+    </div>
+
+    <article class="domain-card">
+      <div class="domain-title">
+        <h3>Monitoring Overview</h3>
+        <span class="badge {{ dashboard.prometheus_metrics.status }}">
+          {{ dashboard.prometheus_metrics.status | upper }}
+        </span>
+      </div>
+
+      <p><strong>Prometheus URL:</strong> {{ dashboard.prometheus_metrics.prometheus_url }}</p>
+      <p><strong>Source:</strong> {{ dashboard.prometheus_metrics.source_dir }}</p>
+
+      <div class="mini-stats">
+        <span>{{ dashboard.prometheus_metrics.targets_up }}/{{ dashboard.prometheus_metrics.targets_total }} scrape targets up</span>
+        <span>{{ dashboard.prometheus_metrics.snmp_targets_up }}/{{ dashboard.prometheus_metrics.snmp_targets_total }} SNMP targets up</span>
+        <span>{{ dashboard.prometheus_metrics.snmp_interfaces_up }}/{{ dashboard.prometheus_metrics.snmp_interfaces_total }} monitored interfaces up</span>
+      </div>
+    </article>
+
+    {% if dashboard.prometheus_metrics.node_metrics %}
+      <article class="domain-card">
+        <div class="domain-title">
+          <h3>Host Resource Metrics</h3>
+          <span class="badge passed">NODE EXPORTER</span>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Node</th>
+                <th>Instance</th>
+                <th>Role</th>
+                <th>Memory</th>
+                <th>Disk</th>
+                <th>Kernel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for node in dashboard.prometheus_metrics.node_metrics %}
+                <tr>
+                  <td><strong>{{ node.node_name }}</strong></td>
+                  <td>{{ node.instance }}</td>
+                  <td>{{ node.role }}</td>
+                  <td>
+                    <strong>{{ node.memory_used_percent }}%</strong>
+                    <br>
+                    <span class="subtitle">
+                      {{ node.memory_available_gb }} GB free /
+                      {{ node.memory_total_gb }} GB total
+                    </span>
+                  </td>
+                  <td>
+                    <strong>{{ node.disk_used_percent }}%</strong>
+                    <br>
+                    <span class="subtitle">
+                      {{ node.disk_available_gb }} GB free /
+                      {{ node.disk_total_gb }} GB total
+                    </span>
+                  </td>
+                  <td>{{ node.kernel_release }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    {% endif %}
+
+    {% if dashboard.prometheus_metrics.snmp_available %}
+      <article class="domain-card">
+        <div class="domain-title">
+          <h3>FRR Router Interface Metrics</h3>
+          <span class="badge passed">SNMPv3 / IF-MIB</span>
+        </div>
+
+        <p>
+          Interface status and counters collected from all FRR routers through SNMPv3,
+          SNMP Exporter and Prometheus.
+        </p>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span>SNMP Targets UP</span>
+            <strong>{{ dashboard.prometheus_metrics.snmp_targets_up }}/{{ dashboard.prometheus_metrics.snmp_targets_total }}</strong>
+          </div>
+
+          <div class="stat-card">
+            <span>Monitored Interfaces UP</span>
+            <strong>{{ dashboard.prometheus_metrics.snmp_interfaces_up }}/{{ dashboard.prometheus_metrics.snmp_interfaces_total }}</strong>
+          </div>
+
+          <div class="stat-card">
+            <span>Interfaces Down</span>
+            <strong>{{ dashboard.prometheus_metrics.snmp_interfaces_down }}</strong>
+          </div>
+
+          <div class="stat-card">
+            <span>Collection</span>
+            <strong class="small-strong">IF-MIB</strong>
+          </div>
+        </div>
+
+        <p class="subtitle">
+          Loopback and VRRP virtual interfaces may be displayed for visibility, but they should not be treated like physical/link interfaces in anomaly scoring.
+        </p>
+
+        {% for node_name, interfaces in dashboard.prometheus_metrics.snmp_interfaces|groupby("node_name") %}
+          <div class="snmp-router-block">
+            <h4>{{ node_name }}</h4>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Interface</th>
+                    <th>Index</th>
+                    <th>Admin</th>
+                    <th>Operational</th>
+                    <th>In Octets</th>
+                    <th>Out Octets</th>
+                    <th>Errors</th>
+                    <th>Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for iface in interfaces %}
+                    {% set is_loopback = iface.if_name == "lo" %}
+                    {% set is_vrrp = iface.if_name[:4] == "vrrp" %}
+                    {% set is_special = is_loopback or is_vrrp %}
+
+                    <tr>
+                      <td>
+                        <strong>{{ iface.if_name }}</strong>
+                        <br>
+                        <span class="subtitle">{{ iface.if_descr }}</span>
+                      </td>
+
+                      <td>{{ iface.if_index }}</td>
+
+                      <td>
+                        <span class="badge {{ 'passed' if iface.admin_status == 'up' else 'warning' }}">
+                          {{ iface.admin_status | upper }}
+                        </span>
+                      </td>
+
+                      <td>
+                        {% if is_special %}
+                          <span class="badge empty">
+                            {{ iface.oper_status | upper }}
+                          </span>
+                        {% else %}
+                          <span class="badge {{ 'passed' if iface.oper_status == 'up' else 'failed' }}">
+                            {{ iface.oper_status | upper }}
+                          </span>
+                        {% endif %}
+                      </td>
+
+                      <td>{{ iface.in_octets }}</td>
+                      <td>{{ iface.out_octets }}</td>
+                      <td>{{ iface.in_errors }} in / {{ iface.out_errors }} out</td>
+
+                      <td>
+                        {% if is_loopback %}
+                          <span class="badge empty">LOOPBACK</span>
+                        {% elif is_vrrp %}
+                          <span class="badge warning">VRRP</span>
+                        {% else %}
+                          <span class="badge passed">MONITORED</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endfor %}
+      </article>
+    {% endif %}
+
+    {% if dashboard.prometheus_metrics.blackbox_probes %}
+      <article class="domain-card">
+        <div class="domain-title">
+          <h3>Blackbox Service Probes</h3>
+          <span class="badge passed">BLACKBOX</span>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Target</th>
+                <th>Probe Type</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>HTTP Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for probe in dashboard.prometheus_metrics.blackbox_probes %}
+                <tr>
+                  <td><strong>{{ probe.service_name }}</strong></td>
+                  <td>{{ probe.instance }}</td>
+                  <td>{{ probe.probe_type }}</td>
+                  <td>
+                    <span class="badge {{ 'passed' if probe.status == 'success' else 'failed' }}">
+                      {{ probe.status | upper }}
+                    </span>
+                  </td>
+                  <td>{{ probe.duration_seconds }}s</td>
+                  <td>
+                    {% if probe.http_status_code > 0 %}
+                      {{ probe.http_status_code }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    {% endif %}
+
+    {% if dashboard.prometheus_metrics.targets %}
+      <article class="domain-card">
+        <div class="domain-title">
+          <h3>Prometheus Scrape Targets</h3>
+          <span class="badge {{ dashboard.prometheus_metrics.status }}">
+            {{ dashboard.prometheus_metrics.targets_up }}/{{ dashboard.prometheus_metrics.targets_total }} UP
+          </span>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Job</th>
+                <th>Instance</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for target in dashboard.prometheus_metrics.targets %}
+                <tr>
+                  <td>{{ target.job }}</td>
+                  <td>{{ target.instance }}</td>
+                  <td>
+                    <span class="badge {{ 'passed' if target.status == 'up' else 'failed' }}">
+                      {{ target.status | upper }}
+                    </span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    {% endif %}
+
+  {% else %}
+    <div class="empty-state">
+      No Prometheus metrics snapshot found. Run the Jenkins metrics stage or sync the dashboard cache from S3.
+    </div>
+  {% endif %}
+</section>
+
+{% endblock %}

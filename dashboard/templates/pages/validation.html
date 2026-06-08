@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block page_title %}Validation{% endblock %}
+
+{% block hero_title %}Validation Reports{% endblock %}
+
+{% block hero_subtitle %}
+  Validation domains and readable report previews generated from the latest synchronized Ansible outputs.
+{% endblock %}
+
+{% block content %}
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Validation Domains</h2>
+      <p>Generated automatically from the report files available in the dashboard cache.</p>
+    </div>
+  </div>
+
+  {% if dashboard.domains %}
+    <div class="domain-grid">
+      {% for domain in dashboard.domains %}
+        <article class="domain-card">
+          <div class="domain-title">
+            <h3>{{ domain.name }}</h3>
+            <span class="badge {{ domain.status }}">{{ domain.status }}</span>
+          </div>
+
+          <div class="mini-stats">
+            <span>{{ domain.total }} reports</span>
+            <span>{{ domain.passed }} passed</span>
+            <span>{{ domain.failed }} failed</span>
+            <span>{{ domain.missing }} missing</span>
+          </div>
+
+          <div class="report-list">
+            {% for report in domain.reports %}
+              <a class="report-line" href="{{ url_for('report.report_detail', filename=report.filename) }}">
+                <span>{{ report.title }}</span>
+                <span class="badge {{ report.status }}">{{ report.status }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">No report files found in the dashboard cache.</div>
+  {% endif %}
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Readable Report Previews</h2>
+      <p>Short previews generated dynamically from report content.</p>
+    </div>
+  </div>
+
+  {% if dashboard.domains %}
+    <div class="preview-grid">
+      {% for domain in dashboard.domains %}
+        {% for report in domain.reports %}
+          <article class="preview-card">
+            <div class="preview-title">
+              <h3>{{ report.title }}</h3>
+              <span class="badge {{ report.status }}">{{ report.status }}</span>
+            </div>
+
+            <p>{{ report.summary }}</p>
+
+            <div class="report-meta">
+              <span>{{ report.category }}</span>
+              <span>{{ report.size_kb }} KB</span>
+              <span>{{ report.updated_at }}</span>
+            </div>
+
+            <a href="{{ url_for('report.report_detail', filename=report.filename) }}">Open full report</a>
+          </article>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">No report previews available.</div>
+  {% endif %}
+</section>
+
+{% endblock %}

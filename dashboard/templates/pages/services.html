@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block page_title %}Services{% endblock %}
+
+{% block hero_title %}Validated Services{% endblock %}
+
+{% block hero_subtitle %}
+  DMZ and expected services loaded dynamically from Ansible variables and validation results.
+{% endblock %}
+
+{% block content %}
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Validated Services</h2>
+      <p>Loaded dynamically from expected_services or DMZ variables.</p>
+    </div>
+  </div>
+
+  {% if dashboard.services %}
+    <div class="service-grid">
+      {% for service in dashboard.services %}
+        <article class="service-card">
+          <div class="service-icon">{{ service.name[0] }}</div>
+
+          <div class="service-content">
+            <h3>{{ service.name }}</h3>
+            <p>{{ service.ip }}:{{ service.port }}</p>
+            <p>{{ service.validation_method }}</p>
+          </div>
+
+          <span class="badge {{ service.status }}">{{ service.status }}</span>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">No services found in Ansible variables.</div>
+  {% endif %}
+</section>
+
+{% endblock %}

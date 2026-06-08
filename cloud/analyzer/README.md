@@ -1,23 +1,24 @@
 # Cloud Analyzer
 
-This directory contains the first anomaly-detection baseline for the intelligent network automation platform.
+This directory contains the first anomaly-detection baseline for the Intelligent Network Automation Platform.
 
 ## Purpose
 
-The final project objective is to analyze monitoring metrics and logs collected from the infrastructure and use them to detect anomalies.
+The analyzer combines validation reports and Prometheus monitoring metrics to produce an explainable anomaly decision.
 
-At this stage, the analyzer uses an explainable rule-based baseline.
+At this stage, the analyzer is rule-based. It prepares the platform for future statistical or machine-learning anomaly detection.
 
-It combines:
+## Current Inputs
+
+The analyzer uses:
 
 ```text
 Ansible validation reports
-Prometheus monitoring metrics
-Blackbox service probes
-SNMP network interface metrics
+Prometheus target health
+Node Exporter memory/disk metrics
+Blackbox service probe metrics
+SNMPv3 FRR router interface metrics
 ```
-
-This creates a structured baseline before future historical/statistical or machine-learning anomaly detection.
 
 ## Current Flow
 
@@ -28,11 +29,9 @@ Ansible validation
         ↓
 Jenkins pipeline
         ↓
-ansible/outputs/
+validation reports
         ↓
 Prometheus metrics snapshot
-        ↓
-monitoring/outputs/latest/
         ↓
 Cloud analyzer
         ↓
@@ -43,7 +42,7 @@ AWS S3 latest/analyzer/
 Flask dashboard
 ```
 
-## Structure
+## Directory Structure
 
 ```text
 cloud/analyzer/
@@ -62,21 +61,29 @@ cloud/analyzer/
 
 Main CLI entrypoint.
 
-It can analyze local validation artifacts and optionally include a Prometheus metrics snapshot.
+It accepts:
+
+```text
+--input-dir     validation report directory
+--metrics-dir   Prometheus metrics snapshot directory
+--output-dir    analyzer output directory
+--build-label   build identifier
+```
 
 ### parse_validation_reports.py
 
 Parses raw validation report files.
 
-Responsibilities:
+It detects:
 
 ```text
-read .txt reports
-classify report category
-detect critical patterns
-detect warning patterns
-handle expected security-block test results
-mark reports as passed, warning, failed or empty
+passed reports
+warning reports
+failed reports
+empty reports
+critical patterns
+warning patterns
+expected blocked security behavior
 ```
 
 ### parse_prometheus_metrics.py
@@ -86,7 +93,7 @@ Parses exported Prometheus metric JSON files.
 Current parsed metric groups:
 
 ```text
-Prometheus target health
+Prometheus scrape target health
 Node memory/disk/system metrics
 Blackbox service probes
 SNMP target health
@@ -97,15 +104,16 @@ SNMP interface errors
 
 ### anomaly_rules.py
 
-Contains explainable anomaly scoring logic.
+Contains explainable risk scoring logic.
 
 It calculates:
 
 ```text
 validation_risk_score
 metrics_risk_score
-risk_score
+global risk_score
 severity
+anomaly_status
 recommended_action
 detection_reasons
 ```
@@ -122,36 +130,60 @@ analysis-report.txt
 
 ## Detection Logic
 
-The analyzer uses rule-based risk scoring.
+The analyzer calculates two risk parts:
 
-### Validation risk
+```text
+validation risk
+metrics risk
+```
 
-Validation reports increase risk when they show:
+Then it combines them into the final risk score.
+
+## Validation Risk
+
+Validation risk increases when reports show:
 
 ```text
 security validation failure
 end-to-end validation failure
-OOB management failure
+OOB management validation failure
 FRR/routing validation failure
 OVS/switching validation failure
 DMZ validation failure
 critical error patterns
 warning patterns
 ```
-Expected blocked-policy tests are handled separately. For example, blocked SSH or HTTP tests can produce timeouts, but those timeouts are normal when they appear in explicit blocked-policy sections.
 
-### Metrics risk
+Expected blocked-policy tests are handled separately.
 
-Prometheus metrics increase risk when they show:
+For example, a timeout can be normal when validating that unauthorized SSH or HTTP access is blocked.
+
+## Metrics Risk
+
+Metrics risk increases when Prometheus data shows:
 
 ```text
-Prometheus targets down
+Prometheus scrape targets down
 Blackbox probes failed
 high memory usage
 high disk usage
 SNMP target down
 SNMP interface unexpectedly down
 SNMP interface errors
+```
+
+## SNMP Risk Logic
+
+SNMP metrics are collected from all FRR routers.
+
+Current SNMP targets:
+
+```text
+core-frr-1
+core-frr-2
+dist-frr-1
+dist-frr-2
+edge-router
 ```
 
 SNMP interface status is interpreted using IF-MIB values:
@@ -166,21 +198,101 @@ SNMP interface status is interpreted using IF-MIB values:
 7 = lowerLayerDown
 ```
 
-The analyzer treats an interface as unexpected down when:
+An interface is considered unexpectedly down when:
 
 ```text
 admin_status = up
 oper_status != up
-interface != lo
+interface is health-relevant
 ```
 
-The loopback interface is parsed but ignored for unexpected-down risk.
+Ignored for unexpected-down risk:
+
+```text
+lo
+vrrp*
+```
+
+These interfaces are still useful for visibility, but they are not treated like physical or routed link interfaces in anomaly scoring.
+
+## Severity Levels
+
+The analyzer maps the final risk score to:
+
+```text
+0-24     low       normal
+25-49    medium    anomalous
+50-74    high      anomalous
+75-100   critical  anomalous
+```
+
+## Example Healthy Output
+
+```text
+Global validation status: passed
+Anomaly status: normal
+Risk score: 0/100
+Validation risk score: 0/100
+Metrics risk score: 0/100
+Severity: low
+Recommended action: no_action
+
+Targets up: 11/11
+Blackbox probes success: 4/4
+SNMP targets up: 5/5
+SNMP targets down: 0
+SNMP unexpected interface down: 0
+SNMP interfaces with errors: 0
+```
+
+## Run Locally
+
+First export a fresh metrics snapshot:
+
+```bash
+./monitoring/scripts/export-prometheus-snapshot.sh
+```
+
+Then run the analyzer:
+
+```bash
+python3 cloud/analyzer/analyze_validation_artifacts.py \
+  --input-dir /var/lib/pfe-dashboard/outputs \
+  --metrics-dir monitoring/outputs/latest \
+  --output-dir cloud/analyzer/outputs \
+  --build-label local-test
+```
+
+Check outputs:
+
+```bash
+cat cloud/analyzer/outputs/decision.json | python3 -m json.tool
+cat cloud/analyzer/outputs/analysis-report.txt
+```
+
+## Outputs
+
+The analyzer generates:
+
+```text
+cloud/analyzer/outputs/summary.json
+cloud/analyzer/outputs/decision.json
+cloud/analyzer/outputs/analysis-report.txt
+```
+
+Jenkins uploads them to S3 under:
+
+```text
+processed-summaries/<build-label>/
+anomaly-results/<build-label>/
+latest/analyzer/
+```
 
 ## Why Rule-Based First
 
 A full ML model needs historical metrics, repeated normal baselines and enough anomaly examples.
 
-This rule-based analyzer creates the first structured anomaly baseline and prepares the project for later ML work.
+The current analyzer creates the first explainable anomaly baseline and prepares the project for future ML work.
 
 Future extensions can add:
 
@@ -188,6 +300,14 @@ Future extensions can add:
 historical Prometheus trend analysis
 statistical thresholds
 log-event correlation
-ML anomaly detection
+machine-learning anomaly detection
 automated remediation proposals
+```
+
+## Do Not Commit
+
+Do not commit generated analyzer outputs:
+
+```text
+cloud/analyzer/outputs/
 ```

@@ -1,10 +1,10 @@
 # Monitoring Baseline
 
-This directory contains the local Prometheus monitoring baseline for the intelligent network automation platform.
+This directory contains the local Prometheus monitoring baseline for the Intelligent Network Automation Platform.
 
 ## Objective
 
-The monitoring layer collects infrastructure, service and network-device metrics from the local GNS3/DevOps environment.
+The monitoring layer collects host, service and network-device metrics from the local GNS3/DevOps environment.
 
 The monitoring data is used by:
 
@@ -20,11 +20,11 @@ Flask dashboard visualization
 cloud analyzer risk scoring
 ```
 
-This baseline prepares the project for future AI/ML anomaly detection by producing structured and repeatable metrics snapshots.
+This creates a structured metrics baseline for future anomaly detection.
 
 ## Architecture
 
-The current monitoring architecture is local because the hybrid VPN/cloud link is not yet the active scraping path.
+The current monitoring architecture runs on the DevOps VM and monitors the local GNS3 lab.
 
 ```text
 DevOps VM
@@ -37,21 +37,21 @@ GNS3 lab
 ├── GNS3 VM Node Exporter target
 ├── DMZ Web service probes
 ├── DMZ DNS service probes
-└── EdgeRouter SNMPv3 interface metrics
+└── FRR router SNMPv3 interface metrics
 ```
 
 ## Source of Truth Model
 
-The monitoring workflow follows the same source-of-truth model as validation reports and analyzer outputs.
+The project follows the same artifact model for validation, analyzer and monitoring outputs.
 
 ```text
 Jenkins workspace = temporary generation area
 AWS S3 = durable source of truth
 /var/lib/pfe-dashboard = local dashboard cache
-GitHub = source code, templates and scripts only
+GitHub = source code, templates, safe examples and scripts only
 ```
 
-Generated local metrics are stored temporarily in:
+Generated monitoring snapshots are temporary in:
 
 ```text
 monitoring/outputs/latest/
@@ -70,7 +70,7 @@ Then the dashboard cache is synchronized to:
 /var/lib/pfe-dashboard/metrics/latest/
 ```
 
-## Structure
+## Directory Structure
 
 ```text
 monitoring/
@@ -97,12 +97,9 @@ monitoring/
 
 ## Monitored Sources
 
-### Prometheus self-monitoring
+### Prometheus Self-Monitoring
 
-```text
-Prometheus target health
-Prometheus scrape status
-```
+Prometheus monitors its own scrape health through the `up` metric.
 
 ### Node Exporter
 
@@ -113,7 +110,7 @@ devops-server
 gns3-vm
 ```
 
-Collected metrics include:
+Collected host metrics include:
 
 ```text
 node_uname_info
@@ -125,16 +122,16 @@ node_filesystem_size_bytes
 
 ### Blackbox Exporter
 
-Current probes:
+Current probes include:
 
 ```text
-DMZ Web HTTP: http://172.16.50.10
-DMZ Web TCP/80: 172.16.50.10:80
-DMZ DNS TCP/53: 172.16.50.20:53
-DNS query: web.pfe.local via 172.16.50.20
+DMZ Web HTTP probe
+DMZ Web TCP/80 probe
+DMZ DNS TCP/53 probe
+DNS query probe
 ```
 
-Collected metrics include:
+Collected probe metrics include:
 
 ```text
 probe_success
@@ -144,23 +141,31 @@ probe_http_status_code
 
 ### SNMP Exporter
 
-Current SNMP target:
+SNMP Exporter is used to collect interface metrics from all FRR routers.
+
+Current SNMP targets:
 
 ```text
-EdgeRouter-VPNGateway: 10.200.0.30:1161
+core-frr-1    10.200.0.11:1161
+core-frr-2    10.200.0.12:1161
+dist-frr-1    10.200.0.21:1161
+dist-frr-2    10.200.0.22:1161
+edge-router   10.200.0.30:1161
 ```
 
-Security:
+Security model:
 
 ```text
-SNMPv3 authPriv
-SHA authentication
-AES privacy
-Read-only access
-UDP/1161 allowed only from DevOps OOB IP
+SNMP version: SNMPv3
+Security level: authPriv
+Authentication: SHA
+Privacy/encryption: AES
+Access type: read-only
+SNMP port: UDP/1161
+Allowed source: DevOps OOB IP 10.200.0.10
 ```
 
-Collected metrics include:
+Collected SNMP metrics include:
 
 ```text
 up{job="snmp-network-devices"}
@@ -181,7 +186,7 @@ From the repository root:
 ./monitoring/scripts/apply-local-prometheus-baseline.sh
 ```
 
-This script installs/restarts:
+This script installs and configures:
 
 ```text
 prometheus
@@ -191,27 +196,32 @@ prometheus-snmp-exporter
 snmp tools
 ```
 
-It copies versioned Prometheus/Blackbox/target files, but it does not overwrite:
+It copies versioned Prometheus, Blackbox and target files into `/etc/prometheus`.
 
-```text
-/etc/prometheus/snmp.yml
-```
-
-That file is generated locally because it contains SNMPv3 credentials.
+It does not blindly overwrite the local SNMP Exporter secrets. The final SNMP Exporter config is generated locally because it contains SNMPv3 credentials.
 
 ## Build Local SNMP Exporter Config
 
-Before applying SNMP monitoring for the first time:
+First create the local SNMP auth file:
+
+```bash
+cp monitoring/snmp/snmp-auth.local.yml.example monitoring/snmp/snmp-auth.local.yml
+nano monitoring/snmp/snmp-auth.local.yml
+```
+
+Then generate the local SNMP Exporter config:
 
 ```bash
 ./monitoring/scripts/build-local-snmp-exporter-config.sh
 ```
 
-The generated file is:
+This creates:
 
 ```text
 /etc/prometheus/snmp.yml
 ```
+
+That file contains real SNMPv3 credentials and must not be committed.
 
 ## Export Metrics Snapshot
 
@@ -227,9 +237,10 @@ Default output:
 monitoring/outputs/latest/
 ```
 
-The snapshot includes:
+Exported files include:
 
 ```text
+manifest.json
 up.json
 node_uname_info.json
 node_memory_available_bytes.json
@@ -251,18 +262,17 @@ snmp_if_out_errors.json
 
 ## Jenkins Integration
 
-The Jenkins pipeline exports a Prometheus snapshot after validation/analyzer stages.
+The Jenkins pipeline uses this monitoring baseline after local validation.
 
 Expected flow:
 
 ```text
 1. Generate validation reports
-2. Upload validation artifacts to S3
-3. Export Prometheus metrics snapshot
-4. Run cloud analyzer with validation + metrics inputs
-5. Upload analyzer outputs to S3
-6. Upload metrics snapshot to S3
-7. Sync dashboard cache from S3
+2. Export Prometheus metrics snapshot
+3. Run cloud analyzer with validation + metrics inputs
+4. Upload validation, analyzer and metrics outputs to S3
+5. Sync the local dashboard cache from S3
+6. Display results in the Flask dashboard
 ```
 
 ## Dashboard Integration
@@ -273,14 +283,15 @@ The Flask dashboard reads the latest metrics from:
 /var/lib/pfe-dashboard/metrics/latest/
 ```
 
-It visualizes:
+The monitoring page visualizes:
 
 ```text
 Prometheus target availability
 Node memory/disk usage
-Blackbox service probes
-SNMP edge-router interface status
-SNMP interface counters
+Blackbox service probe results
+SNMP FRR router target health
+SNMP per-router interface status
+SNMP interface counters and errors
 ```
 
 ## Analyzer Integration
@@ -292,23 +303,22 @@ Current metrics-based risk inputs:
 ```text
 Prometheus targets down
 Blackbox probes failed
-High memory usage
-High disk usage
+high memory usage
+high disk usage
 SNMP target down
 SNMP interface unexpectedly down
 SNMP interface errors
 ```
 
+Loopback and VRRP virtual interfaces may be displayed in the dashboard for visibility, but they are not treated like physical or routed interfaces for anomaly scoring.
+
 ## Notes
 
-Generated monitoring outputs are not committed to GitHub.
-
-GitHub stores only:
+Do not commit:
 
 ```text
-Prometheus configuration
-Exporter target definitions
-Safe examples
-Automation scripts
-Documentation
+monitoring/snmp/snmp-auth.local.yml
+monitoring/outputs/
 ```
+
+GitHub stores only safe versioned files, templates, scripts and documentation.

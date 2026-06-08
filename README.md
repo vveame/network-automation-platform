@@ -1,111 +1,180 @@
 # Intelligent Network Automation Platform
 
-This repository contains the versioned configuration files for the local network infrastructure used in the intelligent network automation platform.
+This repository contains the versioned source code, configuration files, automation scripts and documentation for an intelligent network automation platform built around a local GNS3 enterprise lab, Jenkins automation, AWS S3 artifact storage, Prometheus monitoring, SNMPv3 network-device metrics, a rule-based cloud analyzer and a Flask multi-page dashboard.
 
 ## Objective
 
-The objective is to transform a manually validated GNS3 topology into a reproducible and automatable infrastructure baseline.
+The objective of this project is to transform a manually validated GNS3 network topology into a reproducible, automatable and observable infrastructure baseline.
 
-The platform separates infrastructure nodes into three operational categories:
+The platform separates the infrastructure into three operational categories:
 
 ```text
 Network infrastructure nodes:
-  SSH required and managed by Ansible
+  SSH required and managed by Ansible/Jenkins.
 
 Service nodes:
-  SSH not required; validated through health checks
+  SSH not required; validated through health checks.
 
 Endpoint/test hosts:
-  SSH not required; validated through connectivity tests
+  SSH not required; validated through connectivity tests.
 ```
 
 The final local architecture follows a clear separation between:
 
 ```text
 Production / Data Plane:
-  VLANs, routing, DMZ, NAT, firewall rules, user/service traffic
+  VLANs, routing, DMZ, NAT, firewall rules, user/service traffic.
 
 Management / Control Plane:
-  DevOps server, SSH, Ansible, Jenkins, infrastructure administration
+  DevOps server, SSH, Ansible, Jenkins, Prometheus, SNMP Exporter and infrastructure administration.
 ```
 
-## Current Architecture
+## Current Implementation Status
 
-The current scope covers the local on-premises topology and the dedicated DevOps control VM.
+At the current checkpoint, the platform includes:
+
+```text
+Local GNS3 enterprise topology
+Dedicated DevOps control VM
+Out-of-band management plane
+FRR and OVS infrastructure automation
+Ansible validation workflow
+Jenkins CI/CD orchestration
+GitHub Actions to Jenkins trigger bridge
+AWS Terraform baseline
+S3-backed artifact storage
+Prometheus monitoring baseline
+Node Exporter host metrics
+Blackbox Exporter service probes
+SNMPv3 monitoring for all FRR routers
+Rule-based cloud analyzer
+Multi-page Flask dashboard
+```
+
+## High-Level End-to-End Flow
+
+```text
+GitHub push
+        ↓
+GitHub Actions self-hosted runner
+        ↓
+Jenkins pipeline on DevOps VM
+        ↓
+Ansible validation
+        ↓
+Prometheus metrics snapshot export
+        ↓
+Cloud analyzer
+        ↓
+AWS S3 artifact upload
+        ↓
+/var/lib/pfe-dashboard cache sync
+        ↓
+Flask multi-page dashboard
+```
+
+## Source of Truth Model
+
+The platform uses the following artifact model:
+
+```text
+GitHub = source code, templates, examples and documentation
+Jenkins workspace = temporary execution/generation area
+AWS S3 = durable source of truth for generated outputs
+/var/lib/pfe-dashboard = local dashboard cache synchronized from S3
+```
+
+Generated outputs are not committed to GitHub.
+
+Current latest S3 prefixes:
+
+```text
+latest/validation-artifacts/
+latest/analyzer/
+latest/metrics/
+```
+
+Current local dashboard cache:
+
+```text
+/var/lib/pfe-dashboard/
+├── outputs/
+├── analyzer/
+│   └── latest/
+└── metrics/
+    └── latest/
+```
+
+## Local Architecture
+
+The local scope is based on a GNS3 on-premises topology and a dedicated DevOps control VM.
 
 The topology contains:
 
-- A three-tier internal network architecture.
-- A DMZ service zone.
-- A dedicated out-of-band management plane.
-- A DevOps control VM used for automation, validation and future CI/CD orchestration.
-
-### DevOps Control Node
-
-The DevOps server is a dedicated Ubuntu VM. It has two interfaces:
-
-| Interface | Role | Configuration |
-|---|---|---|
-| ens33 | Internet / package updates / GitHub | DHCP through VMware NAT |
-| ens34 | Out-of-band management network | 10.200.0.10/24 |
-
-Lab routes are configured permanently through Netplan:
-
-```bash
-network:
-  version: 2
-  ethernets:
-    ens33:
-      dhcp4: true
-
-    ens34:
-      dhcp4: false
-      addresses:
-        - 10.200.0.10/24
-      routes:
-        - to: 172.16.50.0/24
-          via: 10.200.0.30
+```text
+Three-tier internal network architecture
+DMZ service zone
+Dedicated out-of-band management plane
+DevOps control VM
+FRR routers
+Open vSwitch switches
+Web and DNS service containers
+Endpoint/test hosts
 ```
+
+## DevOps Control Node
+
+The DevOps server is a dedicated Ubuntu VM with two network interfaces:
+
+| Interface | Role                                        | Configuration           |
+| --------- | ------------------------------------------- | ----------------------- |
+| ens33     | Internet, package updates, GitHub, AWS APIs | DHCP through VMware NAT |
+| ens34     | Out-of-band management network              | 10.200.0.10/24          |
 
 The DevOps VM is the central control node for:
 
-- Ansible.
-- Jenkins.
-- Git/GitHub integration.
-- Terraform.
-- SSH-based infrastructure administration.
-- Automated validation of the local topology.
+```text
+Ansible
+Jenkins
+Git/GitHub integration
+Terraform
+AWS CLI
+Prometheus
+SNMP Exporter
+Blackbox Exporter
+SSH-based infrastructure administration
+Automated validation of the local topology
+Dashboard service
+```
 
-### Management Model
+## Management Model
 
-The final management model uses a dedicated out-of-band management network for SSH and Ansible access to infrastructure nodes.
+The platform uses a dedicated out-of-band management network for infrastructure automation.
 
-| Node family | Management method |
-|---|---|
-| Internal OVS switches | SSH over OOB network `10.200.0.0/24` |
-| FRR routers | SSH over OOB network `10.200.0.0/24` |
-| DMZ-OVS-3	| SSH over OOB network `10.200.0.0/24` |
-| Web server | HTTP health check only |
-| DNS server | DNS health check only |
-| VPCS endpoints | Connectivity tests only |
+| Node family    | Management method                  |
+| -------------- | ---------------------------------- |
+| FRR routers    | SSH over OOB network 10.200.0.0/24 |
+| OVS switches   | SSH over OOB network 10.200.0.0/24 |
+| DMZ-OVS-3      | SSH over OOB network 10.200.0.0/24 |
+| Web server     | HTTP health check only             |
+| DNS server     | DNS health check only              |
+| VPCS endpoints | Connectivity tests only            |
 
-The old VLAN 99 management segment remains part of the production topology as an in-band management VLAN, but it is no longer the primary DevOps automation path.
+The old VLAN 99 management segment remains part of the simulated production topology as an in-band management VLAN, but it is not the primary DevOps automation path.
 
 ```text
 VLAN 99:
-  In-band management VLAN inside the simulated enterprise topology
+  In-band management VLAN inside the simulated enterprise topology.
 
 OOB 10.200.0.0/24:
-  Dedicated DevOps / Ansible / Jenkins control plane
+  Dedicated DevOps, Ansible, Jenkins, monitoring and infrastructure control plane.
 ```
 
 ## Out-of-Band Management Plane
 
-The out-of-band management plane provides a stable automation path independent of the production network.
+The OOB management plane provides a stable control path independent of the production network.
 
-It is used by the DevOps VM to reach infrastructure nodes even when production VLANs, OSPF routes, firewall policies or DMZ rules are being tested or modified.
-
-### OOB Network
+It allows the DevOps VM to reach infrastructure nodes even when production VLANs, OSPF routes, firewall policies or DMZ rules are being tested or modified.
 
 ```text
 OOB subnet: 10.200.0.0/24
@@ -114,44 +183,508 @@ DevOps VM: 10.200.0.10
 
 ### OOB IP Plan
 
-| Node | OOB interface | OOB IP |
-|---|---|---|
-| Core-FRR-1 | `eth3` | `10.200.0.11/24` |
-| Core-FRR-2 | `eth3` | `10.200.0.12/24` |
-| Dist-FRR-1 | `eth3` | `10.200.0.21/24` |
-| Dist-FRR-2 | `eth3` | `10.200.0.22/24` |
-| EdgeRouter-VPNGateway | `eth4` | `10.200.0.30/24` |
-| Dist-OVS-1 | `eth4` | `10.200.0.31/24` |
-| Dist-OVS-2 | `eth4` | `10.200.0.32/24` |
-| DMZ-OVS-3 | `eth3` | `10.200.0.33/24` |
-| Access-OVS-4 | `eth3` | `10.200.0.44/24` |
-| Access-OVS-5 | `eth3` | `10.200.0.45/24` |
-| Access-OVS-6 | `eth4` | `10.200.0.46/24` |
+| Node                  | OOB interface | OOB IP         |
+| --------------------- | ------------- | -------------- |
+| Core-FRR-1            | eth3          | 10.200.0.11/24 |
+| Core-FRR-2            | eth3          | 10.200.0.12/24 |
+| Dist-FRR-1            | eth3          | 10.200.0.21/24 |
+| Dist-FRR-2            | eth3          | 10.200.0.22/24 |
+| EdgeRouter-VPNGateway | eth4          | 10.200.0.30/24 |
+| Dist-OVS-1            | eth4          | 10.200.0.31/24 |
+| Dist-OVS-2            | eth4          | 10.200.0.32/24 |
+| DMZ-OVS-3             | eth3          | 10.200.0.33/24 |
+| Access-OVS-4          | eth3          | 10.200.0.44/24 |
+| Access-OVS-5          | eth3          | 10.200.0.45/24 |
+| Access-OVS-6          | eth4          | 10.200.0.46/24 |
 
-## Implemented Components
+## Implemented Local Components
 
-- Three-tier GNS3 on-premises topology.
-- Open vSwitch access, distribution and DMZ switching.
-- VLAN 10, VLAN 20 and VLAN 99 segmentation.
-- VLAN 99 in-band management segment.
-- Dedicated OOB management plane for DevOps automation.
-- OOB interface configuration for FRR and OVS infrastructure nodes.
-- FRRouting routers for distribution, core and edge layers.
-- OSPF dynamic routing.
-- FRR routed loopback management addresses for routing validation.
-- VRRP-style redundant gateways at the distribution layer.
-- DMZ with custom Web and DNS Docker service images.
-- DMZ isolation through EdgeRouter firewall rules.
-- Security rules for admin access control, management VLAN protection, DMZ isolation, NAT control and OSPF authentication.
-- SSH-enabled FRR and OVS custom Docker images.
-- Root key-only SSH access for managed infrastructure nodes.
-- Running-container and persistent-volume bootstrap scripts.
-- Ansible inventory, readiness gates and validation playbooks.
-- Dedicated service health checks for Web and DNS nodes.
-- Connectivity tests for endpoint/test hosts.
-- Flask validation dashboard microservice for readable Ansible report visualization.
-- DTO, repository and service layers for structured dashboard logic.
-- JSON API endpoint for future Jenkins integration.
+The local infrastructure currently includes:
+
+```text
+Three-tier GNS3 topology
+Open vSwitch access, distribution and DMZ switching
+VLAN 10, VLAN 20 and VLAN 99 segmentation
+Dedicated OOB management plane
+FRRouting routers for distribution, core and edge layers
+OSPF dynamic routing
+Routed loopback addresses for routing validation
+VRRP-style redundant gateways at the distribution layer
+DMZ with custom Web and DNS Docker service images
+DMZ isolation through EdgeRouter firewall rules
+Security rules for admin access, management VLAN protection, DMZ isolation, NAT control and OSPF authentication
+SSH-enabled FRR and OVS custom Docker images
+Root key-only SSH access for managed infrastructure containers
+Running-container and persistent-volume bootstrap scripts
+Ansible inventory, readiness gates and validation playbooks
+Dedicated service health checks for Web and DNS nodes
+Connectivity tests for endpoint/test hosts
+```
+
+## Main Local Network Components
+
+### Open vSwitch
+
+Open vSwitch is used for Layer 2 switching, VLAN access ports and trunk links.
+
+OVS nodes are organized into:
+
+```text
+Access layer switches
+Distribution layer switches
+DMZ switch
+```
+
+OVS provides:
+
+```text
+VLAN access ports
+VLAN trunk links
+VLAN 10 user segment
+VLAN 20 user segment
+VLAN 99 in-band management segment
+RSTP-capable switching baseline
+Dedicated OOB Linux interface for SSH and Ansible access
+```
+
+The OOB interface on OVS nodes remains outside the main OVS bridge.
+
+### FRRouting
+
+FRRouting is used for Layer 3 routing.
+
+FRR nodes are organized into:
+
+```text
+Distribution routers
+Core routers
+EdgeRouter / VPN gateway
+```
+
+FRR provides:
+
+```text
+OSPF routing
+VRRP-style gateway redundancy
+Routing between internal networks, DMZ and future cloud link
+Routed loopback addresses for validation
+Dedicated OOB Linux interface for SSH and Ansible access
+SNMPv3 monitoring endpoint
+```
+
+## Security Baseline
+
+Security is implemented through versioned scripts using Linux firewall rules and FRR configuration.
+
+Security includes:
+
+```text
+SSH/admin access restricted to the DevOps OOB IP 10.200.0.10
+ICMP allowed from the DevOps OOB IP for readiness checks
+Management VLAN protection
+DMZ isolation
+Controlled DMZ service access
+NAT control on the EdgeRouter
+OSPF authentication
+Root key-only SSH access on managed infrastructure containers
+SNMPv3 read-only access restricted to the DevOps OOB IP
+```
+
+## Docker Automation
+
+Custom Docker entrypoints are used to start and initialize FRR, OVS, Web and DNS containers.
+
+The FRR and OVS entrypoints handle:
+
+```text
+Directory initialization
+SSH host key generation
+DevOps public key installation
+Root key-only SSH preparation
+Interface configuration
+OOB management interface configuration
+OVS or FRR service startup
+Security script execution
+SNMP service startup for FRR routers
+SSH daemon startup
+```
+
+Docker image building is performed on the GNS3 host, not on the DevOps VM.
+
+## Deployment Logic
+
+The intended local deployment order is:
+
+```text
+1. Start GNS3 topology nodes.
+2. Apply OVS bridge, VLAN and trunk configuration.
+3. Apply OVS in-band management VLAN configuration if enabled.
+4. Apply OOB management interface configuration.
+5. Apply FRR interface configuration.
+6. Start FRR daemons.
+7. Apply FRR routing configuration.
+8. Apply OSPF authentication.
+9. Apply role-specific security rules.
+10. Apply SSH/admin access restrictions.
+11. Start SNMPv3 service on FRR routers.
+12. Validate OOB reachability from the DevOps VM.
+13. Validate Ansible SSH connectivity.
+14. Validate OVS, FRR, DMZ, security and end-to-end behavior.
+15. Export monitoring metrics.
+16. Run analyzer.
+17. Upload/sync generated artifacts.
+18. Display results in the dashboard.
+```
+
+## Bootstrap Scripts
+
+Two bootstrap modes are provided.
+
+### Running-Container Bootstrap
+
+```bash
+./gns3/scripts/bootstrap-gns3.sh
+```
+
+Use this when all GNS3 Docker nodes are already running. It copies configuration into the running containers and immediately applies the required settings.
+
+### Persistent-Volume Bootstrap
+
+```bash
+./gns3/scripts/bootstrap-persistent-gns3.sh
+```
+
+Use this when containers may be stopped or recreated. It writes desired files into GNS3 persistent directories so they are applied on the next container start.
+
+## Ansible Workflow
+
+Ansible is executed from the dedicated DevOps VM.
+
+The site playbook runs:
+
+```text
+1. Management readiness checks.
+2. Ansible SSH connection readiness.
+3. OVS validation.
+4. FRR validation.
+5. DMZ Web/DNS health checks.
+6. Security behavior validation.
+7. End-to-end connectivity validation.
+8. Inventory consistency validation.
+9. Report artifact validation.
+10. Jenkins-ready assertion gates.
+11. Report summary generation in ansible/outputs/.
+```
+
+Ansible outputs are generated locally during the pipeline, uploaded to S3, then synchronized to the local dashboard cache.
+
+## CI/CD Integration with Jenkins and GitHub Actions
+
+The project uses Jenkins as the main CI/CD automation server.
+
+Jenkins runs from the DevOps control VM and remains private inside the local lab. Because the GitHub repository is public, Jenkins is not exposed directly to the Internet.
+
+Instead, a GitHub Actions self-hosted runner is installed on the DevOps VM under a dedicated limited Linux user named:
+
+```text
+gha-runner
+```
+
+The runner does not build, test, deploy or checkout the repository. Its only role is to act as a secure trigger bridge between GitHub and Jenkins.
+
+When a push is made to the `main` branch, GitHub Actions runs the protected local command:
+
+```bash
+sudo /usr/local/sbin/trigger-jenkins-pfe
+```
+
+This script triggers the Jenkins job through the local Jenkins API.
+
+Jenkins credentials are not stored in GitHub. They remain local to the DevOps VM.
+
+### Jenkins Pipeline Modes
+
+The Jenkins pipeline is parameterized and supports several execution modes:
+
+| Mode               | Purpose                                              |
+| ------------------ | ---------------------------------------------------- |
+| AUTO               | Default mode used by GitHub push triggers            |
+| VALIDATE_ONLY      | Runs validation, reports and dashboard publishing    |
+| BUILD_IMAGES       | Builds custom Docker images on the GNS3 host         |
+| PUSH_IMAGES        | Builds and pushes custom Docker images to Docker Hub |
+| BOOTSTRAP_GNS3     | Runs the persistent GNS3 bootstrap workflow          |
+| FULL_LOCAL_REFRESH | Performs image refresh, bootstrap and validation     |
+
+Topology-changing actions require:
+
+```text
+CONFIRM_APPLY=true
+```
+
+This protects actions that modify the lab environment or persistent node configuration.
+
+### Jenkins Default Workflow
+
+In its default workflow, Jenkins performs:
+
+```text
+1. Clean workspace.
+2. Checkout repository.
+3. Detect changed repository areas.
+4. Prepare output directories.
+5. Validate Ansible inventory.
+6. Run Ansible syntax checks.
+7. Execute topology validation gate.
+8. Export Prometheus metrics snapshot.
+9. Run cloud analyzer.
+10. Upload validation, analyzer and metrics outputs to S3.
+11. Sync latest S3 outputs into /var/lib/pfe-dashboard.
+12. Generate HTML summary report.
+13. Archive Jenkins artifacts.
+14. Update Jenkins build description with dashboard and artifact links.
+```
+
+## AWS Cloud Infrastructure Baseline
+
+The project includes an initial AWS cloud infrastructure baseline provisioned with Terraform.
+
+This cloud layer prepares the future hybrid extension of the local GNS3 network automation platform.
+
+The current Terraform baseline creates:
+
+```text
+One AWS VPC
+One public subnet
+One private subnet
+One monitoring/AI subnet
+One Internet Gateway
+Route tables and associations
+Security group baseline
+Private S3 artifacts bucket
+Optional compute module prepared but disabled
+VPN/hybrid module prepared but disabled
+```
+
+### Cloud CIDR Plan
+
+```text
+AWS VPC:              10.50.0.0/16
+Public subnet:        10.50.10.0/24
+Private subnet:       10.50.20.0/24
+Monitoring/AI subnet: 10.50.30.0/24
+```
+
+### Current Cloud Status
+
+At the current stage, Terraform creates the network, security and storage baseline only.
+
+It does not yet create:
+
+```text
+EC2 instances
+NAT Gateway
+Active VPN connection
+Cloud monitoring services
+Cloud AI services
+```
+
+This avoids unnecessary AWS costs while keeping the cloud architecture ready for future phases.
+
+### S3 Artifacts Bucket
+
+The Terraform storage module creates a private S3 bucket used for platform artifacts.
+
+The bucket is intended for:
+
+```text
+validation reports
+metrics snapshots
+analyzer outputs
+future logs
+future datasets
+future AI outputs
+```
+
+The bucket is configured with:
+
+```text
+public access blocking
+bucket owner enforced object ownership
+versioning
+server-side encryption using AES256
+lifecycle retention rules
+```
+
+## Monitoring Baseline
+
+The local monitoring baseline includes:
+
+```text
+Prometheus
+Node Exporter
+Blackbox Exporter
+SNMP Exporter
+```
+
+Prometheus collects:
+
+```text
+DevOps VM host metrics
+GNS3 VM host metrics
+DMZ Web/DNS probe metrics
+FRR router SNMPv3 interface metrics
+```
+
+The monitoring snapshot is exported from the Prometheus HTTP API and stored temporarily in:
+
+```text
+monitoring/outputs/latest/
+```
+
+Jenkins uploads metrics to S3 under:
+
+```text
+metrics-snapshots/<jenkins-job-name>-<build-number>/
+latest/metrics/
+```
+
+The latest metrics are synchronized to:
+
+```text
+/var/lib/pfe-dashboard/metrics/latest/
+```
+
+## SNMPv3 Monitoring for All FRR Routers
+
+All FRR routers are monitored using SNMPv3 over the OOB management network.
+
+| Router      | SNMP target      |
+| ----------- | ---------------- |
+| core-frr-1  | 10.200.0.11:1161 |
+| core-frr-2  | 10.200.0.12:1161 |
+| dist-frr-1  | 10.200.0.21:1161 |
+| dist-frr-2  | 10.200.0.22:1161 |
+| edge-router | 10.200.0.30:1161 |
+
+Security model:
+
+```text
+SNMPv3 authPriv
+SHA authentication
+AES privacy
+read-only access
+UDP/1161
+DevOps OOB source restriction
+```
+
+The SNMP Exporter uses the `if_mib` module to expose interface metrics to Prometheus.
+
+Collected SNMP metrics include:
+
+```text
+SNMP target health
+router uptime
+interface admin status
+interface operational status
+traffic counters
+interface error counters
+```
+
+Loopback and VRRP virtual interfaces may be displayed in the dashboard for visibility, but they are ignored for unexpected-down anomaly scoring.
+
+## Cloud Analyzer and Anomaly Baseline
+
+The analyzer combines validation reports with monitoring metrics.
+
+Inputs:
+
+```text
+Ansible validation reports
+Prometheus target health
+Node Exporter memory/disk metrics
+Blackbox service probe metrics
+SNMPv3 FRR interface metrics
+```
+
+The analyzer produces:
+
+```text
+summary.json
+decision.json
+analysis-report.txt
+```
+
+The analyzer scores:
+
+```text
+validation failures
+critical or warning report patterns
+Prometheus targets down
+Blackbox probes failed
+memory or disk pressure
+SNMP targets down
+SNMP interfaces unexpectedly down
+SNMP interface errors
+```
+
+The current analyzer is rule-based and explainable. It prepares the project for future statistical or machine-learning anomaly detection.
+
+## Multi-Page Flask Dashboard
+
+The Flask dashboard visualizes the latest S3-backed validation, analyzer and monitoring data.
+
+The dashboard is split into multiple pages:
+
+| Route             | Purpose                                              |
+| ----------------- | ---------------------------------------------------- |
+| `/`               | Overview                                             |
+| `/analyzer`       | Cloud Analyzer Decision                              |
+| `/monitoring`     | Prometheus, Node Exporter, Blackbox and SNMP metrics |
+| `/validation`     | Validation domains and report previews               |
+| `/infrastructure` | FRR and OVS node table                               |
+| `/services`       | Validated services                                   |
+
+The dashboard visualizes:
+
+```text
+global validation status
+cloud analyzer decision
+risk score and recommended action
+Prometheus target health
+host resource usage
+Blackbox service probes
+SNMP per-router interface status
+SNMP interface counters
+validation report domains
+infrastructure node matrix
+validated services
+```
+
+The dashboard reads from:
+
+```text
+/var/lib/pfe-dashboard/
+```
+
+Current cache structure:
+
+```text
+/var/lib/pfe-dashboard/
+├── outputs/
+│   └── latest validation reports
+├── analyzer/
+│   └── latest/
+│       ├── decision.json
+│       ├── summary.json
+│       └── analysis-report.txt
+└── metrics/
+    └── latest/
+        ├── manifest.json
+        ├── up.json
+        ├── node_*.json
+        ├── blackbox_*.json
+        └── snmp_*.json
+```
 
 ## Repository Structure
 
@@ -163,28 +696,20 @@ DevOps VM: 10.200.0.10
 │   ├── inventory/
 │   ├── playbooks/
 │   ├── roles/
-|   │   ├── dmz_validate/
-|   │   ├── frr_validate/
-|   │   ├── ovs_validate/
-|   │   ├── security_validate/
-|   │   └── report_collect/
 │   └── ansible.cfg
 ├── ci-cd/
 │   ├── github-actions-jenkins-bridge.md
 │   ├── trigger-jenkins-pfe.example.sh
 │   ├── jenkins-netrc.example
 │   └── gha-runner-sudoers.example
+├── cloud/
+│   ├── analyzer/
+│   └── terraform/
 ├── dashboard/
 │   ├── app.py
 │   ├── config.py
-│   ├── extensions.py
-│   ├── global_error_handler.py
-│   ├── requirements.txt
 │   ├── dto/
-│   ├── entity/
-│   ├── mappe/
 │   ├── repository/
-│   ├── security/
 │   ├── service/
 │   ├── templates/
 │   ├── web/
@@ -198,492 +723,27 @@ DevOps VM: 10.200.0.10
 │   ├── env/
 │   ├── interfaces/
 │   ├── routing/
+│   └── snmp/
 ├── gns3/
 │   ├── node-mapping.md
 │   ├── startup-order.md
 │   └── scripts/
-│       ├── bootstrap-gns3.sh
-│       ├── bootstrap-persistent-gns3.sh
-│       └── gns3-status.sh
 ├── hosts/
-│   ├── host-ip-plan.md
-│   ├── devops-server-ip.sh
-│   ├── web-server-ip.sh
-│   └── dns-server-ip.sh
 ├── management/
-│   ├── oob-mgmt.sh
-│   └── oob/
+├── monitoring/
+│   ├── prometheus/
+│   ├── blackbox/
+│   ├── snmp/
+│   └── scripts/
 ├── ovs/
-│   ├── access/
-│   ├── distribution/
-│   ├── dmz/
-│   └── management/
 ├── security/
-│   ├── admin-access-control.sh
-│   ├── management-vlan-protection.sh
-│   ├── dmz-isolation.sh
-│   ├── nat-control.sh
-│   └── ospf-auth.sh
 ├── scripts/
 ├── tests/
 └── secrets/
     └── ospf.env.example
 ```
 
-## Main Components
-
-### Open vSwitch
-
-Open vSwitch is used for Layer 2 switching, VLAN access ports and trunk links.
-
-OVS nodes are organized into:
-
-- Access layer switches.
-- Distribution layer switches.
-- DMZ switch.
-
-OVS provides:
-
-- VLAN access ports.
-- VLAN trunk links.
-- VLAN 10 user segment.
-- VLAN 20 user segment.
-- VLAN 99 in-band management segment.
-- RSTP-capable switching baseline.
-- Dedicated OOB Linux interface for SSH/Ansible access.
-
-The OOB interface on OVS nodes must remain outside br0.
-
-### FRRouting
-
-FRRouting is used for Layer 3 routing.
-
-FRR nodes are organized into:
-
-- Distribution routers.
-- Core routers.
-- EdgeRouter/VPN gateway.
-
-FRR provides:
-
-- OSPF routing.
-- VRRP gateway redundancy.
-- Routing between internal networks, DMZ and external/cloud link.
-- Routed loopback addresses for routing validation.
-- Dedicated OOB Linux interface for SSH/Ansible access.
-
-## Security
-
-Security is implemented through versioned scripts using Linux firewall rules and FRR configuration.
-
-Security includes:
-
-- SSH/admin access restricted to the DevOps OOB IP 10.200.0.10.
-- ICMP allowed from the DevOps OOB IP for readiness checks.
-- Management VLAN protection.
-- DMZ isolation.
-- Controlled DMZ service access.
-- NAT control on the EdgeRouter.
-- OSPF authentication.
-- Root key-only SSH access on managed infrastructure containers.
-
-## Docker Automation
-
-Custom Docker entrypoints are used to start and initialize FRR and OVS containers.
-
-The FRR and OVS entrypoints handle:
-
-- Directory initialization.
-- SSH host key generation.
-- DevOps public key installation.
-- Root key-only SSH preparation.
-- Interface configuration.
-- OOB management interface configuration.
-- OVS/FRR service startup.
-- Security script execution.
-- SSH daemon startup.
-
-This prepares the platform for automation through Ansible and Jenkins.
-
-## Deployment Logic
-
-The intended deployment order is:
-
-1. Start GNS3 topology nodes.
-2. Apply OVS bridge, VLAN and trunk configuration.
-3. Apply OVS in-band management VLAN configuration if enabled.
-4. Apply OOB management interface configuration.
-5. Apply FRR interface configuration.
-6. Start FRR daemons.
-7. Apply FRR routing configuration.
-8. Apply OSPF authentication.
-9. Apply role-specific security rules.
-10. Apply SSH/admin access restrictions.
-11. Validate OOB reachability from the DevOps VM.
-12. Validate Ansible SSH connectivity.
-13. Validate OVS, FRR, DMZ, security and end-to-end behavior.
-
-## Bootstrap Scripts
-
-Two bootstrap modes are provided.
-
-### Running-container bootstrap
-
-```bash
-./bootstrap-gns3.sh
-```
-
-Use this when all GNS3 Docker nodes are already running. It copies configuration into the running containers and immediately applies the DMZ-OVS configuration.
-
-### Persistent-volume bootstrap
-
-```bash
-./bootstrap-persistent-gns3.sh
-```
-
-Use this when containers may be stopped or exited. It writes the desired files into the GNS3 persistent directories so they are applied on the next container start.
-
-## Ansible Workflow
-
-Ansible is executed from the dedicated DevOps VM.
-
-The site playbook runs:
-
-1. Management readiness checks.
-2. Ansible SSH connection readiness.
-3. OVS validation.
-4. FRR validation.
-5. DMZ Web/DNS health checks.
-6. Security behavior validation.
-7. End-to-end connectivity validation.
-8. Inventory consistency validation
-9. Report artifact validation
-10. Jenkins-ready assertion gates
-11. Report summary generation in `ansible/outputs/`. 
-
-## Validation Dashboard Microservice
-
-A lightweight Flask dashboard microservice is included to transform raw Ansible validation outputs into a readable web interface.
-
-The dashboard reads:
-
-```text
-ansible/outputs/*.txt
-ansible/group_vars/all.yml
-```
-
-It displays:
-
-- Global validation status.
-- Total, passed, failed and missing report counters.
-- Validation domains grouped by category.
-- OOB management information.
-- Infrastructure node matrix.
-- OVS and FRR validation summaries.
-- DMZ service health status.
-- Security and end-to-end validation summaries.
-- Full raw report access when detailed inspection is needed.
-- JSON API endpoint for future Jenkins integration.
-
-The dashboard follows a small microservice-style structure using:
-
-DTO layer for structured dashboard objects.
-Repository layer for reading Ansible variables and output reports.
-Service layer for parsing reports and building dashboard data.
-Flask routes for UI and API exposure.
-
-### Dashboard Purpose
-
-The dashboard is not responsible for changing the network state.
-It only visualizes validation artifacts generated by Ansible.
-
-### Run Dashboard Locally
-
-```bash
-py -m venv dashboard/.venv
-source dashboard/.venv/Scripts/activate
-
-python -m pip install --upgrade pip
-python -m pip install -r dashboard/requirements.txt
-
-python dashboard/app.py
-```
-
-## Cloud Infrastructure Baseline
-
-The project includes an initial AWS cloud infrastructure baseline provisioned with Terraform.
-
-This cloud layer is the foundation for the future hybrid extension of the local GNS3 network automation platform. Its purpose is to prepare the AWS networking, security, storage, optional compute and future hybrid connectivity environment that will later host monitoring, analysis, logs, datasets and cloud-side services.
-
-### Implemented Cloud Components
-
-The current Terraform baseline includes:
-
-* One AWS VPC.
-* One public subnet.
-* One private subnet.
-* One monitoring / AI subnet.
-* One Internet Gateway.
-* One public route table.
-* One private route table.
-* One monitoring route table.
-* Route table associations for the three subnets.
-* Security group baseline for future cloud services.
-* One private S3 bucket for future logs, metrics exports, AI outputs and reports.
-* Optional compute module prepared for future EC2 instances.
-* VPN / hybrid connectivity module prepared but disabled by default.
-
-### Cloud CIDR Plan
-
-```text
-AWS VPC:              10.50.0.0/16
-Public subnet:        10.50.10.0/24
-Private subnet:       10.50.20.0/24
-Monitoring/AI subnet: 10.50.30.0/24
-```
-
-The cloud CIDR range is separated from the local GNS3/on-premises addressing plan to prepare for future hybrid connectivity.
-
-### Subnet Roles
-
-| Subnet                 | Role                                                           |
-| ---------------------- | -------------------------------------------------------------- |
-| Public subnet          | Future bastion/admin access or public-facing cloud services    |
-| Private subnet         | Future internal cloud services                                 |
-| Monitoring / AI subnet | Future monitoring, observability and anomaly-analysis services |
-
-Only the public subnet is connected to the Internet Gateway.
-
-The private and monitoring subnets are intentionally isolated at this stage. They do not use a NAT Gateway yet in order to avoid unnecessary AWS costs during the student lab phase.
-
-### Cloud Security Baseline
-
-The Terraform security module defines the first AWS security group baseline:
-
-| Security group                  | Purpose                                                     |
-| ------------------------------- | ----------------------------------------------------------- |
-| Admin security group            | Reserved for future bastion or management access            |
-| Monitoring security group       | Reserved for future Prometheus and Grafana services         |
-| AI security group               | Reserved for future anomaly detection / AI analysis service |
-| Private services security group | Reserved for future internal cloud services                 |
-
-The admin, Prometheus and Grafana access rules are restricted using the `admin_allowed_cidr` variable.
-
-In the public example file, this value is intentionally set to:
-
-```text
-0.0.0.0/32
-```
-
-The real administrator public IP must be configured only in the local untracked `terraform.tfvars` file.
-
-Additional internal SSH rules are prepared so that a future bastion/admin instance can access the future monitoring and AI instances through security group references.
-
-### Cloud Storage Baseline
-
-The Terraform storage module creates a private S3 bucket reserved for future platform artifacts.
-
-The bucket is intended for:
-
-* monitoring exports
-* logs
-* AI analysis outputs
-* datasets
-* Jenkins/cloud reports
-* Jenkins/Ansible validation artifacts
-
-The S3 bucket is configured with:
-
-* public access blocking
-* bucket owner enforced object ownership
-* versioning
-* server-side encryption using AES256
-* lifecycle retention rules for validation artifacts
-
-This storage baseline prepares the project for future monitoring and AI phases without exposing data publicly.
-
-### Validation Artifact Retention
-
-Jenkins uploads validation outputs to S3 after successful local validation.
-
-Each Jenkins build writes to a dedicated S3 prefix:
-
-```text
-validation-artifacts/<jenkins-job-name>-<build-number>/
-```
-
-Manual uploads use a timestamped prefix:
-
-```text
-validation-artifacts/manual-<timestamp>/
-```
-
-This keeps each validation run immutable and traceable.
-
-To avoid unnecessary long-term storage growth, the S3 bucket uses a lifecycle policy for the `validation-artifacts/` prefix:
-
-```text
-Validation artifacts: deleted after 30 days
-Noncurrent object versions: deleted after 7 days
-Incomplete multipart uploads: deleted after 1 day
-```
-
-This provides a balanced approach:
-
-* recent Jenkins validation history remains available
-* cloud storage does not grow forever
-* future monitoring and AI services can consume recent validation artifacts from S3
-* old artifacts are cleaned automatically by AWS lifecycle rules
-
-### Cloud Compute Baseline
-
-The Terraform compute module is prepared but disabled by default.
-
-It is controlled using:
-
-```hcl
-enable_compute = false
-```
-
-When enabled later, the module will create optional EC2 placeholder instances for:
-
-* bastion/admin access
-* monitoring services
-* AI/anomaly analysis services
-
-At the current stage, no EC2 instances are created. This avoids unnecessary AWS costs while keeping the cloud architecture ready for the next implementation phase.
-
-### Hybrid / VPN Baseline
-
-The Terraform VPN module is prepared but disabled by default.
-
-It is controlled using:
-
-```hcl
-enable_vpn = false
-```
-
-When enabled later, the module is designed to create:
-
-* AWS Customer Gateway.
-* AWS Virtual Private Gateway.
-* AWS Site-to-Site VPN connection.
-* Static VPN routes.
-* VPC route table routes toward the on-premises CIDRs.
-
-The intended hybrid design is:
-
-```text
-GNS3 EdgeRouter / VPN Gateway
-        ↕
-AWS Site-to-Site VPN
-        ↕
-AWS VPC
-```
-
-At the current stage, no VPN resources are created. This avoids unnecessary AWS VPN cost and prevents accidental exposure before the real on-premises public gateway strategy is selected.
-
-The default on-premises CIDRs prepared for future VPN routing are:
-
-```text
-OOB management network: 10.200.0.0/24
-Local routed lab space: 172.16.0.0/16
-```
-
-A real AWS Site-to-Site VPN requires a reachable public IP address for the on-premises customer gateway. If the GNS3 EdgeRouter is behind VMware NAT or a home router without a stable public endpoint, another hybrid connectivity strategy may be required.
-
-### Cloud Analyzer and Anomaly Baseline
-
-The project includes a first cloud-side anomaly analysis baseline.
-
-Since the hybrid VPN is currently disabled, AWS cannot directly scrape the private GNS3 infrastructure. For this reason, the first monitoring/AI baseline uses Jenkins and Ansible validation artifacts exported to S3.
-
-The current flow is:
-
-```text
-Local GNS3 topology
-        ↓
-Ansible validation
-        ↓
-Jenkins pipeline
-        ↓
-Raw validation artifacts
-        ↓
-AWS S3 validation-artifacts/
-        ↓
-Cloud analyzer
-        ↓
-summary.json + decision.json + analysis-report.txt
-        ↓
-AWS S3 processed-summaries/ and anomaly-results/
-```
-
-The analyzer reads validation reports from `ansible/outputs/`, detects failed or warning reports, applies explainable rule-based anomaly scoring, and generates:
-
-* `summary.json`
-* `decision.json`
-* `analysis-report.txt`
-
-The latest analyzer result is also copied to:
-
-```text
-latest/analyzer/
-```
-
-This gives the cloud side a stable location for the most recent anomaly decision.
-
-The current analyzer is rule-based and explainable. It does not replace the final Prometheus-based monitoring architecture. Instead, it prepares the anomaly detection logic while the VPN/hybrid connectivity layer remains disabled.
-
-Future versions will extend this analyzer with:
-
-* Prometheus metrics
-* log events
-* historical trend comparison
-* statistical anomaly detection
-* machine learning models
-
-### Terraform Structure
-
-The Terraform cloud baseline is stored under:
-
-```text
-cloud/terraform/
-```
-
-The current environment is:
-
-```text
-cloud/terraform/environments/dev/
-```
-
-The Terraform modules are organized as:
-
-```text
-cloud/terraform/modules/
-├── network/
-├── security/
-├── compute/
-├── storage/
-└── vpn/
-```
-
-At the current stage, the `network`, `security`, `storage`, optional `compute`, and disabled `vpn` modules are implemented.
-
-### Current Cloud Status
-
-The current Terraform implementation creates the AWS network, security and storage baseline only.
-
-It does not create yet:
-
-* EC2 instances.
-* NAT Gateway.
-* Active VPN connection.
-* Monitoring services.
-* AI analysis services.
-
-These components will be added progressively in the next cloud implementation phases.
-
-### Terraform Commands
+## Terraform Commands
 
 From the DevOps VM:
 
@@ -703,19 +763,92 @@ terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
-To inspect the deployed resource identifiers:
+To inspect deployed identifiers:
 
 ```bash
 terraform output
 ```
 
-### Terraform State and Secrets
+## Dashboard Run Command
 
-Terraform state files, real variable files and plan files must not be committed to GitHub.
+From the repository root:
 
-The following files remain local:
+```bash
+python3 -m venv dashboard/.venv
+source dashboard/.venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r dashboard/requirements.txt
+python dashboard/app.py
+```
+
+Then open:
 
 ```text
+http://localhost:5050
+```
+
+## Monitoring Validation Commands
+
+Test SNMP targets from the DevOps VM:
+
+```bash
+for target in \
+  10.200.0.11 \
+  10.200.0.12 \
+  10.200.0.21 \
+  10.200.0.22 \
+  10.200.0.30
+do
+  echo
+  echo "=== Testing $target ==="
+  snmpwalk -v3 \
+    -l authPriv \
+    -u pfe_snmp_ro \
+    -a SHA \
+    -A 'REAL_LONG_AUTH_PASSWORD' \
+    -x AES \
+    -X 'REAL_LONG_PRIV_PASSWORD' \
+    "$target:1161" \
+    1.3.6.1.2.1.1.5.0
+done
+```
+
+Test Prometheus SNMP target health:
+
+```bash
+curl -fsS --get "http://localhost:9090/api/v1/query" \
+  --data-urlencode 'query=up{job="snmp-network-devices"}' | python3 -m json.tool
+```
+
+Export a Prometheus metrics snapshot:
+
+```bash
+./monitoring/scripts/export-prometheus-snapshot.sh
+```
+
+Run the analyzer locally:
+
+```bash
+python3 cloud/analyzer/analyze_validation_artifacts.py \
+  --input-dir /var/lib/pfe-dashboard/outputs \
+  --metrics-dir monitoring/outputs/latest \
+  --output-dir cloud/analyzer/outputs \
+  --build-label local-test
+```
+
+## Generated Files Policy
+
+Generated outputs, secrets and local state must not be committed.
+
+Do not commit:
+
+```text
+ansible/outputs/
+monitoring/outputs/
+cloud/analyzer/outputs/
+monitoring/snmp/snmp-auth.local.yml
+frr/snmp/env/frr-routers.snmp.env
+/etc/prometheus/snmp.yml
 terraform.tfvars
 terraform.tfstate
 terraform.tfstate.backup
@@ -723,580 +856,7 @@ tfplan
 .terraform/
 ```
 
-Only example files such as `terraform.tfvars.example` are versioned.
-
-## S3-Backed Dashboard and Cloud Analyzer Visualization
-
-The platform now uses AWS S3 as the source of truth for validation and analyzer outputs.
-
-The local Flask dashboard does not depend only on temporary files generated inside the Jenkins workspace or the developer repository. Instead, Jenkins uploads validation and analyzer outputs to S3, then synchronizes the latest cloud-backed data into a stable local dashboard cache.
-
-### Source of Truth Model
-
-```text
-Jenkins validation
-        ↓
-Ansible validation reports
-        ↓
-AWS S3 artifacts bucket
-        ↓
-latest/validation-artifacts/
-latest/analyzer/
-        ↓
-/var/lib/pfe-dashboard/
-        ↓
-Flask dashboard visualization
-```
-
-In this model:
-
-* AWS S3 stores the durable validation and analyzer outputs.
-* `/var/lib/pfe-dashboard/` is only a local visualization cache.
-* The Flask dashboard reads from the synchronized local cache.
-* The GitHub repository does not store generated validation outputs.
-
-### Dashboard Cache Paths
-
-The local dashboard cache is stored in:
-
-```text
-/var/lib/pfe-dashboard/
-```
-
-Current structure:
-
-```text
-/var/lib/pfe-dashboard/
-├── outputs/
-│   ├── validation-summary.txt
-│   ├── security-validation.txt
-│   ├── dmz-services.txt
-│   └── other validation report files
-└── analyzer/
-    └── latest/
-        ├── decision.json
-        ├── summary.json
-        └── analysis-report.txt
-```
-
-### S3 Paths
-
-Jenkins uploads immutable per-build validation artifacts to:
-
-```text
-validation-artifacts/<jenkins-job-name>-<build-number>/
-```
-
-It also updates the latest validation cache in S3:
-
-```text
-latest/validation-artifacts/
-```
-
-The cloud analyzer outputs are uploaded to:
-
-```text
-processed-summaries/<jenkins-job-name>-<build-number>/
-anomaly-results/<jenkins-job-name>-<build-number>/
-latest/analyzer/
-```
-
-### Dashboard Content
-
-The Flask dashboard visualizes:
-
-* global infrastructure validation status
-* validation report counts
-* validation domains
-* infrastructure node status
-* validated DMZ services
-* readable report previews
-* latest cloud analyzer decision
-
-The cloud analyzer decision includes:
-
-* anomaly status
-* risk score
-* severity
-* build label
-* recommended action
-* failed and warning reports, if any
-
-### Current Status
-
-At the current checkpoint, the dashboard reads the latest validation reports from the S3-backed cache and displays the latest cloud analyzer decision.
-
-This provides a first monitoring/AI visualization layer while the VPN and Prometheus-based monitoring architecture are still being prepared.
-
-## S3-Backed Monitoring and Dashboard Workflow
-
-The platform uses AWS S3 as the durable source of truth for generated validation, analyzer and monitoring outputs.
-
-Generated files are not committed to GitHub. They are produced during Jenkins pipeline execution, uploaded to S3, then synchronized back into a stable local cache used by the Flask dashboard.
-
-### Global Data Flow
-
-```text
-Jenkins workspace
-        ↓
-Generated validation / analyzer / Prometheus outputs
-        ↓
-AWS S3 artifacts bucket
-        ↓
-latest/* prefixes
-        ↓
-/var/lib/pfe-dashboard/
-        ↓
-Flask dashboard visualization
-```
-
-### Source of Truth Model
-
-The project follows this rule:
-
-```text
-S3 = source of truth
-/var/lib/pfe-dashboard = local dashboard cache
-Jenkins workspace = temporary generation area
-GitHub = source code only
-```
-
-This prevents generated reports and monitoring data from being lost if the Jenkins workspace or local repository is cleaned.
-
-### Validation Artifacts
-
-Ansible validation reports are generated in the Jenkins workspace under:
-
-```text
-ansible/outputs/
-```
-
-Jenkins uploads them to S3 under:
-
-```text
-validation-artifacts/<jenkins-job-name>-<build-number>/
-latest/validation-artifacts/
-```
-
-Then Jenkins synchronizes the latest validation artifacts from S3 to:
-
-```text
-/var/lib/pfe-dashboard/outputs/
-```
-
-The Flask dashboard reads validation reports from this local cache.
-
-### Cloud Analyzer Outputs
-
-The cloud analyzer runs after validation and generates:
-
-```text
-summary.json
-decision.json
-analysis-report.txt
-```
-
-Per-build analyzer outputs are uploaded to:
-
-```text
-processed-summaries/<jenkins-job-name>-<build-number>/
-anomaly-results/<jenkins-job-name>-<build-number>/
-latest/analyzer/
-```
-
-The latest analyzer output is synchronized to:
-
-```text
-/var/lib/pfe-dashboard/analyzer/latest/
-```
-
-The dashboard displays the latest anomaly decision, including anomaly status, risk score, severity, build label and recommended action.
-
-### Prometheus Metrics Snapshot
-
-The local Prometheus baseline exports metrics snapshots from the Prometheus HTTP API.
-
-Metrics are generated temporarily in the Jenkins workspace under:
-
-```text
-monitoring/outputs/latest/
-```
-
-Jenkins uploads the snapshot to S3 under:
-
-```text
-metrics-snapshots/<jenkins-job-name>-<build-number>/
-latest/metrics/
-```
-
-Then Jenkins synchronizes the latest metrics snapshot from S3 to:
-
-```text
-/var/lib/pfe-dashboard/metrics/latest/
-```
-
-This prepares the future monitoring and AI layer by making Prometheus metrics available in the same S3-backed workflow as validation reports and analyzer decisions.
-
-### Prometheus Metrics Visualization
-
-The Flask dashboard now displays the latest Prometheus metrics snapshot.
-
-The metrics are generated from the local Prometheus baseline, uploaded to S3, and restored into the local dashboard cache.
-
-```text
-Prometheus
-        ↓
-monitoring/outputs/latest/
-        ↓
-S3 metrics-snapshots/<build>/
-S3 latest/metrics/
-        ↓
-/var/lib/pfe-dashboard/metrics/latest/
-        ↓
-Flask dashboard
-```
-
-The dashboard visualizes:
-
-* Prometheus scrape target status
-* number of targets up and down
-* memory usage
-* root filesystem usage
-* system and kernel information
-* metrics snapshot timestamp
-
-This is the first step toward the final monitoring architecture where Prometheus metrics will be combined with analyzer logic and later extended toward AI/ML anomaly detection.
-
-### Metrics-Aware Anomaly Analyzer
-
-The cloud analyzer now combines infrastructure validation reports with Prometheus metrics snapshots.
-
-The analyzer reads:
-
-```text
-ansible/outputs/
-monitoring/outputs/latest/
-```
-
-and generates:
-
-```text
-summary.json
-decision.json
-analysis-report.txt
-```
-
-The anomaly decision now includes:
-
-* validation risk score
-* metrics risk score
-* total risk score
-* severity
-* anomaly status
-* recommended action
-* detection reasons
-* Prometheus target status
-* memory usage
-* disk usage
-
-Current analyzer flow:
-
-```text
-Ansible validation reports
-        +
-Prometheus metrics snapshot
-        ↓
-Cloud analyzer
-        ↓
-summary.json / decision.json / analysis-report.txt
-        ↓
-AWS S3 latest/analyzer/
-        ↓
-/var/lib/pfe-dashboard/analyzer/latest/
-        ↓
-Flask dashboard
-```
-
-This connects the original monitoring architecture to the anomaly detection layer:
-
-```text
-Prometheus metrics → anomaly analysis → dashboard decision
-```
-
-### Dashboard Cache Structure
-
-The dashboard cache is stored in:
-
-```text
-/var/lib/pfe-dashboard/
-```
-
-Current structure:
-
-```text
-/var/lib/pfe-dashboard/
-├── outputs/
-│   └── latest validation reports
-├── analyzer/
-│   └── latest/
-│       ├── decision.json
-│       ├── summary.json
-│       └── analysis-report.txt
-└── metrics/
-    └── latest/
-        ├── manifest.json
-        ├── up.json
-        ├── node_uname_info.json
-        ├── node_memory_available_bytes.json
-        ├── node_memory_total_bytes.json
-        ├── node_filesystem_available_bytes.json
-        └── node_filesystem_size_bytes.json
-```
-
-### Current Monitoring Status
-
-At this checkpoint, the platform provides:
-
-* Jenkins validation pipeline
-* S3-backed validation artifact storage
-* cloud analyzer anomaly baseline
-* S3-backed analyzer results
-* local Prometheus monitoring baseline
-* Prometheus metrics snapshot export
-* S3-backed dashboard cache
-* Flask dashboard visualization
-
-The next step is to display Prometheus metrics directly in the Flask dashboard and later extend the anomaly analyzer to use both validation reports and Prometheus metrics.
-
-## Monitoring, SNMP and Analyzer Baseline
-
-The platform now includes a local Prometheus monitoring baseline connected to the same cloud-backed artifact workflow used by validation reports and analyzer outputs.
-
-### Monitoring Stack
-
-The current monitoring layer includes:
-
-```text
-Prometheus
-Node Exporter
-Blackbox Exporter
-SNMP Exporter
-```
-
-The monitoring data is exported as JSON snapshots and uploaded to AWS S3.
-
-### Monitored Data
-
-Current monitored sources:
-
-```text
-DevOps VM host metrics
-GNS3 VM host metrics
-DMZ Web HTTP/TCP probes
-DMZ DNS TCP/DNS probes
-EdgeRouter SNMPv3 interface metrics
-```
-
-### SNMPv3 Network Monitoring
-
-The EdgeRouter is monitored through SNMPv3 using SNMP Exporter.
-
-```text
-SNMP target: 10.200.0.30:1161
-SNMP mode: authPriv
-SNMP authentication: SHA
-SNMP privacy: AES
-Prometheus job: snmp-network-devices
-SNMP Exporter module: if_mib
-```
-
-SNMPv3 credentials are local-only and are not committed to GitHub.
-
-### Metrics Snapshot Flow
-
-```text
-Prometheus HTTP API
-        ↓
-monitoring/outputs/latest/
-        ↓
-Jenkins upload
-        ↓
-AWS S3 latest/metrics/
-        ↓
-/var/lib/pfe-dashboard/metrics/latest/
-        ↓
-Flask dashboard + cloud analyzer
-```
-
-### Dashboard Integration
-
-The Flask dashboard now visualizes:
-
-```text
-validation report status
-cloud analyzer decision
-Prometheus target health
-per-node memory and disk usage
-Blackbox service probes
-SNMP edge-router interface status and counters
-```
-
-### Analyzer Integration
-
-The analyzer now combines validation reports with Prometheus metrics.
-
-It scores:
-
-```text
-validation failures
-Prometheus targets down
-Blackbox probe failures
-memory/disk pressure
-SNMP target down
-SNMP interface unexpectedly down
-SNMP interface errorsvalidation failures
-Prometheus targets down
-Blackbox probe failures
-memory/disk pressure
-SNMP target down
-SNMP interface unexpectedly down
-SNMP interface errors
-```
-
-This creates the first explainable anomaly-detection baseline before future ML-based analysis.
-
-## CI/CD Integration with Jenkins and GitHub Actions
-
-The project uses Jenkins as the main CI/CD automation server for validating and maintaining the local network automation platform.
-
-Jenkins runs from the DevOps control VM and remains private inside the local lab. Because the GitHub repository is public, Jenkins is not exposed directly to the Internet. Instead, a GitHub Actions self-hosted runner is installed on the DevOps VM under a dedicated limited Linux user named `gha-runner`.
-
-The runner does not build, test, deploy, or checkout the repository. Its only role is to act as a secure trigger bridge between GitHub and Jenkins.
-
-When a push is made to the `main` branch, GitHub Actions runs the following protected local command on the DevOps VM:
-
-```bash
-sudo /usr/local/sbin/trigger-jenkins-pfe
-```
-
-This script triggers the Jenkins job through the local Jenkins API:
-
-```text
-http://10.200.0.10:8080
-```
-
-The Jenkins API token is not stored in GitHub. It is stored locally on the DevOps VM in:
-
-```text
-/root/.jenkins_netrc
-```
-
-### GitHub Actions Bridge
-
-The GitHub Actions workflow is stored in:
-
-```text
-.github/workflows/trigger-jenkins.yml
-```
-
-It is triggered only by:
-
-* push events on the `main` branch
-* manual execution using `workflow_dispatch`
-
-The workflow does not use `actions/checkout`. This prevents repository code from being executed directly by the self-hosted runner.
-
-### Jenkins Pipeline Modes
-
-The Jenkins pipeline is parameterized and supports multiple execution modes:
-
-| Mode                 | Purpose                                                                                                               |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `AUTO`               | Default mode used by GitHub push triggers. Validates the topology and optionally builds/pushes changed Docker images. |
-| `VALIDATE_ONLY`      | Runs validation, report generation and dashboard publishing only.                                                     |
-| `BUILD_IMAGES`       | Builds all custom Docker images on the GNS3 host.                                                                     |
-| `PUSH_IMAGES`        | Builds and pushes all custom Docker images to Docker Hub.                                                             |
-| `BOOTSTRAP_GNS3`     | Runs the persistent GNS3 bootstrap process.                                                                           |
-| `FULL_LOCAL_REFRESH` | Performs a complete local maintenance workflow including image refresh, bootstrap and validation.                     |
-
-Topology-changing actions require:
-
-```text
-CONFIRM_APPLY=true
-```
-
-This confirmation is required for actions such as GNS3 bootstrap and full local refresh, because they modify the lab environment or persistent node configuration.
-
-### Jenkins Pipeline Workflow
-
-In its default validation workflow, Jenkins performs the following actions:
-
-1. Cleans the workspace.
-2. Checks out the repository.
-3. Detects changed repository areas.
-4. Prepares Ansible output directories.
-5. Validates the Ansible inventory.
-6. Runs Ansible syntax checks.
-7. Executes the local topology validation gate.
-8. Generates an HTML summary report.
-9. Synchronizes reports to the Flask dashboard folder.
-10. Archives validation outputs as Jenkins artifacts.
-11. Updates the Jenkins build description with dashboard and artifact links.
-
-### Docker Image Automation
-
-Custom Docker images are used for the simulated GNS3 nodes:
-
-* FRR routers.
-* OVS switches.
-* Web service node.
-* DNS service node.
-
-Docker build and push operations are delegated to the GNS3 host through SSH, because Docker is installed on the GNS3 VM and not on the DevOps VM.
-
-This keeps the DevOps VM focused on orchestration, Ansible validation and reporting, while the GNS3 VM remains responsible for image building and topology-related Docker operations.
-
-Important distinction:
-
-```text
-docker build  → creates or updates a local image on the GNS3 host
-docker push   → publishes the image to Docker Hub
-GNS3 nodes    → existing containers are not automatically recreated
-```
-
-Pushing a new image to Docker Hub does not automatically update already-created GNS3 nodes. Applying a new image to existing GNS3 nodes requires a controlled maintenance action, such as recreating the affected nodes or using a future GNS3 API-based refresh workflow.
-
-### GNS3 Host Synchronization
-
-For Docker build and bootstrap operations, Jenkins connects to the GNS3 host through SSH and synchronizes the local repository copy located at:
-
-```text
-/home/gns3/pfe-repo
-```
-
-The GitHub repository is treated as the source of truth for tracked files.
-
-Real environment and secret files are not committed to GitHub. They are preserved locally on the GNS3 host, for example under:
-
-```text
-/home/gns3/pfe-local-files
-```
-
-Only example files are versioned in the repository.
-
-### Security Summary
-
-This CI/CD design provides the following security properties:
-
-* Jenkins remains private inside the local lab.
-* The GitHub Actions runner only triggers Jenkins.
-* The runner runs under a limited Linux user.
-* The runner does not checkout or execute repository code.
-* Jenkins credentials remain local to the DevOps VM.
-* Docker operations are delegated to the GNS3 host.
-* GNS3 topology-changing actions are manual and protected by confirmation.
-
-This design keeps the CI/CD workflow enterprise-like while remaining suitable for an academic hybrid network automation lab.
+Only safe source code, templates, scripts, examples and documentation are versioned.
 
 ## Final Management Principle
 
@@ -1304,14 +864,14 @@ The final architecture keeps both management concepts:
 
 ```text
 VLAN 99:
-  In-band management VLAN inside the simulated enterprise network
+  In-band management VLAN inside the simulated enterprise network.
 
 OOB 10.200.0.0/24:
-  Dedicated DevOps automation and infrastructure control plane
+  Dedicated DevOps automation, monitoring and infrastructure control plane.
 ```
 
-Ansible and Jenkins use the OOB network as the primary control path.
+Ansible, Jenkins and monitoring use the OOB network as the primary control path.
 
 The production topology remains the validation target.
 
-Validation results are generated by Ansible and visualized through the Flask dashboard microservice.
+Validation results, metrics snapshots and analyzer decisions are generated by the pipeline, stored in S3 and visualized through the Flask multi-page dashboard.

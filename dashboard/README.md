@@ -1,33 +1,31 @@
 # Flask Validation Dashboard
 
-This dashboard provides a visual view of the latest infrastructure validation, analyzer and monitoring state.
+The dashboard is the local visualization layer of the Intelligent Network Automation Platform.
 
-## Purpose
-
-The dashboard is the local visualization layer of the intelligent network automation platform.
-
-It displays:
+It displays the latest state of:
 
 ```text
 Validation reports
 Cloud analyzer decision
-Prometheus metrics snapshot
-Node metrics
+Prometheus monitoring snapshot
+Node Exporter host metrics
 Blackbox service probes
-SNMP network interface metrics
+SNMPv3 FRR router interface metrics
+Infrastructure nodes
+Validated services
 ```
 
 ## Data Source Model
 
 The dashboard is cloud-backed.
 
-AWS S3 is the durable source of truth for generated artifacts. The dashboard reads from a local synchronized cache:
+AWS S3 is the durable source of truth for generated artifacts. The dashboard reads from a synchronized local cache:
 
 ```text
 /var/lib/pfe-dashboard/
 ```
 
-This avoids depending on temporary Jenkins workspace files or generated files inside the Git repository.
+The dashboard does not depend on temporary Jenkins workspace files.
 
 ## Local Cache Structure
 
@@ -52,33 +50,42 @@ This avoids depending on temporary Jenkins workspace files or generated files in
         └── snmp_*.json
 ```
 
-## Dashboard Features
+## Multi-Page Dashboard Layout
 
-The dashboard displays:
-
-```text
-Global validation status
-Validation report totals
-Validation domains
-Infrastructure node status
-Validated DMZ services
-Readable report previews
-Latest cloud analyzer decision
-Prometheus target health
-Per-node memory/disk metrics
-Blackbox service probe results
-SNMP edge-router interface status and counters
-```
-
-## Cloud Analyzer Decision
-
-The dashboard reads the latest analyzer decision from:
+The dashboard is split into several pages for readability, transparency and easier presentation during the soutenance.
 
 ```text
-/var/lib/pfe-dashboard/analyzer/latest/decision.json
+/                 Overview
+/analyzer         Cloud Analyzer Decision
+/monitoring       Prometheus, Node Exporter, Blackbox and SNMP metrics
+/validation       Validation domains and report previews
+/infrastructure   FRR and OVS node table
+/services         Validated services
 ```
 
-Displayed fields:
+## Pages
+
+### Overview
+
+The overview page gives a high-level summary of the platform:
+
+```text
+project name
+environment
+DevOps OOB IP
+OOB network
+global validation status
+report counters
+quick access buttons to each dashboard section
+latest analyzer summary
+latest monitoring summary
+```
+
+### Analyzer
+
+The analyzer page displays the latest cloud analyzer decision synchronized from S3.
+
+It shows:
 
 ```text
 anomaly status
@@ -88,56 +95,89 @@ recommended action
 build label
 failed reports
 warning reports
+source decision file
 ```
 
-## Prometheus Metrics Visualization
+### Monitoring
 
-The dashboard reads the latest Prometheus metrics snapshot from:
+The monitoring page displays the latest Prometheus metrics snapshot.
+
+It shows:
 
 ```text
-/var/lib/pfe-dashboard/metrics/latest/
+Prometheus scrape target health
+Node Exporter memory/disk metrics
+Blackbox HTTP/TCP/DNS probes
+SNMPv3 FRR router targets
+SNMP IF-MIB interface status
+SNMP interface traffic counters
+SNMP interface error counters
 ```
 
-Displayed metrics include:
+SNMP metrics are grouped by FRR router so the interface state of each router is easy to inspect.
+
+### Validation
+
+The validation page displays:
 
 ```text
-targets up/down
-memory usage
-disk usage
-system information
-snapshot timestamp
-per-node metrics
-Blackbox probe results
-SNMP interface status
-SNMP interface counters
+validation domains
+report counts by domain
+report status
+readable report previews
+links to full raw reports
 ```
 
-## SNMP Visualization
+### Infrastructure
 
-The SNMP section displays interface metrics from the edge-router collected through:
+The infrastructure page displays the FRR and OVS nodes loaded from Ansible variables.
 
-```text
-SNMPv3
-SNMP Exporter
-Prometheus
-metrics snapshot export
-S3-backed dashboard cache
-```
-
-Displayed SNMP fields:
+It includes:
 
 ```text
 node name
-interface name
-interface index
-admin status
-operational status
-input octets
-output octets
-input/output errors
+node type
+OOB interface
+OOB IP
+validation status
+link to related report
+search filter
 ```
 
-## Running the Dashboard on Ubuntu
+### Services
+
+The services page displays expected and validated DMZ services.
+
+It includes:
+
+```text
+service name
+IP address
+port
+validation method
+service status
+```
+
+## Configuration
+
+Default paths are defined in:
+
+```text
+dashboard/config.py
+```
+
+Important default paths:
+
+```text
+DASHBOARD_CACHE_DIR=/var/lib/pfe-dashboard
+DASHBOARD_OUTPUTS_DIR=/var/lib/pfe-dashboard/outputs
+CLOUD_ANALYZER_LATEST_DECISION_FILE=/var/lib/pfe-dashboard/analyzer/latest/decision.json
+PROMETHEUS_METRICS_LATEST_DIR=/var/lib/pfe-dashboard/metrics/latest
+```
+
+These values can be overridden with environment variables if needed.
+
+## Run Dashboard Locally
 
 From the repository root:
 
@@ -153,4 +193,33 @@ Then open:
 
 ```text
 http://localhost:5050
+```
+
+## Jenkins and S3 Integration
+
+Jenkins uploads generated outputs to S3 and then synchronizes the local dashboard cache.
+
+Current sync model:
+
+```text
+latest/validation-artifacts/ → /var/lib/pfe-dashboard/outputs/
+latest/analyzer/             → /var/lib/pfe-dashboard/analyzer/latest/
+latest/metrics/              → /var/lib/pfe-dashboard/metrics/latest/
+```
+
+## Notes
+
+Generated validation reports, analyzer outputs and metrics snapshots are not committed to GitHub.
+
+GitHub stores only:
+
+```text
+dashboard source code
+templates
+static files
+DTOs
+repositories
+services
+controllers
+documentation
 ```

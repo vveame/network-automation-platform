@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{% block page_title %}PFE Dashboard{% endblock %} - PFE Validation Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script defer src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</head>
+<body>
+
+<header class="hero">
+  <div>
+    <p class="eyebrow">Intelligent Network Automation Platform</p>
+    <h1>{% block hero_title %}Infrastructure Validation Dashboard{% endblock %}</h1>
+    <p class="subtitle">
+      {% block hero_subtitle %}
+        Cloud-backed visualization of validation reports, monitoring metrics and analyzer decisions.
+      {% endblock %}
+    </p>
+  </div>
+
+  <div class="status-pill {{ dashboard.global_status }}">
+    {{ dashboard.global_status | upper }}
+  </div>
+</header>
+
+<nav class="dashboard-nav">
+  <a class="{{ 'active' if active_page == 'overview' else '' }}"
+     href="{{ url_for('dashboard.index') }}">
+    Overview
+  </a>
+
+  <a class="{{ 'active' if active_page == 'analyzer' else '' }}"
+     href="{{ url_for('dashboard.analyzer') }}">
+    Analyzer
+  </a>
+
+  <a class="{{ 'active' if active_page == 'monitoring' else '' }}"
+     href="{{ url_for('dashboard.monitoring') }}">
+    Monitoring
+  </a>
+
+  <a class="{{ 'active' if active_page == 'validation' else '' }}"
+     href="{{ url_for('dashboard.validation') }}">
+    Validation
+  </a>
+
+  <a class="{{ 'active' if active_page == 'infrastructure' else '' }}"
+     href="{{ url_for('dashboard.infrastructure') }}">
+    Infrastructure
+  </a>
+
+  <a class="{{ 'active' if active_page == 'services' else '' }}"
+     href="{{ url_for('dashboard.services') }}">
+    Services
+  </a>
+</nav>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

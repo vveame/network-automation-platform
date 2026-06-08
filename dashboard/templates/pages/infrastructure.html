@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block page_title %}Infrastructure{% endblock %}
+
+{% block hero_title %}Infrastructure Nodes{% endblock %}
+
+{% block hero_subtitle %}
+  FRR and OVS nodes loaded dynamically from Ansible variables and validation results.
+{% endblock %}
+
+{% block content %}
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Infrastructure Nodes</h2>
+      <p>Loaded dynamically from expected_frr_nodes and expected_ovs_nodes in Ansible variables.</p>
+    </div>
+
+    <input id="nodeSearch" class="search-input" placeholder="Search node, IP, type...">
+  </div>
+
+  {% if dashboard.nodes %}
+    <div class="table-card">
+      <table id="nodesTable">
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th>Type</th>
+            <th>OOB Interface</th>
+            <th>OOB IP</th>
+            <th>Status</th>
+            <th>Report</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for node in dashboard.nodes %}
+            <tr>
+              <td><strong>{{ node.name }}</strong></td>
+              <td>{{ node.node_type }}</td>
+              <td>{{ node.oob_interface }}</td>
+              <td>{{ node.oob_ip }}</td>
+              <td>
+                <span class="badge {{ node.validation_status }}">
+                  {{ node.validation_status }}
+                </span>
+              </td>
+              <td>
+                <a href="{{ url_for('report.report_detail', filename=node.report_file) }}">Open</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">No infrastructure nodes found in Ansible variables.</div>
+  {% endif %}
+</section>
+
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block page_title %}Cloud Analyzer{% endblock %}
+
+{% block hero_title %}Cloud Analyzer Decision{% endblock %}
+
+{% block hero_subtitle %}
+  Latest anomaly decision synchronized from AWS S3 into the local dashboard cache.
+{% endblock %}
+
+{% block content %}
+
+<section class="section">
+  <div class="section-header">
+    <div>
+      <h2>Analyzer Result</h2>
+      <p>Decision generated from validation reports and Prometheus monitoring metrics.</p>
+    </div>
+
+    {% if dashboard.cloud_analyzer.available %}
+      <span class="status-pill {{ dashboard.cloud_analyzer.severity }}">
+        {{ dashboard.cloud_analyzer.severity | upper }}
+      </span>
+    {% else %}
+      <span class="status-pill warning">UNAVAILABLE</span>
+    {% endif %}
+  </div>
+
+  {% if dashboard.cloud_analyzer.available %}
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span>Anomaly Status</span>
+        <strong>{{ dashboard.cloud_analyzer.anomaly_status | upper }}</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Risk Score</span>
+        <strong>{{ dashboard.cloud_analyzer.risk_score }}/100</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Severity</span>
+        <strong>{{ dashboard.cloud_analyzer.severity | upper }}</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>Build</span>
+        <strong class="small-strong">{{ dashboard.cloud_analyzer.build_label }}</strong>
+      </div>
+    </div>
+
+    <article class="domain-card">
+      <div class="domain-title">
+        <h3>Recommended Action</h3>
+        <span class="badge {{ dashboard.cloud_analyzer.severity }}">
+          {{ dashboard.cloud_analyzer.severity | upper }}
+        </span>
+      </div>
+
+      <p>{{ dashboard.cloud_analyzer.recommended_action }}</p>
+      <p class="subtitle">Source: {{ dashboard.cloud_analyzer.source_file }}</p>
+    </article>
+
+    <div class="summary-grid">
+      <article class="domain-card">
+        <div class="domain-title">
+          <h3>Failed Reports</h3>
+          <span class="badge {{ 'failed' if dashboard.cloud_analyzer.failed_reports else 'passed' }}">
+            {{ dashboard.cloud_analyzer.failed_reports | length }}
+          </span>
+        </div>
+
+        {% if dashboard.cloud_analyzer.failed_reports %}
+          <ul class="clean-list">
+            {% for report in dashboard.cloud_analyzer.failed_reports %}
+              <li>{{ report }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No failed reports.</p>
+        {% endif %}
+      </article>
+
+      <article class="domain-card">
+        <div class="domain-title">
+          <h3>Warning Reports</h3>
+          <span class="badge {{ 'warning' if dashboard.cloud_analyzer.warning_reports else 'passed' }}">
+            {{ dashboard.cloud_analyzer.warning_reports | length }}
+          </span>
+        </div>
+
+        {% if dashboard.cloud_analyzer.warning_reports %}
+          <ul class="clean-list">
+            {% for report in dashboard.cloud_analyzer.warning_reports %}
+              <li>{{ report }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No warning reports.</p>
+        {% endif %}
+      </article>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      No cloud analyzer decision found. Sync the dashboard cache from S3 or run the Jenkins analyzer stage.
+    </div>
+  {% endif %}
+</section>
+
+{% endblock %}
