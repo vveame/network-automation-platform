@@ -11,10 +11,13 @@ mkdir -p /var/run/openvswitch
 mkdir -p /var/log/openvswitch
 mkdir -p /run/sshd
 mkdir -p /root/.ssh
+mkdir -p /etc/snmp
+mkdir -p /var/lib/net-snmp
 
 chmod 700 /root/.ssh 2>/dev/null || true
 
 # 1. Configure SSH
+echo "[BOOT] Configuring SSH..."
 
 ssh-keygen -A 2>/dev/null || true
 
@@ -74,7 +77,7 @@ else
   echo "[BOOT] No /etc/local/ovs-mgmt.sh found, skipping management IP."
 fi
 
-# Apply OOB management interface configuration
+# 5. Apply OOB management interface configuration
 
 if [ -x /etc/local/oob-mgmt.sh ]; then
   echo "[BOOT] Applying OOB management configuration..."
@@ -83,7 +86,7 @@ else
   echo "[BOOT] No /etc/local/oob-mgmt.sh found, skipping OOB management."
 fi
 
-# 5. Apply admin access control
+# 6. Apply admin access control
 
 if [ -x /etc/local/security/admin-access-control.sh ]; then
   echo "[BOOT] Applying admin access control..."
@@ -92,8 +95,17 @@ else
   echo "[BOOT] admin-access-control.sh not found, skipping."
 fi
 
-# 6. Ensure root can use key-only SSH
+# 7. Start optional SNMP service
+# SNMP is optional and must never prevent the switch from starting.
 
+if [ -x /start-snmp.sh ]; then
+  echo "[BOOT] Starting optional SNMP service..."
+  /start-snmp.sh || echo "[BOOT][WARN] SNMP startup failed, continuing OVS startup."
+else
+  echo "[BOOT] /start-snmp.sh not found, skipping SNMP."
+fi
+
+# 8. Ensure root can use key-only SSH
 echo "[BOOT] Ensuring root account is usable for key-only SSH..."
 
 if command -v passwd >/dev/null 2>&1; then
@@ -104,7 +116,7 @@ if [ -f /etc/shadow ]; then
   sed -i 's/^root:[!*][^:]*:/root::/' /etc/shadow
 fi
 
-# 7. Start SSH daemon
+# 9. Start SSH daemon
 
 if command -v sshd >/dev/null 2>&1; then
   echo "[BOOT] Starting SSH daemon..."

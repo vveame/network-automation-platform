@@ -6,7 +6,7 @@ This directory contains the local Prometheus monitoring baseline for the Intelli
 
 The monitoring layer collects host, service and network-device metrics from the local GNS3/DevOps environment.
 
-The monitoring data is used by:
+The collected metrics are used by:
 
 ```text
 Prometheus
@@ -20,11 +20,11 @@ Flask dashboard visualization
 cloud analyzer risk scoring
 ```
 
-This creates a structured metrics baseline for future anomaly detection.
+This creates a structured monitoring baseline for future anomaly detection.
 
 ## Architecture
 
-The current monitoring architecture runs on the DevOps VM and monitors the local GNS3 lab.
+The monitoring stack runs on the DevOps VM and monitors the local GNS3 lab.
 
 ```text
 DevOps VM
@@ -37,12 +37,13 @@ GNS3 lab
 ├── GNS3 VM Node Exporter target
 ├── DMZ Web service probes
 ├── DMZ DNS service probes
-└── FRR router SNMPv3 interface metrics
+├── FRR router SNMPv3 interface metrics
+└── OVS switch SNMPv3 interface metrics
 ```
 
 ## Source of Truth Model
 
-The project follows the same artifact model for validation, analyzer and monitoring outputs.
+The monitoring layer follows the same artifact model as validation and analyzer outputs.
 
 ```text
 Jenkins workspace = temporary generation area
@@ -57,14 +58,14 @@ Generated monitoring snapshots are temporary in:
 monitoring/outputs/latest/
 ```
 
-Jenkins uploads them to S3 under:
+Jenkins uploads metrics snapshots to S3 under:
 
 ```text
 metrics-snapshots/<build-label>/
 latest/metrics/
 ```
 
-Then the dashboard cache is synchronized to:
+The latest snapshot is synchronized to:
 
 ```text
 /var/lib/pfe-dashboard/metrics/latest/
@@ -122,6 +123,8 @@ node_filesystem_size_bytes
 
 ### Blackbox Exporter
 
+Blackbox Exporter validates service reachability without requiring SSH access to service containers.
+
 Current probes include:
 
 ```text
@@ -141,19 +144,32 @@ probe_http_status_code
 
 ### SNMP Exporter
 
-SNMP Exporter is used to collect interface metrics from all FRR routers.
+SNMP Exporter collects interface metrics from network devices using SNMPv3.
+
+Current SNMP monitored devices:
+
+```text
+5 FRR routers
+6 OVS switches
+```
 
 Current SNMP targets:
 
 ```text
-core-frr-1    10.200.0.11:1161
-core-frr-2    10.200.0.12:1161
-dist-frr-1    10.200.0.21:1161
-dist-frr-2    10.200.0.22:1161
-edge-router   10.200.0.30:1161
+core-frr-1     10.200.0.11:1161
+core-frr-2     10.200.0.12:1161
+dist-frr-1     10.200.0.21:1161
+dist-frr-2     10.200.0.22:1161
+edge-router    10.200.0.30:1161
+dist-ovs-1     10.200.0.31:1161
+dist-ovs-2     10.200.0.32:1161
+dmz-ovs-3      10.200.0.33:1161
+access-ovs-4   10.200.0.44:1161
+access-ovs-5   10.200.0.45:1161
+access-ovs-6   10.200.0.46:1161
 ```
 
-Security model:
+SNMP security model:
 
 ```text
 SNMP version: SNMPv3
@@ -178,7 +194,7 @@ ifInErrors
 ifOutErrors
 ```
 
-## Apply Monitoring Baseline
+## Applying the Monitoring Baseline
 
 From the repository root:
 
@@ -198,9 +214,9 @@ snmp tools
 
 It copies versioned Prometheus, Blackbox and target files into `/etc/prometheus`.
 
-It does not blindly overwrite the local SNMP Exporter secrets. The final SNMP Exporter config is generated locally because it contains SNMPv3 credentials.
+It does not overwrite the final local SNMP Exporter configuration because that file contains local SNMPv3 credentials.
 
-## Build Local SNMP Exporter Config
+## Building the Local SNMP Exporter Config
 
 First create the local SNMP auth file:
 
@@ -223,7 +239,7 @@ This creates:
 
 That file contains real SNMPv3 credentials and must not be committed.
 
-## Export Metrics Snapshot
+## Exporting a Metrics Snapshot
 
 From the repository root:
 
@@ -267,12 +283,12 @@ The Jenkins pipeline uses this monitoring baseline after local validation.
 Expected flow:
 
 ```text
-1. Generate validation reports
-2. Export Prometheus metrics snapshot
-3. Run cloud analyzer with validation + metrics inputs
-4. Upload validation, analyzer and metrics outputs to S3
-5. Sync the local dashboard cache from S3
-6. Display results in the Flask dashboard
+1. Generate validation reports.
+2. Export Prometheus metrics snapshot.
+3. Run cloud analyzer with validation and metrics inputs.
+4. Upload validation, analyzer and metrics outputs to S3.
+5. Sync the local dashboard cache from S3.
+6. Display results in the Flask dashboard.
 ```
 
 ## Dashboard Integration
@@ -287,10 +303,10 @@ The monitoring page visualizes:
 
 ```text
 Prometheus target availability
-Node memory/disk usage
+Node memory and disk usage
 Blackbox service probe results
-SNMP FRR router target health
-SNMP per-router interface status
+SNMP network-device target health
+SNMP per-device interface status
 SNMP interface counters and errors
 ```
 
@@ -303,14 +319,20 @@ Current metrics-based risk inputs:
 ```text
 Prometheus targets down
 Blackbox probes failed
-high memory usage
-high disk usage
+High memory usage
+High disk usage
 SNMP target down
 SNMP interface unexpectedly down
 SNMP interface errors
 ```
 
-Loopback and VRRP virtual interfaces may be displayed in the dashboard for visibility, but they are not treated like physical or routed interfaces for anomaly scoring.
+Special interfaces may be displayed for visibility but ignored in anomaly scoring:
+
+```text
+lo
+vrrp*
+ovs-system
+```
 
 ## Notes
 

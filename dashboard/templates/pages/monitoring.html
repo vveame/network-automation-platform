@@ -123,12 +123,12 @@
     {% if dashboard.prometheus_metrics.snmp_available %}
       <article class="domain-card">
         <div class="domain-title">
-          <h3>FRR Router Interface Metrics</h3>
+          <h3>Network Device Interface Metrics</h3>
           <span class="badge passed">SNMPv3 / IF-MIB</span>
         </div>
 
         <p>
-          Interface status and counters collected from all FRR routers through SNMPv3,
+          Interface status and counters collected from FRR routers and OVS switches through SNMPv3,
           SNMP Exporter and Prometheus.
         </p>
 
@@ -155,7 +155,7 @@
         </div>
 
         <p class="subtitle">
-          Loopback and VRRP virtual interfaces may be displayed for visibility, but they should not be treated like physical/link interfaces in anomaly scoring.
+          Loopback, VRRP and OVS internal system interfaces may be displayed for visibility, but they are ignored in anomaly scoring.
         </p>
 
         {% for node_name, interfaces in dashboard.prometheus_metrics.snmp_interfaces|groupby("node_name") %}
@@ -180,7 +180,8 @@
                   {% for iface in interfaces %}
                     {% set is_loopback = iface.if_name == "lo" %}
                     {% set is_vrrp = iface.if_name[:4] == "vrrp" %}
-                    {% set is_special = is_loopback or is_vrrp %}
+                    {% set is_ovs_system = iface.if_name == "ovs-system" %}
+                    {% set is_special = is_loopback or is_vrrp or is_ovs_system %}
 
                     <tr>
                       <td>
@@ -218,6 +219,8 @@
                           <span class="badge empty">LOOPBACK</span>
                         {% elif is_vrrp %}
                           <span class="badge warning">VRRP</span>
+                        {% elif is_ovs_system %}
+                          <span class="badge empty">OVS SYSTEM</span>
                         {% else %}
                           <span class="badge passed">MONITORED</span>
                         {% endif %}

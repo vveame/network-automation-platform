@@ -6,7 +6,7 @@ This directory contains the first anomaly-detection baseline for the Intelligent
 
 The analyzer combines validation reports and Prometheus monitoring metrics to produce an explainable anomaly decision.
 
-At this stage, the analyzer is rule-based. It prepares the platform for future statistical or machine-learning anomaly detection.
+At this stage, the analyzer is rule-based. This makes the logic transparent and easier to explain before adding future statistical or machine-learning anomaly detection.
 
 ## Current Inputs
 
@@ -14,10 +14,17 @@ The analyzer uses:
 
 ```text
 Ansible validation reports
-Prometheus target health
-Node Exporter memory/disk metrics
+Prometheus scrape target health
+Node Exporter memory and disk metrics
 Blackbox service probe metrics
-SNMPv3 FRR router interface metrics
+SNMPv3 network-device interface metrics
+```
+
+The SNMP metrics now include both:
+
+```text
+FRR routers
+OVS switches
 ```
 
 ## Current Flow
@@ -39,7 +46,7 @@ summary.json + decision.json + analysis-report.txt
         ↓
 AWS S3 latest/analyzer/
         ↓
-Flask dashboard
+Flask multi-page dashboard
 ```
 
 ## Directory Structure
@@ -174,9 +181,17 @@ SNMP interface errors
 
 ## SNMP Risk Logic
 
-SNMP metrics are collected from all FRR routers.
+SNMP metrics are collected from all monitored network devices.
 
-Current SNMP targets:
+Current SNMP scope:
+
+```text
+5 FRR routers
+6 OVS switches
+11 total SNMP network devices
+```
+
+Current SNMP devices:
 
 ```text
 core-frr-1
@@ -184,6 +199,12 @@ core-frr-2
 dist-frr-1
 dist-frr-2
 edge-router
+dist-ovs-1
+dist-ovs-2
+dmz-ovs-3
+access-ovs-4
+access-ovs-5
+access-ovs-6
 ```
 
 SNMP interface status is interpreted using IF-MIB values:
@@ -211,9 +232,38 @@ Ignored for unexpected-down risk:
 ```text
 lo
 vrrp*
+ovs-system
 ```
 
 These interfaces are still useful for visibility, but they are not treated like physical or routed link interfaces in anomaly scoring.
+
+## Health-Relevant Interfaces
+
+Health-relevant interfaces include:
+
+```text
+FRR physical interfaces
+FRR routed interfaces
+FRR VLAN subinterfaces
+OVS bridge interface br0
+OVS management interface mgmt0
+OVS physical/container interfaces eth*
+```
+
+Ignored interfaces are excluded from risk scoring to avoid false positives.
+
+Examples:
+
+```text
+lo:
+  Loopback interface. Not treated as a network link failure.
+
+vrrp*:
+  VRRP virtual interface. Can be down on backup/standby behavior.
+
+ovs-system:
+  Internal OVS system interface. Can appear down without meaning a physical switch link failed.
+```
 
 ## Severity Levels
 
@@ -237,9 +287,9 @@ Metrics risk score: 0/100
 Severity: low
 Recommended action: no_action
 
-Targets up: 11/11
-Blackbox probes success: 4/4
-SNMP targets up: 5/5
+Targets up: all expected targets
+Blackbox probes success: all expected probes
+SNMP targets up: 11/11
 SNMP targets down: 0
 SNMP unexpected interface down: 0
 SNMP interfaces with errors: 0

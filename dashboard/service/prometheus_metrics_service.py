@@ -383,8 +383,14 @@ class PrometheusMetricsService:
         if not if_name:
             return False
 
-        ignored_exact = {"lo"}
-        ignored_prefixes = ("vrrp",)
+        ignored_exact = {
+            "lo",
+            "ovs-system",
+        }
+
+        ignored_prefixes = (
+            "vrrp",
+        )
 
         if if_name in ignored_exact:
             return False

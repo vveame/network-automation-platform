@@ -63,10 +63,19 @@ def is_health_relevant_snmp_interface(if_name: str) -> bool:
     if not if_name:
         return False
 
-    if if_name == "lo":
+    ignored_exact = {
+        "lo",
+        "ovs-system",
+    }
+
+    ignored_prefixes = (
+        "vrrp",
+    )
+
+    if if_name in ignored_exact:
         return False
 
-    if if_name.startswith("vrrp"):
+    if if_name.startswith(ignored_prefixes):
         return False
 
     return True

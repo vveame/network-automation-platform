@@ -113,6 +113,39 @@ prepare_ovs_common() {
   fi
 }
 
+install_ovs_snmp() {
+  LOCAL_DIR="$1"
+  SNMP_ENV_REL_PATH="$2"
+
+  if [ -z "$SNMP_ENV_REL_PATH" ]; then
+      return 0
+  fi
+
+  SNMP_TEMPLATE="$REPO/ovs/snmp/templates/snmpd.conf.template"
+  SNMP_ENV_FILE="$REPO/$SNMP_ENV_REL_PATH"
+
+  echo "[INFO] Preparing OVS SNMPv3 persistent config..."
+
+  if [ ! -f "$SNMP_TEMPLATE" ]; then
+      echo "[ERROR] Missing OVS SNMP template: $SNMP_TEMPLATE"
+      exit 1
+  fi
+
+  if [ ! -f "$SNMP_ENV_FILE" ]; then
+      echo "[WARN] Local OVS SNMP env file not found: $SNMP_ENV_FILE"
+      echo "[WARN] SNMP will stay disabled for this OVS node."
+      return 0
+  fi
+
+  sudo mkdir -p "$LOCAL_DIR/snmp"
+
+  install_file "$SNMP_TEMPLATE" "$LOCAL_DIR/snmp/snmpd.conf.template" "644"
+  install_file "$SNMP_ENV_FILE" "$LOCAL_DIR/snmp/snmp.env" "600"
+
+  echo "[OK] OVS SNMPv3 config installed into persistent local directory."
+
+}
+
 deploy_frr() {
   NODE_NAME="$1"
   ROUTER_ENV="$2"
@@ -161,6 +194,7 @@ deploy_ovs() {
   NODE_NAME="$1"
   OVS_CONFIG="$2"
   OVS_MGMT="$3"
+  SNMP_ENV="${4:-}"
 
   CONTAINER="$(find_container_any_state "$NODE_NAME")"
 
@@ -180,12 +214,15 @@ deploy_ovs() {
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
   install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
+
+  install_ovs_snmp "$LOCAL_DIR" "$SNMP_ENV"
 }
 
 deploy_dmz_ovs_persistent() {
   NODE_NAME="$1"
   OVS_CONFIG="$2"
   OVS_MGMT="$3"
+  SNMP_ENV="${4:-}"
 
   CONTAINER="$(find_container_any_state "$NODE_NAME")"
 
@@ -200,18 +237,13 @@ deploy_dmz_ovs_persistent() {
   LOCAL_DIR="$(require_mount "$CONTAINER" "/gns3volumes/etc/local")"
   ROOT_DIR="$(require_mount "$CONTAINER" "/gns3volumes/root")"
 
-  sudo mkdir -p "$LOCAL_DIR/security"
-  sudo mkdir -p "$ROOT_DIR/.ssh"
-
-  if [ -f "$PUBKEY_FILE" ]; then
-    install_file "$PUBKEY_FILE" "$ROOT_DIR/.ssh/authorized_keys" "600"
-  else
-    echo "[WARN] devops.pub not found. SSH public key will not be installed."
-  fi
+  prepare_ovs_common "$LOCAL_DIR" "$ROOT_DIR"
 
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
   install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
+
+  install_ovs_snmp "$LOCAL_DIR" "$SNMP_ENV"
 }
 
 deploy_oob_mgmt_persistent() {
@@ -285,32 +317,38 @@ echo "[INFO] Deploying OVS nodes..."
 deploy_ovs \
   "Access-OVS-4" \
   "ovs/access/access-ovs-4.sh" \
-  "ovs/management/access-ovs-4-mgmt.sh"
+  "ovs/management/access-ovs-4-mgmt.sh" \
+  "ovs/snmp/env/ovs-switches.snmp.env"
 
 deploy_ovs \
   "Access-OVS-5" \
   "ovs/access/access-ovs-5.sh" \
-  "ovs/management/access-ovs-5-mgmt.sh"
+  "ovs/management/access-ovs-5-mgmt.sh" \
+  "ovs/snmp/env/ovs-switches.snmp.env"
 
 deploy_ovs \
   "Access-OVS-6" \
   "ovs/access/access-ovs-6.sh" \
-  "ovs/management/access-ovs-6-mgmt.sh"
+  "ovs/management/access-ovs-6-mgmt.sh" \
+  "ovs/snmp/env/ovs-switches.snmp.env"
 
 deploy_ovs \
   "Dist-OVS-1" \
   "ovs/distribution/dist-ovs-1.sh" \
-  "ovs/management/dist-ovs-1-mgmt.sh"
+  "ovs/management/dist-ovs-1-mgmt.sh" \
+  "ovs/snmp/env/ovs-switches.snmp.env"
 
 deploy_ovs \
   "Dist-OVS-2" \
   "ovs/distribution/dist-ovs-2.sh" \
-  "ovs/management/dist-ovs-2-mgmt.sh"
+  "ovs/management/dist-ovs-2-mgmt.sh" \
+  "ovs/snmp/env/ovs-switches.snmp.env"
 
 deploy_dmz_ovs_persistent \
   "DMZ-OVS-3" \
   "ovs/dmz/dmz-ovs.sh" \
-  "ovs/management/dmz-ovs-3-mgmt.sh"
+  "ovs/management/dmz-ovs-3-mgmt.sh" \
+  "ovs/snmp/env/ovs-switches.snmp.env"
 
 echo "[INFO] Deploying persistent OOB management files..."
 

@@ -3,6 +3,7 @@
   labels:
     node_name: "core-frr-1"
     role: "core-router"
+    device_type: "frr-router"
     source: "snmp"
     environment: "gns3-onprem-lab"
 
@@ -11,6 +12,7 @@
   labels:
     node_name: "core-frr-2"
     role: "core-router"
+    device_type: "frr-router"
     source: "snmp"
     environment: "gns3-onprem-lab"
 
@@ -19,6 +21,7 @@
   labels:
     node_name: "dist-frr-1"
     role: "distribution-router"
+    device_type: "frr-router"
     source: "snmp"
     environment: "gns3-onprem-lab"
 
@@ -27,6 +30,7 @@
   labels:
     node_name: "dist-frr-2"
     role: "distribution-router"
+    device_type: "frr-router"
     source: "snmp"
     environment: "gns3-onprem-lab"
 
@@ -35,5 +39,60 @@
   labels:
     node_name: "edge-router"
     role: "edge-router"
+    device_type: "frr-router"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.31:1161"
+  labels:
+    node_name: "dist-ovs-1"
+    role: "distribution-switch"
+    device_type: "ovs-switch"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.32:1161"
+  labels:
+    node_name: "dist-ovs-2"
+    role: "distribution-switch"
+    device_type: "ovs-switch"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.33:1161"
+  labels:
+    node_name: "dmz-ovs-3"
+    role: "dmz-switch"
+    device_type: "ovs-switch"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.44:1161"
+  labels:
+    node_name: "access-ovs-4"
+    role: "access-switch"
+    device_type: "ovs-switch"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.45:1161"
+  labels:
+    node_name: "access-ovs-5"
+    role: "access-switch"
+    device_type: "ovs-switch"
+    source: "snmp"
+    environment: "gns3-onprem-lab"
+
+- targets:
+    - "10.200.0.46:1161"
+  labels:
+    node_name: "access-ovs-6"
+    role: "access-switch"
+    device_type: "ovs-switch"
     source: "snmp"
     environment: "gns3-onprem-lab"
