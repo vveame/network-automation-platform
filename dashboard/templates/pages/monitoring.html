@@ -15,7 +15,7 @@
     <div>
       <h2>Prometheus Metrics Snapshot</h2>
       <p>
-        Host metrics, service probes and SNMPv3 interface metrics collected from the local GNS3 lab.
+        Host metrics, service probes and SNMPv3 network-device metrics collected from the local GNS3 lab.
       </p>
     </div>
 
@@ -37,13 +37,13 @@
       </div>
 
       <div class="stat-card">
-        <span>Memory Used</span>
-        <strong>{{ dashboard.prometheus_metrics.memory_used_percent }}%</strong>
+        <span>SNMP Devices UP</span>
+        <strong>{{ dashboard.prometheus_metrics.snmp_targets_up }}/{{ dashboard.prometheus_metrics.snmp_targets_total }}</strong>
       </div>
 
       <div class="stat-card">
-        <span>Disk Used</span>
-        <strong>{{ dashboard.prometheus_metrics.disk_used_percent }}%</strong>
+        <span>Max CPU</span>
+        <strong>{{ dashboard.prometheus_metrics.max_cpu_usage_percent }}%</strong>
       </div>
 
       <div class="stat-card">
@@ -65,8 +65,9 @@
 
       <div class="mini-stats">
         <span>{{ dashboard.prometheus_metrics.targets_up }}/{{ dashboard.prometheus_metrics.targets_total }} scrape targets up</span>
-        <span>{{ dashboard.prometheus_metrics.snmp_targets_up }}/{{ dashboard.prometheus_metrics.snmp_targets_total }} SNMP targets up</span>
+        <span>{{ dashboard.prometheus_metrics.blackbox_probes_success }}/{{ dashboard.prometheus_metrics.blackbox_probes_total }} probes successful</span>
         <span>{{ dashboard.prometheus_metrics.snmp_interfaces_up }}/{{ dashboard.prometheus_metrics.snmp_interfaces_total }} monitored interfaces up</span>
+        <span>{{ dashboard.prometheus_metrics.filesystem_readonly_count }} read-only filesystems</span>
       </div>
     </article>
 
@@ -77,6 +78,10 @@
           <span class="badge passed">NODE EXPORTER</span>
         </div>
 
+        <p>
+          Host CPU, load, memory and filesystem metrics collected from the DevOps and GNS3 hosts.
+        </p>
+
         <div class="table-wrapper">
           <table>
             <thead>
@@ -84,8 +89,10 @@
                 <th>Node</th>
                 <th>Instance</th>
                 <th>Role</th>
+                <th>CPU / Load</th>
                 <th>Memory</th>
                 <th>Disk</th>
+                <th>Filesystem</th>
                 <th>Kernel</th>
               </tr>
             </thead>
@@ -95,6 +102,15 @@
                   <td><strong>{{ node.node_name }}</strong></td>
                   <td>{{ node.instance }}</td>
                   <td>{{ node.role }}</td>
+
+                  <td>
+                    <strong>{{ node.cpu_usage_percent }}%</strong>
+                    <br>
+                    <span class="subtitle">
+                      load {{ node.load1 }} / {{ node.load5 }} / {{ node.load15 }}
+                    </span>
+                  </td>
+
                   <td>
                     <strong>{{ node.memory_used_percent }}%</strong>
                     <br>
@@ -103,6 +119,7 @@
                       {{ node.memory_total_gb }} GB total
                     </span>
                   </td>
+
                   <td>
                     <strong>{{ node.disk_used_percent }}%</strong>
                     <br>
@@ -111,6 +128,15 @@
                       {{ node.disk_total_gb }} GB total
                     </span>
                   </td>
+
+                  <td>
+                    {% if node.filesystem_readonly %}
+                      <span class="badge failed">READ ONLY</span>
+                    {% else %}
+                      <span class="badge passed">WRITABLE</span>
+                    {% endif %}
+                  </td>
+
                   <td>{{ node.kernel_release }}</td>
                 </tr>
               {% endfor %}
@@ -128,8 +154,8 @@
         </div>
 
         <p>
-          Interface status and counters collected from FRR routers and OVS switches through SNMPv3,
-          SNMP Exporter and Prometheus.
+          Interface status, traffic rates, errors, discards, speed and MTU collected from FRR routers
+          and OVS switches through SNMPv3, SNMP Exporter and Prometheus.
         </p>
 
         <div class="stats-grid">
@@ -144,18 +170,23 @@
           </div>
 
           <div class="stat-card">
-            <span>Interfaces Down</span>
-            <strong>{{ dashboard.prometheus_metrics.snmp_interfaces_down }}</strong>
+            <span>Unexpected Down</span>
+            <strong>{{ dashboard.prometheus_metrics.snmp_interfaces_unexpected_down_count }}</strong>
           </div>
 
           <div class="stat-card">
-            <span>Collection</span>
-            <strong class="small-strong">IF-MIB</strong>
+            <span>Active Error/Discard Rates</span>
+            <strong>
+              {{ dashboard.prometheus_metrics.snmp_interfaces_with_error_rate_count }}
+              /
+              {{ dashboard.prometheus_metrics.snmp_interfaces_with_discard_rate_count }}
+            </strong>
           </div>
         </div>
 
         <p class="subtitle">
-          Loopback, VRRP and OVS internal system interfaces may be displayed for visibility, but they are ignored in anomaly scoring.
+          Loopback, VRRP and OVS internal system interfaces may be displayed for visibility,
+          but they are ignored in anomaly scoring.
         </p>
 
         {% for node_name, interfaces in dashboard.prometheus_metrics.snmp_interfaces|groupby("node_name") %}
@@ -167,12 +198,12 @@
                 <thead>
                   <tr>
                     <th>Interface</th>
-                    <th>Index</th>
                     <th>Admin</th>
                     <th>Operational</th>
-                    <th>In Octets</th>
-                    <th>Out Octets</th>
+                    <th>Traffic Rate</th>
                     <th>Errors</th>
+                    <th>Discards</th>
+                    <th>Speed / MTU</th>
                     <th>Type</th>
                   </tr>
                 </thead>
@@ -187,10 +218,10 @@
                       <td>
                         <strong>{{ iface.if_name }}</strong>
                         <br>
-                        <span class="subtitle">{{ iface.if_descr }}</span>
+                        <span class="subtitle">
+                          index {{ iface.if_index }} — {{ iface.if_descr }}
+                        </span>
                       </td>
-
-                      <td>{{ iface.if_index }}</td>
 
                       <td>
                         <span class="badge {{ 'passed' if iface.admin_status == 'up' else 'warning' }}">
@@ -210,9 +241,39 @@
                         {% endif %}
                       </td>
 
-                      <td>{{ iface.in_octets }}</td>
-                      <td>{{ iface.out_octets }}</td>
-                      <td>{{ iface.in_errors }} in / {{ iface.out_errors }} out</td>
+                      <td>
+                        <strong>In:</strong> {{ iface.in_bps }} bps
+                        <br>
+                        <strong>Out:</strong> {{ iface.out_bps }} bps
+                      </td>
+
+                      <td>
+                        {{ iface.in_errors }} in / {{ iface.out_errors }} out
+                        <br>
+                        <span class="subtitle">
+                          rate {{ iface.total_error_rate }}/s
+                        </span>
+                      </td>
+
+                      <td>
+                        {{ iface.in_discards }} in / {{ iface.out_discards }} out
+                        <br>
+                        <span class="subtitle">
+                          rate {{ iface.total_discard_rate }}/s
+                        </span>
+                      </td>
+
+                      <td>
+                        {% if iface.if_high_speed_mbps > 0 %}
+                          {{ iface.if_high_speed_mbps }} Mbps
+                        {% elif iface.if_speed_bps > 0 %}
+                          {{ iface.if_speed_bps }} bps
+                        {% else %}
+                          N/A
+                        {% endif %}
+                        <br>
+                        <span class="subtitle">MTU {{ iface.if_mtu }}</span>
+                      </td>
 
                       <td>
                         {% if is_loopback %}
@@ -221,8 +282,10 @@
                           <span class="badge warning">VRRP</span>
                         {% elif is_ovs_system %}
                           <span class="badge empty">OVS SYSTEM</span>
-                        {% else %}
+                        {% elif iface.health_relevant %}
                           <span class="badge passed">MONITORED</span>
+                        {% else %}
+                          <span class="badge empty">IGNORED</span>
                         {% endif %}
                       </td>
                     </tr>
@@ -242,6 +305,10 @@
           <span class="badge passed">BLACKBOX</span>
         </div>
 
+        <p>
+          Service availability and latency checks for DMZ Web, TCP and DNS endpoints.
+        </p>
+
         <div class="table-wrapper">
           <table>
             <thead>
@@ -251,6 +318,7 @@
                 <th>Probe Type</th>
                 <th>Status</th>
                 <th>Duration</th>
+                <th>DNS Lookup</th>
                 <th>HTTP Status</th>
               </tr>
             </thead>
@@ -266,6 +334,7 @@
                     </span>
                   </td>
                   <td>{{ probe.duration_seconds }}s</td>
+                  <td>{{ probe.dns_lookup_time_seconds }}s</td>
                   <td>
                     {% if probe.http_status_code > 0 %}
                       {{ probe.http_status_code }}
@@ -296,6 +365,9 @@
               <tr>
                 <th>Job</th>
                 <th>Instance</th>
+                <th>Node</th>
+                <th>Role</th>
+                <th>Device Type</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -304,6 +376,9 @@
                 <tr>
                   <td>{{ target.job }}</td>
                   <td>{{ target.instance }}</td>
+                  <td>{{ target.node_name }}</td>
+                  <td>{{ target.role }}</td>
+                  <td>{{ target.device_type }}</td>
                   <td>
                     <span class="badge {{ 'passed' if target.status == 'up' else 'failed' }}">
                       {{ target.status | upper }}

@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 
+ERROR_RATE_THRESHOLD = 0.01
+DISCARD_RATE_THRESHOLD = 0.01
+
+
 def calculate_validation_risk(reports: list[dict[str, Any]]) -> tuple[int, list[str]]:
     score = 0
     reasons = []
@@ -51,6 +55,25 @@ def calculate_validation_risk(reports: list[dict[str, Any]]) -> tuple[int, list[
     return min(score, 100), reasons
 
 
+def _count_interfaces_above_rate(
+    interfaces: list[dict[str, Any]],
+    rate_key: str,
+    threshold: float,
+) -> int:
+    count = 0
+
+    for interface in interfaces:
+        try:
+            value = float(interface.get(rate_key, 0))
+        except (ValueError, TypeError):
+            value = 0
+
+        if value >= threshold:
+            count += 1
+
+    return count
+
+
 def calculate_metrics_risk(metrics: dict[str, Any] | None) -> tuple[int, list[str]]:
     if not metrics or not metrics.get("available"):
         return 0, ["prometheus_metrics_unavailable"]
@@ -60,12 +83,30 @@ def calculate_metrics_risk(metrics: dict[str, Any] | None) -> tuple[int, list[st
 
     targets_down = int(metrics.get("targets_down", 0))
     blackbox_failed = int(metrics.get("blackbox_probes_failed", 0))
+    blackbox_max_duration = float(metrics.get("blackbox_max_duration_seconds", 0))
+
     memory_used = float(metrics.get("memory_used_percent", 0))
     disk_used = float(metrics.get("disk_used_percent", 0))
+    max_cpu = float(metrics.get("max_cpu_usage_percent", 0))
+    max_load1 = float(metrics.get("max_load1", 0))
+    readonly_count = int(metrics.get("filesystem_readonly_count", 0))
 
     snmp_targets_down = int(metrics.get("snmp_targets_down", 0))
     snmp_unexpected_down = int(metrics.get("snmp_interfaces_unexpected_down_count", 0))
-    snmp_interfaces_with_errors = int(metrics.get("snmp_interfaces_with_errors_count", 0))
+
+    # Cumulative counters are kept for visibility, but not directly scored.
+    # For anomaly scoring, use current rates instead.
+    snmp_error_rate_interfaces = _count_interfaces_above_rate(
+        metrics.get("snmp_interfaces_with_error_rate", []),
+        "total_error_rate",
+        ERROR_RATE_THRESHOLD,
+    )
+
+    snmp_discard_rate_interfaces = _count_interfaces_above_rate(
+        metrics.get("snmp_interfaces_with_discard_rate", []),
+        "total_discard_rate",
+        DISCARD_RATE_THRESHOLD,
+    )
 
     if targets_down > 0:
         score += min(targets_down * 25, 50)
@@ -75,6 +116,13 @@ def calculate_metrics_risk(metrics: dict[str, Any] | None) -> tuple[int, list[st
         score += min(blackbox_failed * 20, 60)
         reasons.append(f"blackbox_probes_failed:{blackbox_failed}")
 
+    if blackbox_max_duration >= 5:
+        score += 20
+        reasons.append(f"blackbox_probe_latency_critical:{blackbox_max_duration}s")
+    elif blackbox_max_duration >= 2:
+        score += 10
+        reasons.append(f"blackbox_probe_latency_warning:{blackbox_max_duration}s")
+
     if snmp_targets_down > 0:
         score += min(snmp_targets_down * 25, 50)
         reasons.append(f"snmp_targets_down:{snmp_targets_down}")
@@ -83,9 +131,23 @@ def calculate_metrics_risk(metrics: dict[str, Any] | None) -> tuple[int, list[st
         score += min(snmp_unexpected_down * 15, 45)
         reasons.append(f"snmp_interfaces_unexpected_down:{snmp_unexpected_down}")
 
-    if snmp_interfaces_with_errors > 0:
-        score += min(snmp_interfaces_with_errors * 10, 30)
-        reasons.append(f"snmp_interfaces_with_errors:{snmp_interfaces_with_errors}")
+    if snmp_error_rate_interfaces > 0:
+        score += min(snmp_error_rate_interfaces * 12, 36)
+        reasons.append(f"snmp_interface_error_rate_detected:{snmp_error_rate_interfaces}")
+
+    if snmp_discard_rate_interfaces > 0:
+        score += min(snmp_discard_rate_interfaces * 8, 24)
+        reasons.append(f"snmp_interface_discard_rate_detected:{snmp_discard_rate_interfaces}")
+
+    if max_cpu >= 95:
+        score += 35
+        reasons.append(f"cpu_critical:{max_cpu}%")
+    elif max_cpu >= 85:
+        score += 20
+        reasons.append(f"cpu_high:{max_cpu}%")
+    elif max_cpu >= 75:
+        score += 10
+        reasons.append(f"cpu_warning:{max_cpu}%")
 
     if memory_used >= 95:
         score += 35
@@ -106,6 +168,14 @@ def calculate_metrics_risk(metrics: dict[str, Any] | None) -> tuple[int, list[st
     elif disk_used >= 75:
         score += 10
         reasons.append(f"disk_warning:{disk_used}%")
+
+    if max_load1 >= 8:
+        score += 15
+        reasons.append(f"load1_high:{max_load1}")
+
+    if readonly_count > 0:
+        score += 35
+        reasons.append(f"readonly_filesystems:{readonly_count}")
 
     return min(score, 100), reasons
 
