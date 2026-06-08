@@ -310,6 +310,321 @@ SNMP per-device interface status
 SNMP interface counters and errors
 ```
 
+## Grafana Metrics Visualization
+
+Grafana is integrated as the visual observability layer for the Prometheus monitoring baseline. While the Flask dashboard remains the project-level dashboard used to display validation, analyzer and snapshot results, Grafana provides a professional monitoring interface for real-time metrics exploration.
+
+The Grafana integration is based on the same Prometheus metrics already collected by the monitoring baseline:
+
+```text
+Prometheus
+    ↓
+Grafana datasource
+    ↓
+Provisioned dashboards
+    ↓
+Metrics visualization for monitoring and anomaly demonstration
+```
+
+Grafana is used only for metrics visualization. Log collection with Loki/Alloy was evaluated during implementation, but it was removed from the core scope to keep the project stable and focused. Log-based analysis is kept as a future improvement, while the implemented anomaly detection direction is based on Prometheus metrics.
+
+### Grafana Directory Structure
+
+Grafana files are versioned under:
+
+```text
+monitoring/grafana/
+├── provisioning/
+│   ├── datasources/
+│   │   └── prometheus.yml
+│   └── dashboards/
+│       └── pfe-dashboards.yml
+└── dashboards/
+    ├── pfe-local-monitoring-overview.json
+    ├── pfe-network-devices-interfaces.json
+    └── pfe-anomaly-detection-demo.json
+```
+
+The provisioning files allow Grafana to load the Prometheus datasource and dashboard JSON files automatically.
+
+### Prometheus Datasource
+
+Grafana uses Prometheus as its main datasource.
+
+```text
+Datasource name: Prometheus
+Datasource UID: prometheus
+Datasource URL: http://localhost:9090
+Access mode: proxy
+```
+
+This datasource reads the metrics collected by Prometheus from:
+
+```text
+Node Exporter
+Blackbox Exporter
+SNMP Exporter
+Prometheus self-monitoring
+```
+
+### Provisioned Dashboard Folder
+
+The dashboards are provisioned into the Grafana folder:
+
+```text
+PFE Monitoring
+```
+
+The local dashboard JSON files are copied to:
+
+```text
+/var/lib/grafana/dashboards/pfe/
+```
+
+Grafana then loads them through the dashboard provisioning configuration.
+
+## Grafana Dashboards
+
+Three dashboards were added to support the monitoring and anomaly-detection part of the platform.
+
+### 1. PFE - Local Monitoring Overview
+
+File:
+
+```text
+monitoring/grafana/dashboards/pfe-local-monitoring-overview.json
+```
+
+Purpose:
+
+```text
+Provide a global view of the local monitoring baseline.
+```
+
+This dashboard shows:
+
+```text
+Overall Prometheus target health
+Number of targets down
+Web/DNS service probe health
+Network device reachability
+Service availability over time
+Service probe latency
+DevOps/GNS3 memory usage
+DevOps/GNS3 disk usage
+SNMP device reachability
+Interface error rate
+```
+
+This dashboard is used as the main observability overview. It helps verify that the local infrastructure, monitored services and network devices are available before running analyzer or remediation scenarios.
+
+### 2. PFE - Network Devices & Interfaces
+
+File:
+
+```text
+monitoring/grafana/dashboards/pfe-network-devices-interfaces.json
+```
+
+Purpose:
+
+```text
+Visualize the state of the simulated network infrastructure.
+```
+
+This dashboard focuses on SNMP-monitored FRR routers and OVS switches.
+
+It shows:
+
+```text
+SNMP network device health
+Number of unreachable devices
+Device uptime
+Interface operational status
+Administratively enabled interfaces that are operationally down
+Interface inbound traffic
+Interface outbound traffic
+Interface input/output error rate
+```
+
+A device variable is included so the user can filter the dashboard by a specific router or switch.
+
+This dashboard is important because the project is focused on network automation, not only server monitoring. It proves that the platform monitors the simulated enterprise network through SNMPv3 metrics.
+
+### 3. PFE - Anomaly Detection Demo
+
+File:
+
+```text
+monitoring/grafana/dashboards/pfe-anomaly-detection-demo.json
+```
+
+Purpose:
+
+```text
+Provide visual evidence for future attack, anomaly and remediation demonstrations.
+```
+
+This dashboard does not replace the Python analyzer. Instead, it visualizes the same metric families that will be used by the analyzer.
+
+It shows:
+
+```text
+Estimated anomaly risk score
+Failed service probes
+SNMP devices down
+Admin-up interfaces down
+Interface error rate
+Anomaly risk timeline
+Service failure signals
+Service latency degradation
+Anomaly evidence timeline
+Target reachability map
+Network interface error evidence
+```
+
+The estimated risk score is calculated from metric indicators such as:
+
+```text
+Prometheus targets down
+Failed Web/DNS Blackbox probes
+High service latency
+SNMP device failures
+Unexpected interface-down events
+Interface error rate
+High memory usage
+High disk usage
+```
+
+This dashboard is designed for future demonstrations where abnormal behavior is intentionally introduced into the lab, such as:
+
+```text
+Stopping the Web service
+Stopping the DNS service
+Disconnecting or stopping a network device
+Breaking an active interface
+Creating latency or reachability degradation
+Generating interface errors
+```
+
+The dashboard makes the anomaly visible before and after remediation.
+
+## Metrics-Based Anomaly Detection Direction
+
+The project now focuses on metrics-based anomaly detection instead of log-based detection.
+
+The implemented monitoring baseline provides enough structured time-series data to detect several important anomaly scenarios:
+
+```text
+Service unavailability
+Service latency degradation
+Device reachability failure
+Interface operational failure
+Interface error increase
+Host memory saturation
+Host disk saturation
+```
+
+This approach is suitable for the scope of the project because the objective is not forensic log analysis. The objective is to detect abnormal infrastructure behavior and prepare automated remediation actions.
+
+The final anomaly detection flow is:
+
+```text
+Prometheus metrics
+    ↓
+Metrics snapshot export
+    ↓
+Python analyzer
+    ↓
+Risk score and anomaly classification
+    ↓
+Jenkins remediation pipeline
+    ↓
+Dashboard/report update
+```
+
+Logs are kept as a perspective for future improvement. They can later be added to improve root-cause analysis, but they are not required for the core anomaly detection and remediation demonstration.
+
+## Updated Monitoring Scope
+
+The current monitoring scope includes:
+
+```text
+1. Host monitoring
+   - DevOps server
+   - GNS3 VM
+   - Memory usage
+   - Disk usage
+   - Host availability
+
+2. Service monitoring
+   - DMZ Web HTTP probe
+   - DMZ Web TCP/80 probe
+   - DMZ DNS TCP/53 probe
+   - DNS query probe
+   - Probe success
+   - Probe duration
+   - HTTP status code
+
+3. Network device monitoring
+   - FRR routers
+   - OVS switches
+   - SNMPv3 reachability
+   - Device uptime
+   - Interface admin status
+   - Interface operational status
+   - Interface traffic counters
+   - Interface error counters
+
+4. Visualization
+   - Grafana overview dashboard
+   - Grafana network devices and interfaces dashboard
+   - Grafana anomaly detection demo dashboard
+
+5. Analyzer preparation
+   - Metrics exported as snapshots
+   - Risk indicators prepared from Prometheus metrics
+   - Future remediation actions triggered from analyzer output
+```
+
+## Applying Grafana Files
+
+After adding or updating Grafana dashboard JSON files, copy them to the Grafana dashboard provisioning directory:
+
+```bash
+sudo mkdir -p /var/lib/grafana/dashboards/pfe
+
+sudo cp monitoring/grafana/dashboards/*.json /var/lib/grafana/dashboards/pfe/
+
+sudo chown -R grafana:grafana /var/lib/grafana/dashboards/pfe
+
+sudo systemctl restart grafana-server
+```
+
+The dashboards can then be accessed from:
+
+```text
+Grafana → Dashboards → PFE Monitoring
+```
+
+## Notes
+
+Grafana dashboards are stored as JSON files in GitHub so they can be versioned, reused and restored easily.
+
+Generated runtime data is not committed. GitHub only stores:
+
+```text
+Prometheus configuration
+Blackbox configuration
+SNMP templates and safe examples
+Grafana provisioning files
+Grafana dashboard JSON files
+Scripts
+Documentation
+```
+
+The monitoring implementation therefore remains reproducible while keeping local credentials, generated snapshots and runtime outputs outside the repository.
+
 ## Analyzer Integration
 
 The analyzer uses monitoring metrics as part of its rule-based risk score.
