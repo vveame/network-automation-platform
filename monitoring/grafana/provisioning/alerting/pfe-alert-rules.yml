@@ -1,0 +1,433 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: PFE - Network Anomaly Alerts
+    folder: PFE Monitoring
+    interval: 1m
+    rules:
+      - uid: pfe_service_probe_failed
+        title: PFE - Service Probe Failed
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'count(probe_success{job=~"blackbox-http|blackbox-tcp|blackbox-dns"} == 0) or vector(0)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              type: reduce
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+        dashboardUid: pfe-anomaly-demo
+        panelId: 3
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: "A monitored HTTP/TCP/DNS service probe is failing."
+          description: "At least one Blackbox probe returned probe_success=0. This may indicate a DMZ Web/DNS service issue."
+          runbook_url: "Check Grafana dashboard: PFE - Anomaly Detection & Evidence."
+        labels:
+          project: pfe
+          component: blackbox
+          severity: critical
+          action: check_dmz_services
+        isPaused: false
+
+      - uid: pfe_snmp_device_down
+        title: PFE - SNMP Device Down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'count(up{job="snmp-network-devices"} == 0) or vector(0)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              type: reduce
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+        dashboardUid: pfe-anomaly-demo
+        panelId: 4
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: "One or more SNMP-monitored network devices are down."
+          description: "At least one target from job=snmp-network-devices is unreachable."
+          runbook_url: "Check SNMP exporter, GNS3 device state, and network reachability."
+        labels:
+          project: pfe
+          component: snmp
+          severity: critical
+          action: collect_network_diagnostics
+        isPaused: false
+
+      - uid: pfe_admin_up_interface_down
+        title: PFE - Admin-Up Interface Operationally Down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'count((ifOperStatus{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"} != 1) and on(instance, ifIndex) (ifAdminStatus{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"} == 1)) or vector(0)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              type: reduce
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+        dashboardUid: pfe-anomaly-demo
+        panelId: 5
+        noDataState: OK
+        execErrState: Error
+        for: 3m
+        annotations:
+          summary: "An interface is administratively up but operationally down."
+          description: "This usually indicates a link failure, broken connection, stopped node, or topology issue."
+          runbook_url: "Check the Network Devices & Interfaces dashboard and rerun validation gate."
+        labels:
+          project: pfe
+          component: interface
+          severity: warning
+          action: run_validation_gate
+        isPaused: false
+
+      - uid: pfe_interface_errors_or_discards
+        title: PFE - Interface Errors or Discards Detected
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: '((sum(rate(ifInErrors{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"}[5m])) or vector(0)) + (sum(rate(ifOutErrors{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"}[5m])) or vector(0)) + (sum(rate(ifInDiscards{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"}[5m])) or vector(0)) + (sum(rate(ifOutDiscards{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"}[5m])) or vector(0)))'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              type: reduce
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0.1
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+        dashboardUid: pfe-anomaly-demo
+        panelId: 16
+        noDataState: OK
+        execErrState: Error
+        for: 3m
+        annotations:
+          summary: "Interface errors or discards are increasing."
+          description: "This may indicate congestion, packet drops, misconfiguration, or unstable links."
+          runbook_url: "Check SNMP interface panels and validation reports."
+        labels:
+          project: pfe
+          component: interface
+          severity: warning
+          action: collect_network_diagnostics
+        isPaused: false
+
+      - uid: pfe_host_high_cpu
+        title: PFE - Host High CPU Usage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'max(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job="node-exporter", mode="idle"}[5m])))) or vector(0)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              type: reduce
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 85
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+        dashboardUid: pfe-anomaly-demo
+        panelId: 8
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "High CPU usage detected on a monitored host."
+          description: "CPU usage is above 85% for 5 minutes. This can explain weak ML anomaly signals."
+          runbook_url: "Check host processes, Jenkins activity, Prometheus, Grafana and ML jobs."
+        labels:
+          project: pfe
+          component: host
+          severity: warning
+          action: collect_host_diagnostics
+        isPaused: false
+
+      - uid: pfe_estimated_anomaly_risk_high
+        title: PFE - Estimated Anomaly Risk High
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'clamp_max(((count(probe_success{job=~"blackbox-http|blackbox-tcp|blackbox-dns"} == 0) or vector(0)) * 20) + ((count(up{job="snmp-network-devices"} == 0) or vector(0)) * 20) + ((count((ifOperStatus{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"} != 1) and on(instance, ifIndex) (ifAdminStatus{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"} == 1)) or vector(0)) * 15) + ((((sum(rate(ifInErrors{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"}[5m])) or vector(0)) + (sum(rate(ifOutErrors{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"}[5m])) or vector(0))) > bool 0) * 10) + ((((sum(rate(ifInDiscards{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"}[5m])) or vector(0)) + (sum(rate(ifOutDiscards{job="snmp-network-devices", ifDescr!~"lo|ovs-system|vrrp.*"}[5m])) or vector(0))) > bool 0) * 10) + (((max(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job="node-exporter", mode="idle"}[5m])))) or vector(0)) > bool 85) * 10), 100)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              type: reduce
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 50
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+        dashboardUid: pfe-anomaly-demo
+        panelId: 1
+        noDataState: OK
+        execErrState: Error
+        for: 3m
+        annotations:
+          summary: "Estimated anomaly risk is high."
+          description: "The Prometheus-based anomaly evidence score is above 50. This should be reviewed with the Flask final decision and Jenkins analyzer output."
+          runbook_url: "Check Grafana anomaly dashboard, Flask analyzer page and Jenkins latest build."
+        labels:
+          project: pfe
+          component: anomaly-detection
+          severity: warning
+          action: review_anomaly_decision
+        isPaused: false

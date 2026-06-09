@@ -509,6 +509,265 @@ Generating interface errors
 
 The dashboard makes the anomaly visible before and after remediation.
 
+## Grafana Alerting
+
+Grafana alerting was added to complete the observability layer of the platform.
+
+The monitoring stack is now composed of:
+
+```text
+Prometheus metrics collection
+        ↓
+Grafana dashboards
+        ↓
+Grafana alert rules
+        ↓
+Jenkins analyzer / ML analyzer / safe remediation workflow
+```
+
+Grafana dashboards are used to visualize live metrics, while Grafana alert rules are used to detect operational problems in real time.
+
+The alert rules are provisioned as code from:
+
+```text
+monitoring/grafana/provisioning/alerting/pfe-alert-rules.yml
+```
+
+This follows the same Infrastructure-as-Code logic used in the rest of the platform. Alert rules are not created manually from the Grafana UI; they are stored in the repository and loaded by Grafana from the provisioning directory.
+
+---
+
+### Alerting Directory Structure
+
+Grafana provisioning files are stored under:
+
+```text
+monitoring/grafana/provisioning/
+├── datasources/
+│   └── prometheus.yml
+├── dashboards/
+│   └── pfe-dashboards.yml
+└── alerting/
+    └── pfe-alert-rules.yml
+```
+
+The alert rules must be copied to the local Grafana provisioning path:
+
+```text
+/etc/grafana/provisioning/alerting/
+```
+
+Example:
+
+```bash
+sudo mkdir -p /etc/grafana/provisioning/alerting
+
+sudo cp monitoring/grafana/provisioning/alerting/pfe-alert-rules.yml \
+  /etc/grafana/provisioning/alerting/pfe-alert-rules.yml
+
+sudo systemctl restart grafana-server
+```
+
+After restart, the rules are visible in Grafana under:
+
+```text
+Alerting → Alert rules → PFE Monitoring
+```
+
+Provisioned rules are managed from files. If a rule needs to be modified, the YAML file should be updated and Grafana should be restarted or reloaded.
+
+---
+
+### Provisioned Alert Rules
+
+The current Grafana alert group is:
+
+```text
+PFE - Network Anomaly Alerts
+```
+
+It contains the following rules:
+
+| Alert rule                                    | Purpose                                                                     | Severity | Suggested action            |
+| --------------------------------------------- | --------------------------------------------------------------------------- | -------- | --------------------------- |
+| `PFE - Service Probe Failed`                  | Detects failed HTTP/TCP/DNS Blackbox probes                                 | Critical | Check DMZ Web/DNS services  |
+| `PFE - SNMP Device Down`                      | Detects unreachable SNMP-monitored routers/switches                         | Critical | Collect network diagnostics |
+| `PFE - Admin-Up Interface Operationally Down` | Detects interfaces that are administratively enabled but operationally down | Warning  | Run validation gate         |
+| `PFE - Interface Errors or Discards Detected` | Detects increasing SNMP interface errors or discards                        | Warning  | Collect network diagnostics |
+| `PFE - Host High CPU Usage`                   | Detects high CPU usage on monitored hosts                                   | Warning  | Collect host diagnostics    |
+| `PFE - Estimated Anomaly Risk High`           | Detects a high Prometheus-based anomaly risk score                          | Warning  | Review anomaly decision     |
+
+These rules are based on the same Prometheus metrics used by the Grafana dashboards and the anomaly detection pipeline.
+
+---
+
+### Alert Metrics
+
+The alert rules use metrics from:
+
+```text
+Blackbox Exporter
+Node Exporter
+SNMP Exporter
+Prometheus target health
+```
+
+Important metrics include:
+
+```text
+probe_success
+probe_duration_seconds
+up
+ifAdminStatus
+ifOperStatus
+ifInErrors
+ifOutErrors
+ifInDiscards
+ifOutDiscards
+node_cpu_seconds_total
+```
+
+These metrics allow Grafana to detect service failures, unreachable network devices, interface problems and host resource pressure.
+
+---
+
+### Alerting Role in the Platform
+
+Grafana alerts are not responsible for applying remediation directly.
+
+The role separation is:
+
+```text
+Prometheus = collects metrics
+Grafana = visualizes metrics and raises live alerts
+Jenkins analyzer = processes validation reports and metric snapshots
+ML analyzer = detects unusual metric behavior
+Final decision merger = combines rule-based and ML results
+Safe remediation runner = plans or applies allowlisted actions
+```
+
+This means Grafana is used for live operational alerting, while Jenkins remains the controlled remediation orchestrator.
+
+This separation is important for safety. Grafana can detect that a problem exists, but remediation is still controlled by Jenkins parameters, final analyzer decisions and explicit confirmation.
+
+---
+
+### Alert States
+
+Grafana alert rules can move through these states:
+
+```text
+Normal
+Pending
+Firing
+No data
+Error
+```
+
+Typical behavior:
+
+```text
+Healthy service      → Normal
+Temporary issue      → Pending
+Confirmed issue      → Firing
+Missing metric data  → No data or OK depending on rule configuration
+Query problem        → Error
+```
+
+For this project, most rules use:
+
+```text
+noDataState: OK
+execErrState: Error
+```
+
+This avoids false alerts when optional metrics are temporarily missing, while still exposing real query errors.
+
+---
+
+### Testing Alerts
+
+To test a service alert, temporarily stop a monitored DMZ service and wait for the rule duration.
+
+Example scenario:
+
+```text
+Stop DMZ Web service
+        ↓
+Blackbox HTTP/TCP probe fails
+        ↓
+PFE - Service Probe Failed becomes Pending
+        ↓
+After the configured duration, it becomes Firing
+```
+
+Then restore the service and verify that the alert returns to Normal.
+
+To test network-device alerts, stop or isolate an SNMP-monitored device and check:
+
+```text
+PFE - SNMP Device Down
+PFE - Admin-Up Interface Operationally Down
+```
+
+To test host alerts, generate temporary CPU load on a monitored host and check:
+
+```text
+PFE - Host High CPU Usage
+```
+
+---
+
+### Checking Alert Rules
+
+After copying the provisioning file and restarting Grafana, check the service status:
+
+```bash
+sudo systemctl status grafana-server --no-pager
+```
+
+Check Grafana logs if rules do not appear:
+
+```bash
+sudo journalctl -u grafana-server -n 100 --no-pager
+```
+
+Open Grafana:
+
+```text
+http://10.200.0.10:3000
+```
+
+Then go to:
+
+```text
+Alerting → Alert rules → PFE Monitoring
+```
+
+---
+
+### Important Notes
+
+Grafana alerting is part of the observability layer, not the remediation layer.
+
+The final remediation decision is still produced by the analyzer pipeline:
+
+```text
+Validation reports
+        ↓
+Prometheus snapshot
+        ↓
+Rule-based analyzer
+        ↓
+ML analyzer
+        ↓
+Hybrid final decision
+        ↓
+Safe remediation runner
+```
+
+Grafana alerts support the operator by showing live problems quickly, while the Jenkins pipeline produces auditable decisions, S3 artifacts and controlled remediation outputs.
+
 ## Metrics-Based Anomaly Detection Direction
 
 The project now focuses on metrics-based anomaly detection instead of log-based detection.
