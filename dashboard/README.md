@@ -1,258 +1,385 @@
-# Flask Dashboard
+# PFE Flask Dashboard
 
-The dashboard is the local visualization layer of the Intelligent Network Automation Platform.
+## 1. Role of the Dashboard
 
-It provides a readable web interface for the latest validation reports, monitoring metrics and analyzer decisions synchronized from AWS S3 into a local cache.
+The Flask dashboard is the local visualization layer of the intelligent network automation platform.
 
-## Purpose
-
-The dashboard does not configure or modify the network.
-
-Its role is to display the current state of the platform in a clear way for debugging, demonstration and soutenance presentation.
-
-It visualizes:
+It displays the latest state of the platform after each Jenkins pipeline execution:
 
 ```text
 Validation reports
-Cloud analyzer decision
-Prometheus monitoring snapshot
-Node Exporter host metrics
-Blackbox service probes
-SNMPv3 network-device interface metrics
-Infrastructure nodes
-Validated services
+Prometheus metrics snapshot
+Rule-based analyzer decision
+ML anomaly detection decision
+Final hybrid decision
+Safe remediation plan/apply output
+Infrastructure status
+Service status
 ```
 
-## Data Source Model
+The dashboard is read-only. It does not execute remediation actions and does not modify the network.
 
-The dashboard is S3-backed.
+All operational actions are performed by Jenkins and controlled scripts.
 
-Jenkins generates validation reports, analyzer outputs and Prometheus metrics snapshots, uploads them to AWS S3, then synchronizes the latest files into the local dashboard cache.
+---
 
-````text
-AWS S3 = durable source of truth
-/var/lib/pfe-dashboard = local dashboard cache
-Jenkins workspace = temporary execution area
-Git, then synchronizes the latest files into the local dashboard cache.
+## 2. Source of Data
 
-```text
-AWS S3 =Hub = source code and safe configuration only
-````
-
-The dashboard reads from:
+The dashboard reads synchronized runtime artifacts from:
 
 ```text
 /var/lib/pfe-dashboard/
 ```
 
-## Local Cache Structure
+This folder is only a local cache.
+
+The source of truth remains AWS S3.
+
+```text
+AWS S3 = durable artifact storage
+/var/lib/pfe-dashboard = local dashboard cache
+Jenkins workspace = temporary execution area
+GitHub = source code only
+```
+
+---
+
+## 3. Dashboard Cache Structure
+
+The expected local cache structure is:
 
 ```text
 /var/lib/pfe-dashboard/
 ├── outputs/
-│   ├── validation-summary.txt
-│   ├── security-validation.txt
-│   ├── dmz-services.txt
-│   └── other validation reports
+├── metrics/
+│   └── latest/
 ├── analyzer/
 │   └── latest/
-│       ├── decision.json
-│       ├── summary.json
-│       └── analysis-report.txt
-└── metrics/
+├── ml/
+│   ├── latest/
+│   ├── data/
+│   ├── models/
+│   └── outputs/
+└── remediation/
     └── latest/
-        ├── manifest.json
-        ├── up.json
-        ├── node_*.json
-        ├── blackbox_*.json
-        └── snmp_*.json
 ```
 
-## Multi-Page Layout
+### `outputs/`
 
-The dashboard was split into multiple pages to avoid one crowded page and to make each platform layer easier to inspect.
+Contains the latest Ansible validation reports.
 
-Current routes:
+Example files:
+
+```text
+validation-summary.txt
+index.html
+core-frr-1-frr.txt
+edge-router-frr.txt
+dmz-services.txt
+security-validation.txt
+end-to-end-validation.txt
+```
+
+### `metrics/latest/`
+
+Contains the latest Prometheus snapshot exported by Jenkins.
+
+Example files:
+
+```text
+up.json
+blackbox_probe_success.json
+node_cpu_usage_percent.json
+snmp_up.json
+snmp_if_oper_status.json
+snmp_if_in_discards_rate_5m.json
+```
+
+### `analyzer/latest/`
+
+Contains the latest rule-based and hybrid anomaly decision.
+
+Example files:
+
+```text
+summary.json
+decision.json
+analysis-report.txt
+final-decision.json
+final-decision-report.txt
+```
+
+### `ml/latest/`
+
+Contains the latest ML anomaly detection result.
+
+Example files:
+
+```text
+ml-decision.json
+ml-scores.csv
+```
+
+### `ml/data/`
+
+Contains the latest ML feature dataset.
+
+Example file:
+
+```text
+latest_features.csv
+```
+
+### `ml/models/`
+
+Contains the persisted Isolation Forest model.
+
+Example files:
+
+```text
+isolation_forest.joblib
+feature_columns.json
+training_metadata.json
+```
+
+### `remediation/latest/`
+
+Contains the latest safe remediation output.
+
+Example files:
+
+```text
+plan/remediation-plan.json
+plan/remediation-report.txt
+apply/remediation-plan.json
+apply/remediation-report.txt
+```
+
+Apply files appear only when remediation is explicitly executed in apply mode.
+
+---
+
+## 4. Dashboard Routes
+
+The dashboard exposes the following pages:
 
 ```text
 /                 Overview
-/analyzer         Cloud Analyzer Decision
-/monitoring       Prometheus, Node Exporter, Blackbox and SNMP metrics
-/validation       Validation domains and report previews
-/infrastructure   FRR and OVS node table
+/analyzer         Rule-based analyzer and final hybrid decision
+/ml               ML Isolation Forest decision
+/remediation      Safe remediation plan/apply result
+/monitoring       Prometheus metrics snapshot
+/validation       Validation reports
+/infrastructure   Infrastructure nodes
 /services         Validated services
 ```
 
-## Pages
+---
 
-### Overview
+## 5. API Routes
 
-The overview page gives a high-level platform summary.
-
-It displays:
+The dashboard also exposes JSON API routes:
 
 ```text
-Project name
-Environment
-DevOps OOB IP
-OOB network
-Global validation status
-Report counters
-Quick access buttons to dashboard sections
-Latest analyzer summary
-Latest monitoring summary
+/api/dashboard
+/api/final-decision
+/api/ml-decision
+/api/remediation
+/api/report/<filename>
+/api/health
 ```
 
-### Analyzer
+These routes are useful for debugging and for checking that the dashboard reads the correct synchronized files.
 
-The analyzer page displays the latest anomaly decision generated by the rule-based cloud analyzer.
+Example checks:
 
-It displays:
+```bash
+curl -s http://localhost:5050/api/final-decision | python3 -m json.tool
+curl -s http://localhost:5050/api/ml-decision | python3 -m json.tool
+curl -s http://localhost:5050/api/remediation | python3 -m json.tool
+```
+
+---
+
+## 6. Rule-Based Analyzer Display
+
+The analyzer page displays the deterministic rule-based decision.
+
+It shows:
 
 ```text
 Anomaly status
 Risk score
 Severity
 Recommended action
-Build label
 Failed reports
 Warning reports
-Source decision file
+Detection reasons
 ```
 
-### Monitoring
+The rule-based analyzer remains the safety layer for remediation.
 
-The monitoring page displays the latest Prometheus metrics snapshot.
+If the rule-based analyzer does not confirm an anomaly, the platform does not allow infrastructure-changing remediation.
 
-It displays:
+---
+
+## 7. ML Analyzer Display
+
+The ML page displays the Isolation Forest anomaly detection result.
+
+It shows:
 
 ```text
-Prometheus target health
-Node Exporter memory and disk usage
-Blackbox HTTP/TCP/DNS service probes
-SNMPv3 network-device targets
-SNMP IF-MIB interface status
-SNMP traffic counters
-SNMP interface error counters
+ML status
+ML risk score
+Latest prediction
+Outlier ratio
+Scored rows
+Top unusual features
+ML scores file
+Feature dataset file
 ```
 
-SNMP metrics are grouped by network device so routers and switches are easy to inspect.
+The ML model is advisory.
 
-Current SNMP-monitored devices include:
+It can detect weak or suspicious behavior, but it cannot directly trigger infrastructure-changing remediation.
+
+---
+
+## 8. Final Hybrid Decision Display
+
+The analyzer page also displays the final hybrid decision.
+
+This decision is produced by merging:
 
 ```text
-FRR routers
-OVS switches
+Rule-based analyzer decision
+ML analyzer decision
 ```
 
-The dashboard can display special interfaces such as `lo`, `vrrp*` and `ovs-system`, but these interfaces are ignored in anomaly scoring to avoid false alerts.
-
-### Validation
-
-The validation page displays Ansible validation reports grouped by domain.
-
-It displays:
+The final decision includes:
 
 ```text
-Validation domains
-Report counts by domain
-Report status
-Readable report previews
-Links to full raw reports
+classification
+final_status
+final_severity
+final_risk_score
+confidence
+recommended_action
+remediation_allowed
+remediation_mode
+decision_reason
+rule_anomalous
+ml_anomalous
+ml_suspicious
 ```
 
-### Infrastructure
+The final decision determines whether remediation is allowed.
 
-The infrastructure page displays FRR and OVS infrastructure nodes loaded from Ansible variables and validation results.
+---
 
-It displays:
+## 9. Remediation Display
+
+The remediation page displays the latest safe remediation output.
+
+It shows:
 
 ```text
-Node name
-Node type
-OOB interface
-OOB IP
-Validation status
-Link to related report
-Search filter
+Mode
+Selected action
+Executed or not
+Success or failure
+Action type
+Whether the action modifies infrastructure
+Decision context
+Report preview
 ```
 
-### Services
+Plan mode is safe and does not execute commands.
 
-The services page displays expected and validated services.
-
-It displays:
+Apply mode appears only when the Jenkins build is explicitly launched with:
 
 ```text
-Service name
-IP address
-Port
-Validation method
-Service status
+REMEDIATION_MODE=apply
+CONFIRM_APPLY=true
 ```
 
-## Configuration
+---
 
-Default paths are defined in:
-
-```text
-dashboard/config.py
-```
-
-Important default paths:
-
-```text
-DASHBOARD_CACHE_DIR=/var/lib/pfe-dashboard
-DASHBOARD_OUTPUTS_DIR=/var/lib/pfe-dashboard/outputs
-CLOUD_ANALYZER_LATEST_DECISION_FILE=/var/lib/pfe-dashboard/analyzer/latest/decision.json
-PROMETHEUS_METRICS_LATEST_DIR=/var/lib/pfe-dashboard/metrics/latest
-```
-
-These values can be overridden with environment variables if needed.
-
-## Running the Dashboard Locally
+## 10. Running the Dashboard
 
 From the repository root:
 
 ```bash
-python3 -m venv dashboard/.venv
-source dashboard/.venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r dashboard/requirements.txt
-python dashboard/app.py
+python3 dashboard/app.py
 ```
 
-Then open:
+Open:
 
 ```text
-http://localhost:5050
+http://10.200.0.10:5050/
 ```
 
-## Jenkins Integration
+---
 
-Jenkins uploads generated outputs to S3 and synchronizes the dashboard cache.
+## 11. Syncing Dashboard Cache from S3
 
-Current synchronization model:
+The dashboard cache is synchronized from S3 using:
+
+```bash
+ARTIFACTS_BUCKET="<bucket-name>" \
+AWS_REGION="eu-north-1" \
+./cloud/scripts/sync-dashboard-cache-from-s3.sh
+```
+
+Jenkins also runs this sync automatically near the end of the pipeline.
+
+---
+
+## 12. Debugging
+
+Check if files exist:
+
+```bash
+find /var/lib/pfe-dashboard -maxdepth 5 -type f | sort
+```
+
+Check final decision:
+
+```bash
+python3 -m json.tool /var/lib/pfe-dashboard/analyzer/latest/final-decision.json
+```
+
+Check ML decision:
+
+```bash
+python3 -m json.tool /var/lib/pfe-dashboard/ml/latest/ml-decision.json
+```
+
+Check remediation plan:
+
+```bash
+python3 -m json.tool /var/lib/pfe-dashboard/remediation/latest/plan/remediation-plan.json
+```
+
+Check dashboard API:
+
+```bash
+curl -s http://localhost:5050/api/health | python3 -m json.tool
+curl -s http://localhost:5050/api/dashboard | python3 -m json.tool
+```
+
+---
+
+## 13. Important Design Rule
+
+Grafana and Flask do not have the same role.
 
 ```text
-latest/validation-artifacts/ → /var/lib/pfe-dashboard/outputs/
-latest/analyzer/             → /var/lib/pfe-dashboard/analyzer/latest/
-latest/metrics/              → /var/lib/pfe-dashboard/metrics/latest/
+Grafana = live Prometheus metric evidence
+Flask dashboard = latest decisions and generated reports
+Jenkins = automation and remediation execution
+S3 = durable source of truth
 ```
 
-## Notes
-
-Generated validation reports, analyzer outputs and metrics snapshots are not committed to GitHub.
-
-GitHub stores only:
-
-```text
-Dashboard source code
-Templates
-Static files
-DTOs
-Repositories
-Services
-Controllers
-Documentation
-```
+The Flask dashboard shows the final result of the automation chain, while Grafana helps explain the live metric behavior behind anomaly detection.
