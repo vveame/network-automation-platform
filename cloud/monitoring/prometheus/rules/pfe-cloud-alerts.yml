@@ -1,0 +1,68 @@
+groups:
+  - name: pfe-cloud-monitoring-alerts
+    interval: 30s
+    rules:
+      - alert: PFECloudPrometheusTargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: warning
+          project: network-automation-platform
+          scope: cloud-monitoring
+        annotations:
+          summary: "Prometheus target is down"
+          description: "Target {{ $labels.instance }} from job {{ $labels.job }} is down."
+
+      - alert: PFELocalServiceProbeFailedThroughTunnel
+        expr: probe_success{source="local-through-edge-tunnel"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          project: network-automation-platform
+          scope: hybrid-tunnel
+        annotations:
+          summary: "Local service probe failed through EdgeRouter tunnel"
+          description: "Cloud monitoring could not successfully probe {{ $labels.instance }}."
+
+      - alert: PFESNMPDeviceDownThroughTunnel
+        expr: up{job="cloud-snmp-network-devices-through-tunnel"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          project: network-automation-platform
+          scope: snmp
+        annotations:
+          summary: "SNMP network device is unreachable through tunnel"
+          description: "SNMP target {{ $labels.instance }} is unreachable from cloud Prometheus."
+
+      - alert: PFECloudMonitoringDiskLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{job="cloud-node-exporter",fstype!~"tmpfs|overlay"}
+            /
+            node_filesystem_size_bytes{job="cloud-node-exporter",fstype!~"tmpfs|overlay"}
+          ) < 0.15
+        for: 2m
+        labels:
+          severity: warning
+          project: network-automation-platform
+          scope: cloud-monitoring
+        annotations:
+          summary: "Cloud monitoring EC2 disk is low"
+          description: "Filesystem {{ $labels.mountpoint }} has less than 15% free space."
+
+      - alert: PFECloudMonitoringMemoryLow
+        expr: |
+          (
+            node_memory_MemAvailable_bytes{job="cloud-node-exporter"}
+            /
+            node_memory_MemTotal_bytes{job="cloud-node-exporter"}
+          ) < 0.15
+        for: 2m
+        labels:
+          severity: warning
+          project: network-automation-platform
+          scope: cloud-monitoring
+        annotations:
+          summary: "Cloud monitoring EC2 memory is low"
+          description: "The private monitoring EC2 has less than 15% available memory."

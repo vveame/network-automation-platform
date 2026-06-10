@@ -1,0 +1,13 @@
+- targets:
+    - "172.16.50.10:80"
+  labels:
+    service: "dmz-web"
+    probe_type: "tcp"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "172.16.50.20:53"
+  labels:
+    service: "dmz-dns"
+    probe_type: "tcp"
+    source: "local-through-edge-tunnel"

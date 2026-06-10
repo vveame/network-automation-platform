@@ -1,0 +1,6 @@
+- targets:
+    - "http://172.16.50.10"
+  labels:
+    service: "dmz-web"
+    probe_type: "http"
+    source: "local-through-edge-tunnel"

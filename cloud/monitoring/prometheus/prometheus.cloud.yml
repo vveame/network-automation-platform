@@ -1,0 +1,105 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: "network-automation-platform"
+    environment: "aws-private-monitoring"
+    monitoring_layer: "cloud-prometheus"
+    tunnel_path: "edge-router-wireguard"
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+  - "/etc/prometheus/rules/*.yaml"
+
+scrape_configs:
+  - job_name: "cloud-prometheus-self"
+    static_configs:
+      - targets:
+          - "localhost:9090"
+        labels:
+          role: "cloud-prometheus"
+          source: "aws-monitoring-ec2"
+
+  - job_name: "cloud-node-exporter"
+    static_configs:
+      - targets:
+          - "localhost:9100"
+        labels:
+          role: "private-monitoring-ec2"
+          source: "aws"
+
+  - job_name: "local-node-exporter-through-tunnel"
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/cloud-node-targets.yml"
+        refresh_interval: 30s
+
+  - job_name: "cloud-blackbox-http-through-tunnel"
+    metrics_path: /probe
+    params:
+      module:
+        - http_2xx
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/cloud-blackbox-http-targets.yml"
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "localhost:9115"
+
+  - job_name: "cloud-blackbox-tcp-through-tunnel"
+    metrics_path: /probe
+    params:
+      module:
+        - tcp_connect
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/cloud-blackbox-tcp-targets.yml"
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "localhost:9115"
+
+  - job_name: "cloud-blackbox-dns-through-tunnel"
+    metrics_path: /probe
+    params:
+      module:
+        - dns_web_pfe_local
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/cloud-blackbox-dns-targets.yml"
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "localhost:9115"
+
+  - job_name: "cloud-snmp-network-devices-through-tunnel"
+    metrics_path: /snmp
+    params:
+      auth:
+        - pfe_snmpv3_authpriv
+      module:
+        - if_mib
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/cloud-snmp-targets.yml"
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "localhost:9116"

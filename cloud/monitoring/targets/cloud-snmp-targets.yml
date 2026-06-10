@@ -1,0 +1,76 @@
+- targets:
+    - "10.200.0.11:1161"
+  labels:
+    node: "core-frr-1"
+    device_type: "frr-router"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.12:1161"
+  labels:
+    node: "core-frr-2"
+    device_type: "frr-router"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.21:1161"
+  labels:
+    node: "dist-frr-1"
+    device_type: "frr-router"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.22:1161"
+  labels:
+    node: "dist-frr-2"
+    device_type: "frr-router"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.30:1161"
+  labels:
+    node: "edge-router"
+    device_type: "frr-router"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.31:1161"
+  labels:
+    node: "dist-ovs-1"
+    device_type: "ovs-switch"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.32:1161"
+  labels:
+    node: "dist-ovs-2"
+    device_type: "ovs-switch"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.33:1161"
+  labels:
+    node: "dmz-ovs-3"
+    device_type: "ovs-switch"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.44:1161"
+  labels:
+    node: "access-ovs-4"
+    device_type: "ovs-switch"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.45:1161"
+  labels:
+    node: "access-ovs-5"
+    device_type: "ovs-switch"
+    source: "local-through-edge-tunnel"
+
+- targets:
+    - "10.200.0.46:1161"
+  labels:
+    node: "access-ovs-6"
+    device_type: "ovs-switch"
+    source: "local-through-edge-tunnel"

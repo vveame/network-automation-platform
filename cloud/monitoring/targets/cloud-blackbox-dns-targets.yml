@@ -1,0 +1,6 @@
+- targets:
+    - "172.16.50.20"
+  labels:
+    service: "dmz-dns"
+    probe_type: "dns"
+    source: "local-through-edge-tunnel"

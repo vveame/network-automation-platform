@@ -1,0 +1,6 @@
+- targets:
+    - "10.200.0.10:9100"
+  labels:
+    node: "devops-server"
+    role: "devops-control-node"
+    source: "local-through-edge-tunnel"
