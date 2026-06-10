@@ -59,22 +59,20 @@ SSM IAM instance profile for EC2 administration
 disabled AWS Site-to-Site VPN module
 ```
 
-The EC2-based WireGuard tunnel option has been implemented and validated.
+The EC2-based WireGuard tunnel option has been implemented and validated with the GNS3 `EdgeRouter-VPNGateway` as the local tunnel endpoint.
 
 Validated EC2 tunnel resources:
 
 ```text
 public EC2 tunnel gateway
 private monitoring EC2 instance
-WireGuard tunnel between local DevOps VM and AWS
+WireGuard tunnel between EdgeRouter-VPNGateway and AWS tunnel gateway
 route table entries toward local/on-premises CIDRs
 source_dest_check disabled on the tunnel gateway
 user-data preparation for iptables, WireGuard tools and IP forwarding
 ```
 
-The AWS managed Site-to-Site VPN module remains disabled.
-
-No NAT Gateway is created in order to avoid unnecessary AWS cost during the student lab phase.
+The AWS managed Site-to-Site VPN module remains disabled. No NAT Gateway is created in order to avoid unnecessary AWS cost during the student lab phase.
 
 ## Directory Structure
 
@@ -118,11 +116,11 @@ It represents the first development cloud environment for the PFE lab.
 The default cloud CIDR plan is:
 
 ```text
-VPC CIDR:             10.50.0.0/16
-Public subnet:        10.50.10.0/24
-Private subnet:       10.50.20.0/24
+VPC CIDR: 10.50.0.0/16
+Public subnet: 10.50.10.0/24
+Private subnet: 10.50.20.0/24
 Monitoring/AI subnet: 10.50.30.0/24
-WireGuard tunnel:     10.255.0.0/30
+WireGuard tunnel: 10.255.0.0/30
 ```
 
 ## Modules
@@ -184,9 +182,9 @@ wireguard_allowed_cidr = "0.0.0.0/0"
 
 `admin_allowed_cidr` controls SSH access to the public tunnel gateway.
 
-`wireguard_allowed_cidr` controls UDP WireGuard access.
+`wireguard_allowed_cidr` controls UDP WireGuard access. Because the local public IP can change frequently, WireGuard UDP can be allowed from `0.0.0.0/0` while still requiring valid peer keys.
 
-Because the local public IP can change frequently, WireGuard UDP can be allowed from `0.0.0.0/0` while still requiring valid peer keys. SSH must remain restrictive and should not stay open to `0.0.0.0/0`.
+SSH must remain restrictive and should not stay open to `0.0.0.0/0`.
 
 ### storage
 
@@ -216,25 +214,29 @@ future datasets
 future AI outputs
 ```
 
-The S3 bucket is not used for Terraform remote state at this stage. Terraform state remains local during the current development phase.
+The S3 bucket is not used for Terraform remote state at this stage.
+
+Terraform state remains local during the current development phase.
 
 ### compute
 
 Implemented as an optional module.
 
-The compute module is disabled by default in order to avoid unnecessary AWS costs.
-
-Legacy switch:
-
-```hcl
-enable_compute = false
-```
+The compute module is disabled by default in example configuration files in order to avoid unnecessary AWS costs.
 
 Preferred separate switches:
 
 ```hcl
 enable_tunnel_gateway      = false
 enable_monitoring_instance = false
+enable_ai_instance         = false
+```
+
+For the validated development environment, the local uncommitted `terraform.tfvars` can enable:
+
+```hcl
+enable_tunnel_gateway      = true
+enable_monitoring_instance = true
 enable_ai_instance         = false
 ```
 
@@ -294,29 +296,31 @@ At the current stage, the managed AWS VPN is not used because the student lab do
 
 The current hybrid implementation uses an EC2-based WireGuard tunnel instead of AWS managed Site-to-Site VPN.
 
-Target architecture:
+Validated target architecture:
 
 ```text
 Local GNS3 / DevOps environment
-        |
+    ↓
 EdgeRouter-VPNGateway
-        |
-Local WireGuard endpoint
-        |
+    ↓
 WireGuard tunnel
-        |
+    ↓
 Public EC2 tunnel gateway
-        |
+    ↓
 Private monitoring EC2
 ```
 
-In the first validated implementation, the local WireGuard endpoint runs on the DevOps VM. The GNS3 EdgeRouter-VPNGateway remains the logical cloud exit point and will route AWS VPC traffic toward the local tunnel endpoint.
+The local WireGuard endpoint runs on the GNS3 `EdgeRouter-VPNGateway`, not on the DevOps VM.
 
-This approach provides a practical hybrid path for the lab while keeping the monitoring EC2 private.
+The DevOps VM provides a temporary NAT-based internet underlay only because the GNS3 EdgeRouter does not have a direct working public internet uplink in the student lab.
+
+This underlay is required for EdgeRouter to reach the AWS public tunnel endpoint over UDP/51820.
+
+DevOps remains the automation server and does not act as the final cloud gateway.
 
 ## EC2 Tunnel Variables
 
-The first tunnel phase is enabled with:
+The validated tunnel phase is enabled locally with:
 
 ```hcl
 enable_compute             = false
@@ -411,21 +415,25 @@ Only generic scripts and safe placeholders are stored in the repository.
 
 ## WireGuard Configuration
 
-WireGuard private keys are created manually on the local endpoint and on the AWS tunnel gateway.
+WireGuard private keys are created manually on the EdgeRouter and on the AWS tunnel gateway.
 
-Example files are stored in:
+Safe example files are stored in:
 
 ```text
 cloud/tunnel/edge-router-path/examples/cloud-wg0.conf.example
-cloud/tunnel/edge-router-path/examples/local-wg0.conf.example
+frr/wireguard/edge-router-wg0.conf.example
 ```
 
 The real files are created outside the repository:
 
 ```text
-/etc/wireguard/wg0.conf
-/etc/wireguard/cloud_private.key
-/etc/wireguard/local_private.key
+AWS tunnel gateway:
+  /etc/wireguard/wg0.conf
+  /etc/wireguard/cloud_private.key
+
+EdgeRouter-VPNGateway:
+  /etc/wireguard/wg0.conf
+  /etc/wireguard/edge_private.key
 ```
 
 Do not commit real WireGuard configuration files.
@@ -437,21 +445,21 @@ WireGuard IP: 10.255.0.1/30
 Listen port: 51820/udp
 ```
 
-Local tunnel endpoint:
+EdgeRouter local tunnel endpoint:
 
 ```text
 WireGuard IP: 10.255.0.2/30
-Peer endpoint: <tunnel_gateway_public_ip>:51820
+Peer endpoint: AWS_PUBLIC_TUNNEL_IP:51820
 ```
 
-Local allowed IPs:
+EdgeRouter allowed IPs:
 
 ```text
 10.255.0.1/32
 10.50.0.0/16
 ```
 
-AWS allowed IPs for the local peer:
+AWS allowed IPs for the EdgeRouter peer:
 
 ```text
 10.255.0.2/32
@@ -459,425 +467,176 @@ AWS allowed IPs for the local peer:
 172.16.0.0/16
 ```
 
-## Validated First Tunnel Connection
+## DevOps NAT Underlay for EdgeRouter
 
-The first EC2-based hybrid tunnel has been validated.
+The DevOps NAT underlay is required because the GNS3 EdgeRouter container does not have a direct working public internet uplink in the student lab.
 
-Successful path:
+Validated underlay path:
 
 ```text
-DevOps VM / local tunnel endpoint
-    -> WireGuard tunnel
-AWS EC2 tunnel gateway
-    -> AWS private routing
-Private monitoring EC2
+EdgeRouter 10.200.0.30
+    ↓
+DevOps OOB 10.200.0.10
+    ↓
+DevOps NAT / VMware internet
+    ↓
+AWS EC2 public tunnel gateway UDP/51820
 ```
 
-Successful validation commands from the DevOps VM:
+The helper scripts are stored in:
+
+```text
+scripts/devops/enable-edge-router-internet-underlay-nat.sh
+scripts/devops/disable-edge-router-internet-underlay-nat.sh
+```
+
+This underlay is not the cloud gateway. It is only the internet path required for EdgeRouter to reach the public AWS tunnel endpoint.
+
+## Validated Tunnel Connection
+
+The EC2-based hybrid tunnel has been validated with EdgeRouter as the local endpoint.
+
+Validated commands from EdgeRouter:
 
 ```bash
-sudo wg show
+wg show
 ping -c 3 10.255.0.1
-
-cd cloud/terraform/environments/dev
-ping -c 3 "$(terraform output -raw monitoring_private_ip)"
-ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@"$(terraform output -raw monitoring_private_ip)"
+ping -c 3 10.50.30.154
 ```
 
 Expected result:
 
 ```text
-WireGuard latest handshake visible
-0% packet loss to 10.255.0.1
-0% packet loss to the monitoring private IP
-successful SSH login to Amazon Linux 2023 on the private monitoring EC2
+latest handshake visible
+0% packet loss to AWS tunnel IP
+0% packet loss to private monitoring EC2
+```
+
+From DevOps, the validation can be executed as:
+
+```bash
+cd cloud/terraform/environments/dev
+
+TGW_PUBLIC_IP="$(terraform output -raw tunnel_gateway_public_ip)"
+MON_IP="$(terraform output -raw monitoring_private_ip)"
+
+ssh root@10.200.0.30 "ip route get $TGW_PUBLIC_IP"
+ssh root@10.200.0.30 "wg show"
+ssh root@10.200.0.30 "ping -c 3 10.255.0.1"
+ssh root@10.200.0.30 "ping -c 3 $MON_IP"
+```
+
+Expected route:
+
+```text
+via 10.200.0.10 dev eth4
 ```
 
 ## Debugging Notes Captured in Code
 
-During debugging, the following issues were found and fixed:
+The first EdgeRouter tunnel test failed because EdgeRouter tried to reach the AWS public tunnel gateway through the old simulated external path:
 
 ```text
-The local public IP was unstable.
-SSH and WireGuard needed separate CIDR controls.
-AWS security group had to allow UDP/51820 for WireGuard.
-EC2 source_dest_check had to be disabled on the tunnel gateway.
-WireGuard packets reached the EC2 instance but were blocked by iptables.
-INPUT reject rules blocked UDP/51820 until an explicit accept rule was inserted.
-FORWARD reject rules blocked traffic toward the monitoring subnet.
-wg0 forwarding rules had to be inserted above the default reject rule.
+13.48.106.15 via 203.0.113.1 dev eth3
 ```
 
-These fixes are now represented in:
+That route did not work in the lab.
+
+The validated fix is:
 
 ```text
-Terraform security group rules
-compute module variables
-environment variables
-tunnel gateway user-data template
-WireGuard example files
-edge-router tunnel README
+13.48.106.15 via 10.200.0.10 dev eth4
 ```
 
-## Security Group Design
+The DevOps VM then performs NAT toward its internet-facing interface.
 
-### Tunnel gateway / admin security group
-
-Used by the public EC2 tunnel gateway.
-
-Allows:
+This behavior is versioned in:
 
 ```text
-SSH TCP/22 from admin_allowed_cidr
-WireGuard UDP/51820 from wireguard_allowed_cidr
-ICMP from tunnel/local ranges for testing
-outbound traffic for routing and updates
+frr/routing/edge-router.conf
+scripts/devops/enable-edge-router-internet-underlay-nat.sh
 ```
 
-### Monitoring security group
+The old `203.0.113.2/30` address may remain as a legacy simulated external-link placeholder, but the old default route through `203.0.113.1` must not be used for the validated AWS tunnel.
 
-Used by the private monitoring EC2.
+## Security and Cost Notes
 
-Allows:
+The current implementation avoids AWS NAT Gateway to reduce cost.
+
+The private monitoring EC2 remains private and is reached only through the tunnel path.
+
+Security controls:
 
 ```text
-SSH from tunnel gateway security group
-ICMP from tunnel/local ranges
-Prometheus/Grafana access from tunnel/local ranges
-outbound traffic
+SSH access restricted through admin_allowed_cidr.
+WireGuard UDP access controlled separately through wireguard_allowed_cidr.
+WireGuard peer authentication required through public/private key pairs.
+Private monitoring EC2 has no public IP.
+Tunnel gateway source_dest_check disabled only where routing requires it.
 ```
 
-The monitoring EC2 does not have a public IP.
-
-### AI security group
-
-Reserved for future AI/anomaly-analysis service.
-
-Allows:
+Do not keep public SSH open to:
 
 ```text
-AI service traffic from monitoring security group
-SSH from tunnel gateway security group
-outbound traffic
+0.0.0.0/0
 ```
 
-### Private services security group
+Use it only temporarily during debugging.
 
-Reserved for future internal cloud services.
-
-Allows internal VPC service-to-service traffic.
-
-## Storage Design
-
-The storage module creates a private S3 bucket for platform artifacts.
-
-The bucket is intended for:
-
-```text
-monitoring exports
-logs
-AI analysis outputs
-datasets
-Jenkins/cloud reports
-Jenkins/Ansible validation artifacts
-ML outputs
-remediation outputs
-```
-
-The bucket is configured with:
-
-```text
-S3 Block Public Access
-BucketOwnerEnforced object ownership
-versioning enabled
-AES256 server-side encryption
-lifecycle retention rules
-```
-
-If no custom bucket name is provided, the module generates a bucket name using the project/environment prefix and account identity.
-
-## Validation Artifact Lifecycle
-
-Jenkins uploads validation artifacts under:
-
-```text
-validation-artifacts/
-```
-
-Each Jenkins build receives its own prefix, for example:
-
-```text
-validation-artifacts/pfe-network-validation-43/
-```
-
-This makes validation outputs traceable per build.
-
-Lifecycle retention variables:
-
-```hcl
-validation_artifact_retention_days = 30
-noncurrent_version_retention_days  = 7
-processed_summary_retention_days   = 90
-anomaly_result_retention_days      = 90
-```
-
-The lifecycle policy keeps recent validation history available while automatically cleaning older artifacts.
-
-## State Management
-
-The first version uses local Terraform state for simplicity during development.
-
-The S3 artifact bucket is not used for Terraform remote state at this stage.
-
-A remote backend can be added later after the AWS baseline is stable.
+## Files Not to Commit
 
 Do not commit:
 
 ```text
-terraform.tfstate
-terraform.tfstate.backup
-tfplan
-*.tfplan
-.terraform/
-```
-
-The provider lock file should be committed:
-
-```text
-.terraform.lock.hcl
-```
-
-This helps keep provider versions consistent across future Terraform runs.
-
-## Credentials
-
-AWS credentials must not be committed to GitHub.
-
-Use one of the following methods:
-
-```text
-AWS CLI profile
-environment variables
-IAM role
-another supported AWS provider authentication method
-```
-
-Never hard-code AWS access keys inside Terraform files.
-
-The AWS EC2 SSH key is local only:
-
-```text
-~/.ssh/pfe-aws-tunnel
-```
-
-The public part is used in the local `terraform.tfvars` file:
-
-```hcl
-admin_public_key = "ssh-ed25519 AAAA... pfe-aws-tunnel"
-```
-
-Do not commit the private key.
-
-Do not commit the real local `terraform.tfvars`.
-
-## Local Variable File
-
-The repository contains:
-
-```text
-terraform.tfvars.example
-```
-
-This file is safe to commit because it only contains example values.
-
-The real local file:
-
-```text
-terraform.tfvars
-```
-
-must remain untracked.
-
-Example:
-
-```hcl
-project_name = "network-automation-platform"
-environment  = "dev"
-
-aws_region        = "eu-north-1"
-availability_zone = "eu-north-1a"
-aws_profile       = "vviam-student"
-owner             = "wiam"
-
-vpc_cidr               = "10.50.0.0/16"
-public_subnet_cidr     = "10.50.10.0/24"
-private_subnet_cidr    = "10.50.20.0/24"
-monitoring_subnet_cidr = "10.50.30.0/24"
-
-admin_allowed_cidr     = "YOUR_CURRENT_PUBLIC_IP/32"
-wireguard_allowed_cidr = "0.0.0.0/0"
-
-storage_bucket_name_override = null
-
-validation_artifact_retention_days = 30
-noncurrent_version_retention_days  = 7
-processed_summary_retention_days   = 90
-anomaly_result_retention_days      = 90
-
-enable_compute = false
-
-enable_tunnel_gateway      = false
-enable_monitoring_instance = false
-enable_ai_instance         = false
-
-enable_tunnel_gateway_nat_for_monitoring = true
-
-wireguard_tunnel_cidr = "10.255.0.0/30"
-wireguard_port        = 51820
-
-compute_instance_type     = "t3.micro"
-compute_ami_ssm_parameter = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
-
-admin_public_key = null
-
-enable_vpn       = false
-onprem_public_ip = null
-
-onprem_cidr_blocks = [
-  "10.200.0.0/24",
-  "172.16.0.0/16"
-]
-
-onprem_bgp_asn = 65010
-aws_bgp_asn    = 64512
-```
-
-Compute and VPN should remain disabled by default in the example file:
-
-```hcl
-enable_tunnel_gateway      = false
-enable_monitoring_instance = false
-enable_ai_instance         = false
-enable_vpn                 = false
-```
-
-## Commands
-
-From the dev environment:
-
-```bash
-cd cloud/terraform/environments/dev
-
-terraform init
-terraform fmt -recursive ../..
-terraform validate
-terraform plan
-```
-
-Apply the current baseline or enabled tunnel resources:
-
-```bash
-terraform plan -out=tfplan
-terraform apply tfplan
-```
-
-Inspect deployed outputs:
-
-```bash
-terraform output
-terraform output tunnel_gateway_public_ip
-terraform output tunnel_gateway_private_ip
-terraform output monitoring_private_ip
-```
-
-## EC2 Tunnel Validation Commands
-
-From the local DevOps VM:
-
-```bash
-sudo wg show
-ping -c 3 10.255.0.1
-```
-
-Then:
-
-```bash
-cd cloud/terraform/environments/dev
-
-MON_IP="$(terraform output -raw monitoring_private_ip)"
-
-ping -c 3 "$MON_IP"
-ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@"$MON_IP"
-```
-
-To access the public tunnel gateway by public IP during debugging:
-
-```bash
-ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@"$(terraform output -raw tunnel_gateway_public_ip)"
-```
-
-To access through the private tunnel path after WireGuard is working:
-
-```bash
-ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@10.255.0.1
-ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@"$(terraform output -raw monitoring_private_ip)"
-```
-
-## Files Not to Commit
-
-The following files must stay local:
-
-```text
-.terraform/
 terraform.tfvars
 terraform.tfstate
 terraform.tfstate.backup
 tfplan
 *.tfplan
-private SSH keys
-WireGuard private keys
+.terraform/
 real wg0.conf files
+WireGuard private keys
+SSH private keys
 AWS credentials
 GitHub tokens
 ```
 
-The following files are safe to commit:
+Safe files to commit:
 
 ```text
-Terraform source files
 Terraform modules
-user-data .tftpl templates without secrets
-terraform.tfvars.example
+variable definitions
+outputs
+example tfvars
+user-data templates
+safe WireGuard examples
 README files
-WireGuard .example files
+scripts without secrets
 ```
 
 ## Current Status
 
-Current AWS cloud status:
+Validated:
 
 ```text
-Network baseline implemented.
-Security baseline implemented.
-S3 artifact bucket implemented.
-EC2 tunnel gateway implemented.
-Private monitoring EC2 implemented.
-WireGuard tunnel validated.
-Private monitoring EC2 reachable through the tunnel.
-AWS managed Site-to-Site VPN disabled.
-NAT Gateway not used.
-Cloud monitoring installation pending.
-Cloud AI service installation pending.
+VPC baseline exists.
+S3 artifact bucket exists.
+EC2 tunnel gateway exists.
+Private monitoring EC2 exists.
+AWS managed Site-to-Site VPN remains disabled.
+WireGuard tunnel succeeds between EdgeRouter and AWS tunnel gateway.
+EdgeRouter can ping AWS tunnel IP 10.255.0.1.
+EdgeRouter can ping private monitoring EC2.
+DevOps direct WireGuard tunnel is disabled.
+DevOps NAT underlay is used only for EdgeRouter public endpoint reachability.
 ```
 
-Next Terraform/cloud steps:
+Next steps:
 
 ```text
-1. Keep EC2 tunnel resources disabled by default in examples.
-2. Keep real terraform.tfvars local.
-3. Route GNS3 EdgeRouter-VPNGateway toward the local tunnel endpoint.
-4. Install Prometheus and Grafana on the private monitoring EC2.
-5. Configure cloud Prometheus to scrape selected local exporters through the tunnel.
-6. Keep remediation execution controlled by local Jenkins/Ansible.
-7. Continue using S3 as the durable artifact store.
+1. Rotate exposed EdgeRouter WireGuard keys if any private key appeared in logs.
+2. Route DevOps cloud traffic through EdgeRouter.
+3. Deploy Prometheus/Grafana on the private monitoring EC2.
+4. Configure cloud monitoring to scrape selected local exporters through the EdgeRouter tunnel.
+5. Keep remediation execution controlled locally by Jenkins/Ansible.
 ```

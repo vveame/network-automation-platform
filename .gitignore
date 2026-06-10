@@ -50,6 +50,8 @@ cloud/analyzer/ml/outputs/*
 # Remediation generated outputs
 cloud/analyzer/outputs/remediation/*
 
+snmp-auth.local.yml
+
 # Python
 __pycache__/
 *.pyc

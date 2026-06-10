@@ -1,26 +1,45 @@
-# AWS EC2 tunnel gateway: /etc/wireguard/wg0.conf
-# Do not commit real private keys.
+# AWS EC2 tunnel gateway WireGuard example.
+# Destination on AWS tunnel gateway:
+#   /etc/wireguard/wg0.conf
+#
+# Do NOT commit real private keys.
+# Replace:
+#   CLOUD_PRIVATE_KEY
+#   EDGE_ROUTER_PUBLIC_KEY
+#
+# Why MTU = 1280:
+#   The validated tunnel path crosses GNS3, VMware, WireGuard and AWS routing.
+#   SSH to the private monitoring EC2 stalled during key exchange until MTU was lowered
+#   and TCP MSS clamping was applied on both WireGuard edges.
 
 [Interface]
 Address = 10.255.0.1/30
+MTU = 1280
 ListenPort = 51820
 PrivateKey = CLOUD_PRIVATE_KEY
 
 PostUp = sysctl -w net.ipv4.ip_forward=1
-PostUp = iptables -C INPUT -p udp --dport 51820 -j ACCEPT 2>/dev/null || iptables -I INPUT 5 -p udp --dport 51820 -j ACCEPT
+
+# Accept WireGuard and forward tunnel traffic.
+PostUp = iptables -C INPUT -p udp --dport 51820 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport 51820 -j ACCEPT
 PostUp = iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-PostUp = iptables -C FORWARD -i wg0 -d 10.50.0.0/16 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -d 10.50.0.0/16 -j ACCEPT
-PostUp = iptables -C FORWARD -o wg0 -s 10.50.0.0/16 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -s 10.50.0.0/16 -j ACCEPT
+PostUp = iptables -C FORWARD -i wg0 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -j ACCEPT
+PostUp = iptables -C FORWARD -o wg0 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -j ACCEPT
+
+# MTU/MSS fix for TCP traffic crossing the WireGuard tunnel.
+PostUp = iptables -t mangle -C FORWARD -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || iptables -t mangle -A FORWARD -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+PostUp = iptables -t mangle -C FORWARD -i wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || iptables -t mangle -A FORWARD -i wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
 PostDown = iptables -D INPUT -p udp --dport 51820 -j ACCEPT 2>/dev/null || true
 PostDown = iptables -D FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
-PostDown = iptables -D FORWARD -i wg0 -d 10.50.0.0/16 -j ACCEPT 2>/dev/null || true
-PostDown = iptables -D FORWARD -o wg0 -s 10.50.0.0/16 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -D FORWARD -o wg0 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -t mangle -D FORWARD -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
+PostDown = iptables -t mangle -D FORWARD -i wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
 
 [Peer]
-# Local tunnel endpoint that represents the EdgeRouter-VPNGateway path.
-PublicKey = LOCAL_PUBLIC_KEY
+PublicKey = EDGE_ROUTER_PUBLIC_KEY
 
-# Local tunnel IP + local lab/OOB ranges reachable through the edge path.
+# EdgeRouter tunnel IP + local lab/OOB routes behind EdgeRouter.
 AllowedIPs = 10.255.0.2/32, 10.200.0.0/24, 172.16.0.0/16
 PersistentKeepalive = 25

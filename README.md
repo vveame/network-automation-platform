@@ -8,6 +8,7 @@ The project is implemented as a Master PFE platform that combines:
 Local network simulation
 DevOps automation
 Cloud infrastructure
+Hybrid cloud connectivity
 Monitoring and observability
 Artifact storage
 Anomaly detection
@@ -47,10 +48,10 @@ The architecture also separates the production/data plane from the management/co
 
 ```text
 Production / Data Plane:
-  VLANs, routing, DMZ, NAT, firewall rules and service traffic.
+  VLANs, routing, DMZ, firewall rules, service traffic and future production paths.
 
 Management / Control Plane:
-  DevOps server, SSH, Ansible, Jenkins, Prometheus, SNMP Exporter,
+  DevOps server, OOB network, SSH, Ansible, Jenkins, Prometheus, SNMP Exporter,
   dashboard synchronization and cloud integration.
 ```
 
@@ -70,6 +71,8 @@ AWS Terraform baseline
 Private S3 artifact bucket
 EC2-based WireGuard tunnel gateway
 Private AWS monitoring EC2 instance
+EdgeRouter-based WireGuard tunnel endpoint
+DevOps NAT underlay for EdgeRouter internet access
 Prometheus monitoring baseline
 Node Exporter host metrics
 Blackbox Exporter service probes
@@ -82,25 +85,33 @@ Grafana monitoring and anomaly-evidence dashboards
 Grafana alert-rule preparation
 ```
 
-The first EC2-based hybrid connectivity test has been validated.
+The EC2-based hybrid connectivity path has been validated with the GNS3 `EdgeRouter-VPNGateway` as the local WireGuard endpoint.
 
 Validated hybrid path:
 
 ```text
-DevOps VM / local tunnel endpoint
-    -> WireGuard tunnel
-AWS EC2 tunnel gateway
-    -> AWS private routing
 Private monitoring EC2
+    ↓
+AWS private routing
+    ↓
+AWS EC2 tunnel gateway
+    ↓
+WireGuard tunnel
+    ↓
+GNS3 EdgeRouter-VPNGateway
+    ↓
+Local OOB / GNS3 / DevOps environment
 ```
 
-Validated tests:
+Validated EdgeRouter tests:
 
 ```text
-DevOps VM -> AWS tunnel gateway: successful ping to 10.255.0.1
-DevOps VM -> private monitoring EC2: successful ping to the monitoring private IP
-DevOps VM -> private monitoring EC2: successful SSH login through the tunnel
+EdgeRouter -> AWS tunnel gateway WireGuard IP: successful ping to 10.255.0.1
+EdgeRouter -> private monitoring EC2: successful ping to the monitoring private IP
+WireGuard handshake between EdgeRouter and AWS tunnel gateway: successful
 ```
+
+The DevOps VM no longer acts as the local WireGuard endpoint. It only provides a NAT-based internet underlay that allows the EdgeRouter to reach the public AWS EC2 tunnel gateway endpoint from the student GNS3/VMware lab.
 
 ## End-to-End Flow
 
@@ -126,12 +137,14 @@ AWS S3 artifact upload
 Flask multi-page dashboard
 ```
 
-The hybrid cloud extension adds:
+The validated hybrid cloud extension adds:
 
 ```text
-Local DevOps / GNS3 side
+Local GNS3 / DevOps environment
     ↓
-Local WireGuard endpoint
+EdgeRouter-VPNGateway
+    ↓
+WireGuard tunnel
     ↓
 AWS EC2 tunnel gateway
     ↓
@@ -214,22 +227,21 @@ VLAN segmentation
 OSPF dynamic routing
 VRRP-style redundant gateways
 DMZ isolation
-NAT control
 Firewall rules
 OOB management access
 SSH-based infrastructure administration
 SNMPv3 network-device monitoring
-Hybrid cloud routing preparation
+EdgeRouter-based hybrid cloud routing
 ```
 
 ## DevOps Control Node
 
 The DevOps server is a dedicated Ubuntu VM with two network interfaces.
 
-| Interface | Role                                        | Configuration           |
-| --------- | ------------------------------------------- | ----------------------- |
-| `ens33`   | Internet, package updates, GitHub, AWS APIs | DHCP through VMware NAT |
-| `ens34`   | Out-of-band management network              | `10.200.0.10/24`        |
+| Interface | Role                                                             | Configuration           |
+| --------- | ---------------------------------------------------------------- | ----------------------- |
+| `ens33`   | Internet, package updates, GitHub, AWS APIs, DevOps NAT underlay | DHCP through VMware NAT |
+| `ens34`   | Out-of-band management network                                   | `10.200.0.10/24`        |
 
 The DevOps VM runs or controls:
 
@@ -246,7 +258,44 @@ Node Exporter
 SSH-based infrastructure administration
 Automated validation
 Dashboard service
-Local WireGuard endpoint for the first hybrid tunnel phase
+DevOps NAT underlay for EdgeRouter public tunnel reachability
+```
+
+The DevOps VM does not terminate the final WireGuard tunnel. The final local WireGuard endpoint is the GNS3 `EdgeRouter-VPNGateway`.
+
+## DevOps NAT Underlay for EdgeRouter
+
+The GNS3 EdgeRouter must reach the public AWS EC2 tunnel gateway endpoint over UDP/51820 before WireGuard can establish the encrypted tunnel.
+
+In the student lab, the simulated external link through `203.0.113.1` did not provide a working public internet path. The validated fix is to use the DevOps VM as a NAT-based underlay provider.
+
+Validated underlay path:
+
+```text
+EdgeRouter-VPNGateway 10.200.0.30
+    ↓
+DevOps OOB interface 10.200.0.10
+    ↓
+DevOps NAT / VMware internet interface
+    ↓
+AWS EC2 public tunnel gateway UDP/51820
+```
+
+This does not change the architectural role of DevOps:
+
+```text
+DevOps VM:
+  Automation, orchestration, validation, monitoring baseline and NAT underlay.
+
+EdgeRouter-VPNGateway:
+  Local cloud boundary, routing node and WireGuard tunnel endpoint.
+```
+
+The helper scripts are:
+
+```text
+scripts/devops/enable-edge-router-internet-underlay-nat.sh
+scripts/devops/disable-edge-router-internet-underlay-nat.sh
 ```
 
 ## Management Model
@@ -330,35 +379,34 @@ FRR provides:
 ```text
 OSPF routing
 VRRP-style gateway redundancy
-Routing between internal networks, DMZ and future cloud link
+Routing between internal networks, DMZ and cloud path
 Routed loopback addresses for validation
 Dedicated OOB Linux interface for SSH and Ansible access
 SNMPv3 interface monitoring endpoint
+WireGuard support on EdgeRouter through the custom FRR image
 ```
 
 ### EdgeRouter-VPNGateway
 
-The EdgeRouter-VPNGateway is the logical cloud exit point of the local architecture.
+The EdgeRouter-VPNGateway is the logical cloud exit point of the local architecture and the final local WireGuard tunnel endpoint.
 
-In the first validated tunnel phase, the WireGuard process runs on the DevOps VM as the local tunnel endpoint. The EdgeRouter-VPNGateway remains part of the intended path by routing AWS VPC traffic toward the local tunnel endpoint.
-
-Target path:
+Final validated path:
 
 ```text
 GNS3 local topology
     ↓
 EdgeRouter-VPNGateway
     ↓
-Local tunnel endpoint
-    ↓
-WireGuard
+WireGuard tunnel
     ↓
 AWS EC2 tunnel gateway
     ↓
 Private monitoring EC2
 ```
 
-This approach allows the project to validate a real hybrid communication path without requiring a public static IP address on the local lab side.
+The EdgeRouter uses the DevOps OOB IP `10.200.0.10` only as an internet underlay next hop to reach the AWS public tunnel endpoint.
+
+The old simulated external route through `203.0.113.1` is not used by the validated EC2 WireGuard tunnel.
 
 ## Security Baseline
 
@@ -372,7 +420,6 @@ ICMP allowed from the DevOps OOB IP for readiness checks
 Management VLAN protection
 DMZ isolation
 Controlled DMZ service access
-NAT control on the EdgeRouter
 OSPF authentication
 Root key-only SSH access on managed infrastructure containers
 SNMPv3 read-only access restricted to the DevOps OOB IP
@@ -387,6 +434,14 @@ SSH access is controlled by admin_allowed_cidr.
 WireGuard UDP access is controlled by wireguard_allowed_cidr.
 WireGuard can use 0.0.0.0/0 for UDP only because peer keys are still required.
 Public SSH must not remain open to 0.0.0.0/0.
+```
+
+For the EdgeRouter underlay:
+
+```text
+DevOps NAT underlay is allowed only to let EdgeRouter reach the AWS public tunnel endpoint.
+WireGuard terminates on EdgeRouter, not on DevOps.
+Real WireGuard private keys are never committed.
 ```
 
 ## Docker Automation
@@ -409,6 +464,18 @@ SSH daemon startup
 ```
 
 Docker image building is performed on the GNS3 host, not on the DevOps VM.
+
+The FRR image includes WireGuard tooling for the EdgeRouter:
+
+```text
+wireguard-tools
+iptables
+tcpdump
+curl
+ca-certificates
+```
+
+This avoids relying on live `apk update` inside running GNS3 containers.
 
 ## Bootstrap Scripts
 
@@ -546,8 +613,8 @@ security groups
 private S3 artifact bucket
 optional EC2 tunnel gateway
 optional private monitoring EC2
-optional AI EC2 placeholder
-disabled AWS Site-to-Site VPN module
+optional AI EC2 placeholder disabled
+AWS Site-to-Site VPN module disabled
 ```
 
 Current cloud status:
@@ -556,7 +623,7 @@ Current cloud status:
 Network, security and storage baseline created.
 S3 artifact bucket created.
 EC2 tunnel gateway implemented and validated.
-Private monitoring EC2 implemented and validated through the tunnel.
+Private monitoring EC2 implemented and validated through the EdgeRouter tunnel.
 AWS managed Site-to-Site VPN remains disabled.
 NAT Gateway is not used.
 Cloud monitoring services are not fully installed yet.
@@ -566,44 +633,113 @@ Cloud AI services are not fully installed yet.
 ### Cloud CIDR Plan
 
 ```text
-AWS VPC:            10.50.0.0/16
-Public subnet:      10.50.10.0/24
-Private subnet:     10.50.20.0/24
-Monitoring subnet:  10.50.30.0/24
-WireGuard tunnel:   10.255.0.0/30
+AWS VPC: 10.50.0.0/16
+Public subnet: 10.50.10.0/24
+Private subnet: 10.50.20.0/24
+Monitoring subnet: 10.50.30.0/24
+WireGuard tunnel: 10.255.0.0/30
 ```
 
 ### EC2-Based Hybrid Tunnel
 
-The first hybrid tunnel phase uses:
+The validated EC2-based tunnel uses:
 
 ```text
 Public EC2 tunnel gateway
 Private EC2 monitoring instance
-WireGuard tunnel between local DevOps VM and AWS tunnel gateway
+WireGuard tunnel between EdgeRouter-VPNGateway and AWS tunnel gateway
 AWS private route tables toward local CIDRs
 source_dest_check disabled on the tunnel gateway
 iptables forwarding rules on the tunnel gateway
+DevOps NAT underlay for EdgeRouter access to the AWS public endpoint
 ```
 
 Validated tunnel IPs:
 
 ```text
 AWS tunnel gateway: 10.255.0.1
-Local tunnel endpoint: 10.255.0.2
+EdgeRouter tunnel endpoint: 10.255.0.2
 ```
 
-Validated commands:
+Validated commands from EdgeRouter:
 
 ```bash
+wg show
 ping -c 3 10.255.0.1
-ping -c 3 "$(terraform output -raw monitoring_private_ip)"
-ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@"$(terraform output -raw monitoring_private_ip)"
+ping -c 3 10.50.30.154
 ```
 
 The monitoring EC2 remains private and is reached through the tunnel.
 
-### S3 Artifact Bucket
+## DevOps Cloud Route Through EdgeRouter
+
+After validating the EdgeRouter-based WireGuard tunnel, the DevOps VM no longer uses a local WireGuard interface to reach AWS private networks.
+
+The route now follows the final architecture:
+
+```text
+DevOps VM
+    -> EdgeRouter-VPNGateway
+    -> WireGuard tunnel
+    -> AWS EC2 tunnel gateway
+    -> AWS VPC
+```
+
+Runtime route on DevOps:
+
+```text
+10.50.0.0/16 via 10.200.0.30 dev ens34
+```
+
+This route is installed with:
+
+```bash
+sudo ./scripts/devops/route-cloud-via-edge-router.sh
+```
+
+Validation:
+
+```bash
+cd cloud/terraform/environments/dev
+
+MON_IP="$(terraform output -raw monitoring_private_ip)"
+
+ip route get "$MON_IP"
+ssh -o IdentitiesOnly=yes -o IPQoS=none -i ~/.ssh/pfe-aws-tunnel ec2-user@"$MON_IP"
+```
+
+The `IPQoS=none` SSH option is used during validation to avoid QoS-related issues across the nested virtual tunnel path.
+
+## WireGuard MTU/MSS Handling
+
+The validated tunnel crosses multiple encapsulation layers:
+
+```text
+DevOps OOB network
+GNS3 EdgeRouter
+WireGuard
+AWS EC2 tunnel gateway
+AWS VPC routing
+```
+
+During validation, SSH to the private monitoring EC2 stalled during key exchange even though the network path was reachable. The fix was to configure:
+
+```text
+MTU = 1280
+```
+
+on both WireGuard endpoints and to clamp TCP MSS for forwarded traffic crossing `wg0`.
+
+The fix is versioned in:
+
+```text
+frr/wireguard/edge-router-wg0.conf.example
+cloud/tunnel/edge-router-path/examples/cloud-wg0.conf.example
+```
+
+This makes TCP sessions such as SSH and HTTPS more reliable across the nested lab tunnel.
+
+## S3 Artifact Bucket
 
 The Terraform storage module creates a private S3 bucket used for generated platform artifacts.
 
@@ -668,7 +804,7 @@ Future cloud monitoring step:
 
 ```text
 Deploy Prometheus and Grafana on the private monitoring EC2.
-Scrape selected local exporters through the WireGuard tunnel.
+Scrape selected local exporters through the EdgeRouter WireGuard tunnel.
 Keep local remediation execution controlled by Jenkins/Ansible.
 ```
 
@@ -868,6 +1004,7 @@ The dashboard reads from:
 │   ├── env/
 │   ├── interfaces/
 │   ├── routing/
+│   ├── wireguard/
 │   └── snmp/
 ├── gns3/
 │   ├── node-mapping.md
@@ -882,19 +1019,38 @@ The dashboard reads from:
 │   ├── grafana/
 │   └── scripts/
 ├── ovs/
-│   ├── access/
-│   ├── distribution/
-│   ├── dmz/
-│   ├── management/
-│   └── snmp/
 ├── security/
 ├── scripts/
+│   └── devops/
 ├── tests/
 └── secrets/
     └── ospf.env.example
 ```
 
 ## Common Commands
+
+### Enable EdgeRouter Internet Underlay
+
+From the DevOps VM:
+
+```bash
+sudo ./scripts/devops/enable-edge-router-internet-underlay-nat.sh
+```
+
+Validate the underlay route:
+
+```bash
+cd cloud/terraform/environments/dev
+TGW_PUBLIC_IP="$(terraform output -raw tunnel_gateway_public_ip)"
+
+ssh root@10.200.0.30 "ip route get $TGW_PUBLIC_IP"
+```
+
+Expected route:
+
+```text
+via 10.200.0.10 dev eth4
+```
 
 ### Terraform
 
@@ -922,17 +1078,29 @@ To inspect deployed identifiers:
 terraform output
 ```
 
-### WireGuard Tunnel Validation
+### EdgeRouter WireGuard Tunnel Validation
 
 From the DevOps VM:
 
 ```bash
-sudo wg show
-ping -c 3 10.255.0.1
-
 cd cloud/terraform/environments/dev
-ping -c 3 "$(terraform output -raw monitoring_private_ip)"
-ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@"$(terraform output -raw monitoring_private_ip)"
+
+TGW_PUBLIC_IP="$(terraform output -raw tunnel_gateway_public_ip)"
+MON_IP="$(terraform output -raw monitoring_private_ip)"
+
+ssh root@10.200.0.30 "ip route get $TGW_PUBLIC_IP"
+ssh root@10.200.0.30 "wg show"
+ssh root@10.200.0.30 "ping -c 3 10.255.0.1"
+ssh root@10.200.0.30 "ping -c 3 $MON_IP"
+```
+
+Expected result:
+
+```text
+Route to AWS public tunnel endpoint goes through 10.200.0.10.
+WireGuard latest handshake is visible.
+Ping to 10.255.0.1 succeeds.
+Ping to private monitoring EC2 succeeds.
 ```
 
 ### Dashboard
@@ -942,10 +1110,8 @@ From the repository root:
 ```bash
 python3 -m venv dashboard/.venv
 source dashboard/.venv/bin/activate
-
 python -m pip install --upgrade pip
 python -m pip install -r dashboard/requirements.txt
-
 python dashboard/app.py
 ```
 
@@ -1037,21 +1203,20 @@ Only safe source code, templates, scripts, examples and documentation are versio
 
 ## Current Principle
 
-The production topology remains the validation target.
-
-The OOB network remains the automation and monitoring control path.
+The production topology remains the validation target. The OOB network remains the automation and monitoring control path.
 
 ```text
 Production topology:
-  VLANs, OSPF, DMZ, NAT, firewall rules and service behavior.
+  VLANs, OSPF, DMZ, firewall rules and service behavior.
 
 OOB control plane:
   SSH, Ansible, Jenkins, Prometheus, SNMP Exporter and dashboard synchronization.
 
 Hybrid cloud extension:
-  EC2 WireGuard tunnel gateway, private monitoring EC2 and AWS S3 artifact storage.
+  EdgeRouter-based WireGuard tunnel, DevOps NAT underlay, EC2 tunnel gateway,
+  private monitoring EC2 and AWS S3 artifact storage.
 ```
 
 Validation reports, metrics snapshots, analyzer decisions, ML outputs and remediation plans are generated by Jenkins, stored in S3 and visualized through the Flask dashboard.
 
-The first EC2-based tunnel is validated. The next implementation step is to integrate the GNS3 EdgeRouter-VPNGateway route toward the local WireGuard endpoint and then deploy cloud-side monitoring services on the private monitoring EC2.
+The current validated tunnel terminates on `EdgeRouter-VPNGateway`. The next implementation steps are to route DevOps cloud traffic through EdgeRouter, deploy cloud-side monitoring services on the private monitoring EC2, and configure cloud Prometheus to scrape selected local exporters through the EdgeRouter tunnel.

@@ -19,6 +19,7 @@ module "security" {
   wireguard_port         = var.wireguard_port
   wireguard_tunnel_cidr  = var.wireguard_tunnel_cidr
   onprem_cidr_blocks     = var.onprem_cidr_blocks
+  monitoring_subnet_cidr = var.monitoring_subnet_cidr
   common_tags            = local.common_tags
 }
 

@@ -135,3 +135,11 @@ resource "aws_vpc_security_group_egress_rule" "private_all_outbound" {
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
 }
+
+
+resource "aws_vpc_security_group_ingress_rule" "tunnel_gateway_nat_from_monitoring" {
+  security_group_id = aws_security_group.admin.id
+  description       = "Allow monitoring subnet to use the tunnel gateway as a NAT/routing instance"
+  ip_protocol       = "-1"
+  cidr_ipv4         = var.monitoring_subnet_cidr
+}

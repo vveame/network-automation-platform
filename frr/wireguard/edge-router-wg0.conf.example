@@ -1,26 +1,50 @@
 # EdgeRouter-VPNGateway WireGuard example.
-# Destination on the running container: /etc/wireguard/wg0.conf
+# Destination on the running EdgeRouter container:
+#   /etc/wireguard/wg0.conf
 #
 # Do NOT commit real private keys.
-# Replace EDGE_ROUTER_PRIVATE_KEY, AWS_TUNNEL_PUBLIC_KEY and AWS_TUNNEL_PUBLIC_IP locally.
+# Replace:
+#   EDGE_ROUTER_PRIVATE_KEY
+#   AWS_TUNNEL_PUBLIC_KEY
+#   AWS_TUNNEL_PUBLIC_IP
+#
+# Why MTU = 1280:
+#   The validated tunnel path crosses nested virtualization and encapsulation:
+#   DevOps OOB -> GNS3 EdgeRouter -> WireGuard -> AWS EC2 tunnel gateway -> AWS VPC.
+#   ICMP could work while SSH stalled during key exchange.
+#   Lowering the WireGuard MTU and clamping TCP MSS fixed SSH to the private monitoring EC2.
 
 [Interface]
 Address = 10.255.0.2/30
+MTU = 1280
 PrivateKey = EDGE_ROUTER_PRIVATE_KEY
 
 PostUp = sysctl -w net.ipv4.ip_forward=1
+
+# Forwarding rules for local networks and return traffic.
 PostUp = iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-PostUp = iptables -C FORWARD -o wg0 -d 10.50.0.0/16 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -d 10.50.0.0/16 -j ACCEPT
-PostUp = iptables -C FORWARD -i wg0 -s 10.50.0.0/16 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -s 10.50.0.0/16 -j ACCEPT
+PostUp = iptables -C FORWARD -i wg0 -d 10.200.0.0/24 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -d 10.200.0.0/24 -j ACCEPT
+PostUp = iptables -C FORWARD -i wg0 -d 172.16.0.0/16 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -d 172.16.0.0/16 -j ACCEPT
+PostUp = iptables -C FORWARD -o wg0 -s 10.200.0.0/24 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -s 10.200.0.0/24 -j ACCEPT
+PostUp = iptables -C FORWARD -o wg0 -s 172.16.0.0/16 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -s 172.16.0.0/16 -j ACCEPT
+
+# MTU/MSS fix for nested GNS3/VMware/WireGuard/AWS paths.
+# This prevents TCP sessions such as SSH/HTTPS from stalling even when ICMP ping works.
+PostUp = iptables -t mangle -C FORWARD -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || iptables -t mangle -A FORWARD -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+PostUp = iptables -t mangle -C FORWARD -i wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || iptables -t mangle -A FORWARD -i wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
 PostDown = iptables -D FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
-PostDown = iptables -D FORWARD -o wg0 -d 10.50.0.0/16 -j ACCEPT 2>/dev/null || true
-PostDown = iptables -D FORWARD -i wg0 -s 10.50.0.0/16 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -D FORWARD -i wg0 -d 10.200.0.0/24 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -D FORWARD -i wg0 -d 172.16.0.0/16 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -D FORWARD -o wg0 -s 10.200.0.0/24 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -D FORWARD -o wg0 -s 172.16.0.0/16 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -t mangle -D FORWARD -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
+PostDown = iptables -t mangle -D FORWARD -i wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || true
 
 [Peer]
 PublicKey = AWS_TUNNEL_PUBLIC_KEY
 Endpoint = AWS_TUNNEL_PUBLIC_IP:51820
 
-# Send AWS tunnel IP and AWS VPC traffic through WireGuard.
+# AWS tunnel interface + AWS VPC.
 AllowedIPs = 10.255.0.1/32, 10.50.0.0/16
 PersistentKeepalive = 25

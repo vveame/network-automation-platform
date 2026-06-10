@@ -45,3 +45,9 @@ variable "common_tags" {
   description = "Common tags applied to all resources."
   type        = map(string)
 }
+
+
+variable "monitoring_subnet_cidr" {
+  description = "Monitoring subnet CIDR allowed to use the tunnel gateway as a NAT/routing instance."
+  type        = string
+}
