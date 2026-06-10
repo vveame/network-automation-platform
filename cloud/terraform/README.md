@@ -532,6 +532,72 @@ Expected route:
 via 10.200.0.10 dev eth4
 ```
 
+## Tunnel Gateway as NAT Instance for the Monitoring Subnet
+
+The private monitoring EC2 instance does not have a public IP address. The project also avoids AWS NAT Gateway in order to reduce cloud cost during the student lab phase.
+
+For this reason, the public EC2 tunnel gateway is also used as a small NAT/routing instance for the monitoring subnet.
+
+Expected egress path:
+
+```text
+Private monitoring EC2
+    -> monitoring route table
+    -> EC2 tunnel gateway ENI
+    -> iptables MASQUERADE
+    -> Internet Gateway
+    -> internet
+```
+
+Terraform supports this behavior through the variable:
+
+```hcl
+enable_tunnel_gateway_nat_for_monitoring = true
+```
+
+When enabled, Terraform creates a default route in the monitoring route table:
+
+```text
+0.0.0.0/0 -> tunnel gateway network interface
+```
+
+The tunnel gateway must also have:
+
+```text
+source_dest_check = false
+net.ipv4.ip_forward = 1
+iptables MASQUERADE for the monitoring subnet
+security group ingress from the monitoring subnet for HTTP/HTTPS and ICMP
+```
+
+This allows the private monitoring EC2 to install packages and reach external repositories while remaining private.
+
+The NAT behavior is versioned in:
+
+```text
+cloud/terraform/modules/compute/main.tf
+cloud/terraform/modules/compute/user-data/tunnel-gateway.sh.tftpl
+cloud/terraform/modules/security/main.tf
+cloud/scripts/enable-monitoring-egress-nat-on-tunnel-gateway.sh
+cloud/scripts/validate-monitoring-egress-via-tunnel-gateway.sh
+```
+
+Validation from DevOps:
+
+```bash
+sudo ./scripts/devops/route-cloud-via-edge-router.sh
+./cloud/scripts/enable-monitoring-egress-nat-on-tunnel-gateway.sh
+./cloud/scripts/validate-monitoring-egress-via-tunnel-gateway.sh
+```
+
+Expected result:
+
+```text
+Private monitoring EC2 can reach https://amazonlinux.com
+Private monitoring EC2 can reach https://github.com
+sudo dnf makecache succeeds
+```
+
 ## Debugging Notes Captured in Code
 
 The first EdgeRouter tunnel test failed because EdgeRouter tried to reach the AWS public tunnel gateway through the old simulated external path:

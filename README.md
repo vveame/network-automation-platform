@@ -739,6 +739,43 @@ cloud/tunnel/edge-router-path/examples/cloud-wg0.conf.example
 
 This makes TCP sessions such as SSH and HTTPS more reliable across the nested lab tunnel.
 
+### Private Monitoring EC2 Internet Egress
+
+The private monitoring EC2 instance remains private and has no public IP address.
+
+To avoid AWS NAT Gateway cost, the public EC2 tunnel gateway is also used as a small NAT instance for the monitoring subnet.
+
+Egress path:
+
+```text
+Private monitoring EC2
+    -> monitoring subnet route table
+    -> EC2 tunnel gateway ENI
+    -> iptables MASQUERADE
+    -> Internet Gateway
+    -> internet
+```
+
+This is used only to allow the private monitoring EC2 to install packages and reach external repositories.
+
+The monitoring EC2 remains reachable from the local lab through the EdgeRouter tunnel:
+
+```text
+DevOps VM
+    -> EdgeRouter-VPNGateway
+    -> WireGuard tunnel
+    -> AWS EC2 tunnel gateway
+    -> private monitoring EC2
+```
+
+Validation commands:
+
+```bash
+sudo ./scripts/devops/route-cloud-via-edge-router.sh
+./cloud/scripts/enable-monitoring-egress-nat-on-tunnel-gateway.sh
+./cloud/scripts/validate-monitoring-egress-via-tunnel-gateway.sh
+```
+
 ## S3 Artifact Bucket
 
 The Terraform storage module creates a private S3 bucket used for generated platform artifacts.
