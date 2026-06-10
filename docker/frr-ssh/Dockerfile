@@ -23,9 +23,10 @@ RUN apk update && apk add --no-cache \
 
 COPY entrypoint.sh /entrypoint.sh
 COPY start-snmp.sh /start-snmp.sh
+COPY start-wireguard.sh /start-wireguard.sh
 
-RUN sed -i 's/\r$//' /entrypoint.sh /start-snmp.sh \
-  && chmod +x /entrypoint.sh /start-snmp.sh
+RUN sed -i 's/\r$//' /entrypoint.sh /start-snmp.sh /start-wireguard.sh \
+  && chmod +x /entrypoint.sh /start-snmp.sh /start-wireguard.sh
 
 EXPOSE 22
 EXPOSE 1161/udp

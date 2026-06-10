@@ -1,0 +1,240 @@
+{
+  "description": "Cloud Prometheus query_range feature definitions for ML-based anomaly detection. This profile targets the AWS monitoring EC2 Prometheus instance through the hybrid tunnel.",
+  "source_alignment": {
+    "instant_snapshot_script": "monitoring/scripts/export-prometheus-snapshot.sh",
+    "rule_based_parser": "cloud/analyzer/parse_prometheus_metrics.py",
+    "ml_collection_mode": "Prometheus /api/v1/query_range"
+  },
+  "prometheus_job_scope": {
+    "blackbox": "cloud-blackbox-http-through-tunnel|cloud-blackbox-tcp-through-tunnel|cloud-blackbox-dns-through-tunnel",
+    "node_exporter": "cloud-node-exporter|local-node-exporter-through-tunnel",
+    "snmp": "cloud-snmp-network-devices-through-tunnel"
+  },
+  "features": [
+    {
+      "name": "all_targets_down",
+      "group": "target_health",
+      "query": "sum(1 - up)"
+    },
+    {
+      "name": "all_targets_up_ratio",
+      "group": "target_health",
+      "query": "avg(up)"
+    },
+    {
+      "name": "service_probe_success_ratio",
+      "group": "blackbox",
+      "query": "avg(probe_success{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-tcp-through-tunnel|cloud-blackbox-dns-through-tunnel\"})"
+    },
+    {
+      "name": "service_probe_failures",
+      "group": "blackbox",
+      "query": "sum(1 - probe_success{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-tcp-through-tunnel|cloud-blackbox-dns-through-tunnel\"})"
+    },
+    {
+      "name": "web_http_probe_failed",
+      "group": "blackbox",
+      "query": "sum(1 - probe_success{job=\"cloud-blackbox-http-through-tunnel\"})"
+    },
+    {
+      "name": "dns_probe_failed",
+      "group": "blackbox",
+      "query": "sum(1 - probe_success{job=\"cloud-blackbox-dns-through-tunnel\"})"
+    },
+    {
+      "name": "tcp_probe_failures",
+      "group": "blackbox",
+      "query": "sum(1 - probe_success{job=\"cloud-blackbox-tcp-through-tunnel\"})"
+    },
+    {
+      "name": "avg_probe_duration_seconds",
+      "group": "blackbox",
+      "query": "avg(probe_duration_seconds{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-tcp-through-tunnel|cloud-blackbox-dns-through-tunnel\"})"
+    },
+    {
+      "name": "max_probe_duration_seconds",
+      "group": "blackbox",
+      "query": "max(probe_duration_seconds{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-tcp-through-tunnel|cloud-blackbox-dns-through-tunnel\"})"
+    },
+    {
+      "name": "avg_dns_lookup_time_seconds",
+      "group": "blackbox",
+      "query": "avg(probe_dns_lookup_time_seconds{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-dns-through-tunnel\"})"
+    },
+    {
+      "name": "max_dns_lookup_time_seconds",
+      "group": "blackbox",
+      "query": "max(probe_dns_lookup_time_seconds{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-dns-through-tunnel\"})"
+    },
+    {
+      "name": "http_status_not_200_count",
+      "group": "blackbox",
+      "query": "(count(probe_http_status_code{job=\"cloud-blackbox-http-through-tunnel\"} != 200)) or vector(0)"
+    },
+    {
+      "name": "avg_host_cpu_usage_percent",
+      "group": "node_exporter",
+      "query": "avg(100 - (avg by (instance, node, role) (rate(node_cpu_seconds_total{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\",mode=\"idle\"}[5m])) * 100))"
+    },
+    {
+      "name": "max_host_cpu_usage_percent",
+      "group": "node_exporter",
+      "query": "max(100 - (avg by (instance, node, role) (rate(node_cpu_seconds_total{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\",mode=\"idle\"}[5m])) * 100))"
+    },
+    {
+      "name": "avg_node_load1",
+      "group": "node_exporter",
+      "query": "avg(node_load1{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"})"
+    },
+    {
+      "name": "max_node_load1",
+      "group": "node_exporter",
+      "query": "max(node_load1{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"})"
+    },
+    {
+      "name": "avg_node_load5",
+      "group": "node_exporter",
+      "query": "avg(node_load5{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"})"
+    },
+    {
+      "name": "max_node_load5",
+      "group": "node_exporter",
+      "query": "max(node_load5{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"})"
+    },
+    {
+      "name": "avg_node_load15",
+      "group": "node_exporter",
+      "query": "avg(node_load15{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"})"
+    },
+    {
+      "name": "max_node_load15",
+      "group": "node_exporter",
+      "query": "max(node_load15{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"})"
+    },
+    {
+      "name": "avg_host_memory_used_percent",
+      "group": "node_exporter",
+      "query": "avg(100 * (1 - (node_memory_MemAvailable_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"} / node_memory_MemTotal_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"})))"
+    },
+    {
+      "name": "max_host_memory_used_percent",
+      "group": "node_exporter",
+      "query": "max(100 * (1 - (node_memory_MemAvailable_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"} / node_memory_MemTotal_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"})))"
+    },
+    {
+      "name": "avg_root_disk_used_percent",
+      "group": "node_exporter",
+      "query": "avg(100 * (1 - (node_filesystem_avail_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\", mountpoint=\"/\", fstype!~\"tmpfs|overlay|squashfs|devtmpfs\"} / node_filesystem_size_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\", mountpoint=\"/\", fstype!~\"tmpfs|overlay|squashfs|devtmpfs\"})))"
+    },
+    {
+      "name": "max_root_disk_used_percent",
+      "group": "node_exporter",
+      "query": "max(100 * (1 - (node_filesystem_avail_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\", mountpoint=\"/\", fstype!~\"tmpfs|overlay|squashfs|devtmpfs\"} / node_filesystem_size_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\", mountpoint=\"/\", fstype!~\"tmpfs|overlay|squashfs|devtmpfs\"})))"
+    },
+    {
+      "name": "readonly_filesystem_count",
+      "group": "node_exporter",
+      "query": "sum(node_filesystem_readonly{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\", mountpoint=\"/\"})"
+    },
+    {
+      "name": "recent_host_reboot_count",
+      "group": "node_exporter",
+      "query": "(count((time() - node_boot_time_seconds{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"}) < 600)) or vector(0)"
+    },
+    {
+      "name": "snmp_devices_down",
+      "group": "snmp",
+      "query": "sum(1 - up{job=\"cloud-snmp-network-devices-through-tunnel\"})"
+    },
+    {
+      "name": "snmp_up_ratio",
+      "group": "snmp",
+      "query": "avg(up{job=\"cloud-snmp-network-devices-through-tunnel\"})"
+    },
+    {
+      "name": "recent_network_device_reboot_count",
+      "group": "snmp",
+      "query": "(count((sysUpTime{job=\"cloud-snmp-network-devices-through-tunnel\"} / 100) < 600)) or vector(0)"
+    },
+    {
+      "name": "admin_up_interfaces_down",
+      "group": "snmp_interface_state",
+      "query": "(count((ifOperStatus{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"} != 1) and on(instance, ifIndex) (ifAdminStatus{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"} == 1))) or vector(0)"
+    },
+    {
+      "name": "oper_down_interfaces",
+      "group": "snmp_interface_state",
+      "query": "(count(ifOperStatus{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"} != 1)) or vector(0)"
+    },
+    {
+      "name": "admin_down_interfaces",
+      "group": "snmp_interface_state",
+      "query": "(count(ifAdminStatus{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"} != 1)) or vector(0)"
+    },
+    {
+      "name": "recent_interface_change_count",
+      "group": "snmp_interface_state",
+      "query": "(count(changes(ifOperStatus{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[10m]) > 0)) or vector(0)"
+    },
+    {
+      "name": "interface_in_bps",
+      "group": "snmp_traffic",
+      "query": "sum(8 * rate(ifHCInOctets{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))"
+    },
+    {
+      "name": "interface_out_bps",
+      "group": "snmp_traffic",
+      "query": "sum(8 * rate(ifHCOutOctets{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))"
+    },
+    {
+      "name": "max_interface_in_bps",
+      "group": "snmp_traffic",
+      "query": "max(8 * rate(ifHCInOctets{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))"
+    },
+    {
+      "name": "max_interface_out_bps",
+      "group": "snmp_traffic",
+      "query": "max(8 * rate(ifHCOutOctets{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))"
+    },
+    {
+      "name": "traffic_total_bps",
+      "group": "snmp_traffic",
+      "query": "sum(8 * rate(ifHCInOctets{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])) + sum(8 * rate(ifHCOutOctets{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))"
+    },
+    {
+      "name": "interface_error_rate",
+      "group": "snmp_errors_discards",
+      "query": "sum(rate(ifInErrors{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]) + rate(ifOutErrors{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))"
+    },
+    {
+      "name": "interfaces_with_error_rate",
+      "group": "snmp_errors_discards",
+      "query": "(count((rate(ifInErrors{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]) + rate(ifOutErrors{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])) > 0)) or vector(0)"
+    },
+    {
+      "name": "interface_discard_rate",
+      "group": "snmp_errors_discards",
+      "query": "sum(rate(ifInDiscards{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]) + rate(ifOutDiscards{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))"
+    },
+    {
+      "name": "interfaces_with_discard_rate",
+      "group": "snmp_errors_discards",
+      "query": "count((rate(ifInDiscards{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]) + rate(ifOutDiscards{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])) > 0)"
+    },
+    {
+      "name": "avg_interface_mtu",
+      "group": "snmp_capacity",
+      "query": "avg(ifMtu{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"})"
+    },
+    {
+      "name": "max_interface_high_speed_mbps",
+      "group": "snmp_capacity",
+      "query": "max(ifHighSpeed{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"})"
+    },
+    {
+      "name": "estimated_max_interface_utilization_percent",
+      "group": "snmp_capacity",
+      "query": "max(((8 * rate(ifHCInOctets{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])) + (8 * rate(ifHCOutOctets{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))) / clamp_min(ifHighSpeed{job=\"cloud-snmp-network-devices-through-tunnel\", ifDescr!~\"lo|ovs-system|vrrp.*\"} * 1000000, 1) * 100)"
+    }
+  ]
+}

@@ -68,6 +68,39 @@ install_cloud_monitoring_access_if_present() {
   fi
 }
 
+install_edge_wireguard() {
+
+  NODE_NAME="$1"
+  LOCAL_DIR="$2"
+
+  if [ "$NODE_NAME" != "EdgeRouter-VPNGateway" ]; then
+    return 0
+  fi
+
+  echo "[INFO] Installing EdgeRouter WireGuard persistent config for $NODE_NAME"
+  sudo mkdir -p "$LOCAL_DIR/wireguard"
+
+  # Prefer the Jenkins-preserved local secret path.
+  if [ -f "$REPO/secrets/edge-router-wg0.conf.secret" ]; then
+    install_file "$REPO/secrets/edge-router-wg0.conf.secret" "$LOCAL_DIR/wireguard/wg0.conf" "600"
+  elif [ -f "$REPO/frr/wireguard/edge-router-wg0.conf" ]; then
+    install_file "$REPO/frr/wireguard/edge-router-wg0.conf" "$LOCAL_DIR/wireguard/wg0.conf" "600"
+  else
+    echo "[WARN] No real EdgeRouter WireGuard config found."
+    echo "[WARN] Expected one of:"
+    echo "[WARN]   $REPO/secrets/edge-router-wg0.conf.secret"
+    echo "[WARN]   $REPO/frr/wireguard/edge-router-wg0.conf"
+    echo "[WARN] EdgeRouter tunnel will not auto-start after container restart."
+  fi
+
+  if [ -f "$REPO/frr/wireguard/edge-underlay.env" ]; then
+    install_file "$REPO/frr/wireguard/edge-underlay.env" "$LOCAL_DIR/wireguard/edge-underlay.env" "600"
+  else
+    echo "[WARN] $REPO/frr/wireguard/edge-underlay.env not found."
+    echo "[WARN] Underlay route to AWS public tunnel endpoint may not persist."
+  fi
+
+}
 
 prepare_frr_common() {
   LOCAL_DIR="$1"
@@ -185,6 +218,7 @@ deploy_frr() {
   SSH_DIR="$(require_mount "$CONTAINER" "/gns3volumes/root/.ssh")"
 
   prepare_frr_common "$LOCAL_DIR" "$SSH_DIR"
+  install_edge_wireguard "$NODE_NAME" "$LOCAL_DIR"
 
   install_cloud_monitoring_access_if_present "$LOCAL_DIR"
 
@@ -193,6 +227,7 @@ deploy_frr() {
   install_file "$REPO/$FRR_CONF" "$FRR_DIR/frr.conf" "644"
 
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
+  install_cloud_monitoring_access "$LOCAL_DIR"
   install_file "$REPO/security/ospf-auth.sh" "$LOCAL_DIR/security/ospf-auth.sh" "755"
 
   if [ -f "$REPO/secrets/ospf.env" ]; then
@@ -234,6 +269,7 @@ deploy_ovs() {
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
   install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
+  install_cloud_monitoring_access "$LOCAL_DIR"
 
   install_ovs_snmp "$LOCAL_DIR" "$SNMP_ENV"
 }
@@ -264,6 +300,7 @@ deploy_dmz_ovs_persistent() {
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
   install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
+  install_cloud_monitoring_access "$LOCAL_DIR"
 
   install_ovs_snmp "$LOCAL_DIR" "$SNMP_ENV"
 }

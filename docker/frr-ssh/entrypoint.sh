@@ -214,6 +214,7 @@ if command -v sshd >/dev/null 2>&1; then
 if [ -x /etc/local/security/cloud-monitoring-access.sh ]; then
   echo "[INFO] Applying cloud monitoring access rules..."
   CLOUD_MONITORING_IP="${CLOUD_MONITORING_IP:-10.50.30.154}" \
+  CLOUD_MONITORING_EXTRA_IPS="${CLOUD_MONITORING_EXTRA_IPS:-10.255.0.1}"\
   AWS_VPC_CIDR="${AWS_VPC_CIDR:-10.50.0.0/16}" \
   EDGE_OOB_GW="${EDGE_OOB_GW:-10.200.0.30}" \
     /etc/local/security/cloud-monitoring-access.sh || \

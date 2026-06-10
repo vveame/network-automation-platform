@@ -1,25 +1,30 @@
 #!/bin/sh
 set -eu
 
-# Allow private AWS monitoring EC2 to scrape local OOB monitoring endpoints.
+# Allow AWS cloud monitoring to scrape local OOB monitoring endpoints.
 #
-# Context:
-#   Prometheus/SNMP Exporter moved from local DevOps to private AWS monitoring EC2.
+# This script is safe to run multiple times.
+# It is installed persistently by gns3/scripts/bootstrap-persistent-gns3.sh
+# and applied at container startup by FRR/OVS entrypoints.
 #
-# Cloud monitoring source:
-#   10.50.30.154
+# Primary source:
+#   10.50.30.154 = private AWS monitoring EC2
 #
-# Required local return route:
+# Extra source:
+#   10.255.0.1 = AWS WireGuard tunnel gateway/interface source sometimes seen by local nodes
+#
+# Required return route on non-edge nodes:
 #   10.50.0.0/16 via EdgeRouter-VPNGateway OOB 10.200.0.30
 #
 # Allowed:
-#   ICMP from cloud monitoring for diagnostics
-#   UDP/1161 from cloud monitoring for SNMPv3 metrics
+#   ICMP for diagnostics
+#   UDP/1161 for SNMPv3 metrics
 #
-# SSH/admin access remains controlled separately.
+# Not allowed:
+#   SSH/admin from cloud. SSH remains controlled by admin-access-control.sh.
 
 CLOUD_MONITORING_IP="${CLOUD_MONITORING_IP:-10.50.30.154}"
-CLOUD_MONITORING_EXTRA_IPS="${CLOUD_MONITORING_EXTRA_IPS:-}"
+CLOUD_MONITORING_EXTRA_IPS="${CLOUD_MONITORING_EXTRA_IPS:-10.255.0.1}"
 AWS_VPC_CIDR="${AWS_VPC_CIDR:-10.50.0.0/16}"
 EDGE_OOB_GW="${EDGE_OOB_GW:-10.200.0.30}"
 ENABLE_CLOUD_MONITORING_ROUTE="${ENABLE_CLOUD_MONITORING_ROUTE:-true}"
