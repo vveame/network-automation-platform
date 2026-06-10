@@ -1,0 +1,26 @@
+# EdgeRouter-VPNGateway WireGuard example.
+# Destination on the running container: /etc/wireguard/wg0.conf
+#
+# Do NOT commit real private keys.
+# Replace EDGE_ROUTER_PRIVATE_KEY, AWS_TUNNEL_PUBLIC_KEY and AWS_TUNNEL_PUBLIC_IP locally.
+
+[Interface]
+Address = 10.255.0.2/30
+PrivateKey = EDGE_ROUTER_PRIVATE_KEY
+
+PostUp = sysctl -w net.ipv4.ip_forward=1
+PostUp = iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+PostUp = iptables -C FORWARD -o wg0 -d 10.50.0.0/16 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -d 10.50.0.0/16 -j ACCEPT
+PostUp = iptables -C FORWARD -i wg0 -s 10.50.0.0/16 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -s 10.50.0.0/16 -j ACCEPT
+
+PostDown = iptables -D FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
+PostDown = iptables -D FORWARD -o wg0 -d 10.50.0.0/16 -j ACCEPT 2>/dev/null || true
+PostDown = iptables -D FORWARD -i wg0 -s 10.50.0.0/16 -j ACCEPT 2>/dev/null || true
+
+[Peer]
+PublicKey = AWS_TUNNEL_PUBLIC_KEY
+Endpoint = AWS_TUNNEL_PUBLIC_IP:51820
+
+# Send AWS tunnel IP and AWS VPC traffic through WireGuard.
+AllowedIPs = 10.255.0.1/32, 10.50.0.0/16
+PersistentKeepalive = 25

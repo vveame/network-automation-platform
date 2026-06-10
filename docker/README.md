@@ -155,3 +155,37 @@ Managed infrastructure nodes should expose SSH on their OOB IPs:
 | DMZ-OVS-3 | `10.200.0.0/24` |
 
 The DevOps server uses 10.200.0.10 as the only allowed SSH administrative source.
+
+## EdgeRouter WireGuard Support
+
+The `vviam/pfe-frr-ssh` image is also used by `EdgeRouter-VPNGateway`.
+
+For the hybrid cloud path, WireGuard tools are baked directly into the FRR image instead of being installed manually inside a running GNS3 container. This avoids runtime `apk update` failures inside the lab topology.
+
+The FRR image includes:
+
+```text
+wireguard-tools
+iptables
+tcpdump
+curl
+ca-certificates
+```
+
+This allows the EdgeRouter to terminate the local side of the EC2 WireGuard tunnel.
+
+The real WireGuard configuration must not be committed. Only safe examples are versioned under:
+
+```text
+frr/wireguard/
+```
+
+frr/wireguard/
+
+```text
+Private monitoring EC2
+    -> AWS EC2 tunnel gateway
+    -> WireGuard tunnel
+    -> EdgeRouter-VPNGateway
+    -> local OOB / GNS3 / DevOps environment
+```
