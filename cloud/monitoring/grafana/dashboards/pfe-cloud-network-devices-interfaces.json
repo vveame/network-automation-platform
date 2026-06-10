@@ -76,7 +76,7 @@
       },
       "targets": [
         {
-          "expr": "100 * avg(up{job=\"snmp-network-devices\", node_name=~\"$device\"})",
+          "expr": "100 * avg(up{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\"})",
           "legendFormat": "SNMP health",
           "refId": "A"
         }
@@ -137,7 +137,7 @@
       },
       "targets": [
         {
-          "expr": "count(up{job=\"snmp-network-devices\", node_name=~\"$device\"} == 0)",
+          "expr": "count(up{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\"} == 0)",
           "legendFormat": "devices down",
           "refId": "A"
         }
@@ -198,7 +198,7 @@
       },
       "targets": [
         {
-          "expr": "sum((ifOperStatus{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"} != 1) and on(instance, ifIndex) (ifAdminStatus{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"} == 1))",
+          "expr": "sum((ifOperStatus{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"} != 1) and on(instance, ifIndex) (ifAdminStatus{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"} == 1))",
           "legendFormat": "admin-up down",
           "refId": "A"
         }
@@ -259,7 +259,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(ifInErrors{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]) + rate(ifOutErrors{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))",
+          "expr": "sum(rate(ifInErrors{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]) + rate(ifOutErrors{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]))",
           "legendFormat": "errors/sec",
           "refId": "A"
         }
@@ -317,8 +317,8 @@
       },
       "targets": [
         {
-          "expr": "up{job=\"snmp-network-devices\", node_name=~\"$device\"}",
-          "legendFormat": "{{node_name}}",
+          "expr": "up{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\"}",
+          "legendFormat": "{{node}}",
           "refId": "A"
         }
       ],
@@ -369,8 +369,8 @@
       },
       "targets": [
         {
-          "expr": "sysUpTime{job=\"snmp-network-devices\", node_name=~\"$device\"} / 100",
-          "legendFormat": "{{node_name}}",
+          "expr": "sysUpTime{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\"} / 100",
+          "legendFormat": "{{node}}",
           "refId": "A"
         }
       ],
@@ -431,8 +431,8 @@
       },
       "targets": [
         {
-          "expr": "ifOperStatus{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}",
-          "legendFormat": "{{node_name}} {{ifDescr}}",
+          "expr": "ifOperStatus{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}",
+          "legendFormat": "{{node}} {{ifDescr}}",
           "refId": "A"
         }
       ],
@@ -493,8 +493,8 @@
       },
       "targets": [
         {
-          "expr": "count by(node_name) ((ifOperStatus{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"} != 1) and on(instance, ifIndex) (ifAdminStatus{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"} == 1))",
-          "legendFormat": "{{node_name}}",
+          "expr": "count by(node_name) ((ifOperStatus{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"} != 1) and on(instance, ifIndex) (ifAdminStatus{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"} == 1))",
+          "legendFormat": "{{node}}",
           "refId": "A"
         }
       ],
@@ -546,8 +546,8 @@
       },
       "targets": [
         {
-          "expr": "8 * rate(ifHCInOctets{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])",
-          "legendFormat": "{{node_name}} {{ifDescr}} in",
+          "expr": "8 * rate(ifHCInOctets{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])",
+          "legendFormat": "{{node}} {{ifDescr}} in",
           "refId": "A"
         }
       ],
@@ -599,8 +599,8 @@
       },
       "targets": [
         {
-          "expr": "8 * rate(ifHCOutOctets{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])",
-          "legendFormat": "{{node_name}} {{ifDescr}} out",
+          "expr": "8 * rate(ifHCOutOctets{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])",
+          "legendFormat": "{{node}} {{ifDescr}} out",
           "refId": "A"
         }
       ],
@@ -661,8 +661,8 @@
       },
       "targets": [
         {
-          "expr": "rate(ifInErrors{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]) + rate(ifOutErrors{job=\"snmp-network-devices\", node_name=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])",
-          "legendFormat": "{{node_name}} {{ifDescr}} errors",
+          "expr": "rate(ifInErrors{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m]) + rate(ifOutErrors{job=\"cloud-snmp-network-devices-through-tunnel\", node=~\"$device\", ifDescr!~\"lo|ovs-system|vrrp.*\"}[5m])",
+          "legendFormat": "{{node}} {{ifDescr}} errors",
           "refId": "A"
         }
       ],
@@ -693,7 +693,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(up{job=\"snmp-network-devices\"}, node_name)",
+        "definition": "label_values(up{job=\"cloud-snmp-network-devices-through-tunnel\"}, node_name)",
         "hide": 0,
         "includeAll": true,
         "label": "Device",
@@ -701,7 +701,7 @@
         "name": "device",
         "options": [],
         "query": {
-          "query": "label_values(up{job=\"snmp-network-devices\"}, node_name)",
+          "query": "label_values(up{job=\"cloud-snmp-network-devices-through-tunnel\"}, node_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -718,8 +718,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "PFE - Network Devices & Interfaces",
-  "uid": "pfe-network-devices",
-  "version": 1,
+  "title": "PFE - Cloud Network Devices & Interfaces",
+  "uid": "pfe-cloud-network-devices",
+  "version": 3,
   "weekStart": ""
 }

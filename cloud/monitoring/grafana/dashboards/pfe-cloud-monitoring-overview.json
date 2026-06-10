@@ -202,7 +202,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "100 * avg(probe_success{job=~\"blackbox-http|blackbox-tcp|blackbox-dns\"})",
+          "expr": "100 * avg(probe_success{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-tcp-through-tunnel|cloud-blackbox-dns-through-tunnel\"})",
           "legendFormat": "service probes",
           "refId": "A"
         }
@@ -265,7 +265,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "100 * avg(up{job=\"snmp-network-devices\"})",
+          "expr": "100 * avg(up{job=\"cloud-snmp-network-devices-through-tunnel\"})",
           "legendFormat": "network devices",
           "refId": "A"
         }
@@ -324,8 +324,8 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "probe_success{job=~\"blackbox-http|blackbox-tcp|blackbox-dns\"}",
-          "legendFormat": "{{service_name}}",
+          "expr": "probe_success{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-tcp-through-tunnel|cloud-blackbox-dns-through-tunnel\"}",
+          "legendFormat": "{{service}}",
           "refId": "A"
         }
       ],
@@ -386,8 +386,8 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "probe_duration_seconds{job=~\"blackbox-http|blackbox-tcp|blackbox-dns\"}",
-          "legendFormat": "{{service_name}}",
+          "expr": "probe_duration_seconds{job=~\"cloud-blackbox-http-through-tunnel|cloud-blackbox-tcp-through-tunnel|cloud-blackbox-dns-through-tunnel\"}",
+          "legendFormat": "{{service}}",
           "refId": "A"
         }
       ],
@@ -450,8 +450,8 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"}))",
-          "legendFormat": "{{node_name}}",
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"} / node_memory_MemTotal_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\"}))",
+          "legendFormat": "{{node}}",
           "refId": "A"
         }
       ],
@@ -514,8 +514,8 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "100 * (1 - (node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"}))",
-          "legendFormat": "{{node_name}} /",
+          "expr": "100 * (1 - (node_filesystem_avail_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{job=~\"cloud-node-exporter|local-node-exporter-through-tunnel\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"}))",
+          "legendFormat": "{{node}} /",
           "refId": "A"
         }
       ],
@@ -573,8 +573,8 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "up{job=\"snmp-network-devices\"}",
-          "legendFormat": "{{node_name}}",
+          "expr": "up{job=\"cloud-snmp-network-devices-through-tunnel\"}",
+          "legendFormat": "{{node}}",
           "refId": "A"
         }
       ],
@@ -635,8 +635,8 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "expr": "rate(ifInErrors{job=\"snmp-network-devices\"}[5m]) + rate(ifOutErrors{job=\"snmp-network-devices\"}[5m])",
-          "legendFormat": "{{node_name}} {{ifDescr}}",
+          "expr": "rate(ifInErrors{job=\"cloud-snmp-network-devices-through-tunnel\"}[5m]) + rate(ifOutErrors{job=\"cloud-snmp-network-devices-through-tunnel\"}[5m])",
+          "legendFormat": "{{node}} {{ifDescr}}",
           "refId": "A"
         }
       ],
@@ -662,8 +662,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "PFE - Local Monitoring Overview",
-  "uid": "pfe-local-overview",
-  "version": 1,
+  "title": "PFE - Cloud Monitoring Overview",
+  "uid": "pfe-cloud-overview",
+  "version": 3,
   "weekStart": ""
 }

@@ -53,6 +53,22 @@ install_file() {
   sudo install -D -m "$MODE" "$SRC" "$DEST"
 }
 
+
+install_cloud_monitoring_access_if_present() {
+  LOCAL_DIR="$1"
+
+  if [ -f "$REPO/security/cloud-monitoring-access.sh" ]; then
+    sudo mkdir -p "$LOCAL_DIR/security"
+    install_file "$REPO/security/cloud-monitoring-access.sh" \
+      "$LOCAL_DIR/security/cloud-monitoring-access.sh" \
+      "755"
+    echo "[OK] Cloud monitoring access script installed into persistent local directory."
+  else
+    echo "[WARN] security/cloud-monitoring-access.sh not found. Cloud SNMP access will not be persistent."
+  fi
+}
+
+
 prepare_frr_common() {
   LOCAL_DIR="$1"
   SSH_DIR="$2"
@@ -170,6 +186,8 @@ deploy_frr() {
 
   prepare_frr_common "$LOCAL_DIR" "$SSH_DIR"
 
+  install_cloud_monitoring_access_if_present "$LOCAL_DIR"
+
   install_file "$REPO/$ROUTER_ENV" "$LOCAL_DIR/router.env" "644"
   install_file "$REPO/$INTERFACES_FILE" "$LOCAL_DIR/interfaces.sh" "755"
   install_file "$REPO/$FRR_CONF" "$FRR_DIR/frr.conf" "644"
@@ -211,6 +229,8 @@ deploy_ovs() {
 
   prepare_ovs_common "$LOCAL_DIR" "$ROOT_DIR"
 
+  install_cloud_monitoring_access_if_present "$LOCAL_DIR"
+
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
   install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
@@ -238,6 +258,8 @@ deploy_dmz_ovs_persistent() {
   ROOT_DIR="$(require_mount "$CONTAINER" "/gns3volumes/root")"
 
   prepare_ovs_common "$LOCAL_DIR" "$ROOT_DIR"
+
+  install_cloud_monitoring_access_if_present "$LOCAL_DIR"
 
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
   install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"

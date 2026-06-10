@@ -120,6 +120,21 @@ fi
 
 if command -v sshd >/dev/null 2>&1; then
   echo "[BOOT] Starting SSH daemon..."
+
+# PFE cloud monitoring access.
+# Allows the private AWS monitoring EC2 to scrape local SNMPv3 endpoints
+# after Prometheus is moved to the cloud.
+if [ -x /etc/local/security/cloud-monitoring-access.sh ]; then
+  echo "[INFO] Applying cloud monitoring access rules..."
+  CLOUD_MONITORING_IP="${CLOUD_MONITORING_IP:-10.50.30.154}" \
+  AWS_VPC_CIDR="${AWS_VPC_CIDR:-10.50.0.0/16}" \
+  EDGE_OOB_GW="${EDGE_OOB_GW:-10.200.0.30}" \
+    /etc/local/security/cloud-monitoring-access.sh || \
+    echo "[WARN] Cloud monitoring access rule application failed."
+else
+  echo "[INFO] No cloud monitoring access script found, skipping."
+fi
+
   /usr/sbin/sshd || true
 else
   echo "[BOOT] sshd not found. Build the ovs-ssh image to enable SSH."
