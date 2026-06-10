@@ -1,59 +1,40 @@
 project_name = "network-automation-platform"
 environment  = "dev"
-
-aws_region        = "eu-noth-1"
+aws_region        = "eu-north-1"
 availability_zone = "eu-north-1a"
+aws_profile       = null
+owner             = "wiam"
 
-aws_profile = null
-owner = "wiam"
-
-# Cloud CIDR plan.
-# This CIDR must not overlap with the local GNS3/on-prem networks.
 vpc_cidr               = "10.50.0.0/16"
 public_subnet_cidr     = "10.50.10.0/24"
 private_subnet_cidr    = "10.50.20.0/24"
 monitoring_subnet_cidr = "10.50.30.0/24"
 
-# Public CIDR allowed to access admin/cloud services.
-admin_allowed_cidr = "DEVOPS_VM_PUBLIC_IP/32"
+admin_allowed_cidr = "YOUR_PUBLIC_IP/32"
 
-# Custom S3 bucket name.
-# null generate a bucket name using the AWS account ID.
-storage_bucket_name_override = null
+# Keep this open for UDP only when the local public IP is unstable.
+# WireGuard is still protected by peer public keys.
+wireguard_allowed_cidr = "0.0.0.0/0"
+admin_public_key   = null
 
-# S3 validation artifact retention
-validation_artifact_retention_days = 30
-noncurrent_version_retention_days  = 7
+enable_compute = false
+enable_tunnel_gateway = false
+enable_monitoring_instance = false
+enable_ai_instance = false
+enable_tunnel_gateway_nat_for_monitoring = true
 
-# S3 analyzer output retention.
-processed_summary_retention_days = 90
-anomaly_result_retention_days    = 90
-
-# EC2 compute placeholders.
-# Disabled by default to avoid unnecessary AWS costs.
-enable_compute        = false
+enable_vpn = false
+wireguard_tunnel_cidr = "10.255.0.0/30"
+wireguard_port = 51820
 compute_instance_type = "t3.micro"
-
-# Amazon Linux 2023 AMI public SSM parameter.
 compute_ami_ssm_parameter = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 
-# Public SSH key for EC2 access.
-# Keep null unless compute is enabled.
-admin_public_key = null
-
-# Hybrid VPN placeholder.
-# Disabled by default to avoid VPN cost and accidental exposure.
-enable_vpn = false
-
-# Required only if enable_vpn = true.
-# Must be the public IP of the on-prem customer gateway device.
+onprem_cidr_blocks = ["10.200.0.0/24", "172.16.0.0/16"]
 onprem_public_ip = null
-
-# On-premises CIDRs that should be reachable through the future VPN.
-onprem_cidr_blocks = [
-  "10.200.0.0/24",
-  "172.16.0.0/16"
-]
-
 onprem_bgp_asn = 65010
-aws_bgp_asn    = 64512
+aws_bgp_asn = 64512
+
+validation_artifact_retention_days = 30
+noncurrent_version_retention_days = 7
+processed_summary_retention_days = 90
+anomaly_result_retention_days = 90

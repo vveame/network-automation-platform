@@ -1,277 +1,753 @@
 # Intelligent Network Automation Platform
 
-## 1. Purpose of the Platform
+This repository contains the source code, configuration files, automation scripts and documentation for an intelligent network automation platform built around a local GNS3 enterprise lab, Jenkins CI/CD automation, AWS cloud integration, Prometheus monitoring, SNMPv3 network-device metrics, anomaly analysis and a Flask dashboard.
 
-The project implements an intelligent network automation platform for a virtual enterprise-like network laboratory. The platform combines local network validation, monitoring, cloud-backed artifact storage, anomaly detection, machine learning analysis, safe remediation, and dashboard visualization.
-
-The objective is not only to deploy a network topology, but also to automate the operational cycle around it:
+The project is implemented as a Master PFE platform that combines:
 
 ```text
-Validate → Monitor → Analyze → Detect → Decide → Remediate safely → Visualize
+Local network simulation
+DevOps automation
+Cloud infrastructure
+Monitoring and observability
+Artifact storage
+Anomaly detection
+Safe remediation preparation
 ```
 
-The platform is designed around DevOps and Cloud Computing principles. It uses Jenkins as the automation orchestrator, Prometheus and Grafana for observability, AWS S3 for durable artifact storage, Python analyzers for anomaly detection, and a Flask dashboard for final decision visualization.
+## Objective
 
----
+The objective of this project is to transform a manually validated GNS3 network topology into a reproducible, automatable, observable and cloud-integrated infrastructure baseline.
 
-## 2. Global Architecture
-
-The platform is divided into several logical layers:
+The platform is designed around the following goals:
 
 ```text
-GitHub Repository
-      ↓
-GitHub Actions Self-Hosted Runner
-      ↓
-Jenkins Automation Server
-      ↓
-Local GNS3 Infrastructure
-      ↓
-Ansible Validation
-      ↓
-Prometheus Monitoring Snapshot
-      ↓
-Rule-Based Cloud Analyzer
-      ↓
-ML Isolation Forest Analyzer
-      ↓
-Hybrid Final Decision
-      ↓
-Safe Remediation Runner
-      ↓
-AWS S3 Artifact Storage
-      ↓
-Flask Dashboard + Grafana Dashboards
+Automate infrastructure validation.
+Collect monitoring data from hosts, services and network devices.
+Export validation and monitoring evidence.
+Analyze validation reports and metrics for anomaly detection.
+Store generated artifacts in AWS S3.
+Visualize the latest platform state through a Flask dashboard.
+Prepare a controlled hybrid link between the local lab and AWS.
 ```
 
-Each layer has a clear role:
-
-| Layer                   | Role                                                                                                 |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| GitHub                  | Stores source code, Jenkinsfile, scripts, dashboard code, monitoring configuration and documentation |
-| GitHub Actions Runner   | Triggers Jenkins from a public GitHub repository without exposing Jenkins to the Internet            |
-| Jenkins                 | Orchestrates the full validation, monitoring, ML, S3 and remediation workflow                        |
-| GNS3                    | Hosts the virtual network lab with FRRouting routers, OVS switches and service containers            |
-| Ansible                 | Validates the state of routers, switches, services and network paths                                 |
-| Prometheus              | Collects monitoring metrics from services, hosts and network devices                                 |
-| Grafana                 | Displays live metric evidence for monitoring and anomaly explanation                                 |
-| Python Analyzer         | Processes validation reports and metrics into anomaly decisions                                      |
-| ML Analyzer             | Uses Isolation Forest to detect unusual metric behavior                                              |
-| Safe Remediation Runner | Selects and optionally applies predefined safe actions                                               |
-| AWS S3                  | Stores all generated outputs as the durable source of truth                                          |
-| Flask Dashboard         | Displays the latest validation, monitoring, analyzer, ML and remediation results                     |
-
----
-
-## 3. Source-of-Truth Model
-
-The platform follows a clear data ownership model:
+The implementation separates the network into three operational categories:
 
 ```text
-GitHub = source code and safe configuration
-Jenkins workspace = temporary execution area
-AWS S3 = durable source of truth for generated artifacts
-/var/lib/pfe-dashboard = local dashboard cache
-Grafana = live Prometheus metric visualization
-Flask dashboard = latest decision and report visualization
+Network infrastructure nodes:
+  FRR routers and OVS switches managed through SSH, Ansible, Jenkins and SNMP.
+
+Service nodes:
+  Web and DNS containers validated through service health checks.
+
+Endpoint/test hosts:
+  Client/test nodes validated through connectivity tests.
 ```
 
-Generated reports, ML outputs, remediation reports and metric snapshots are not committed to GitHub. They are generated at runtime by Jenkins and stored in AWS S3.
+The architecture also separates the production/data plane from the management/control plane:
 
-The local dashboard cache is only a synchronized copy of the latest S3 outputs:
+```text
+Production / Data Plane:
+  VLANs, routing, DMZ, NAT, firewall rules and service traffic.
+
+Management / Control Plane:
+  DevOps server, SSH, Ansible, Jenkins, Prometheus, SNMP Exporter,
+  dashboard synchronization and cloud integration.
+```
+
+## Current Implementation Status
+
+At the current checkpoint, the platform includes:
+
+```text
+Local GNS3 enterprise topology
+Dedicated DevOps control VM
+Out-of-band management plane
+FRR and OVS infrastructure automation
+Ansible validation workflow
+Jenkins CI/CD orchestration
+GitHub Actions to Jenkins trigger bridge
+AWS Terraform baseline
+Private S3 artifact bucket
+EC2-based WireGuard tunnel gateway
+Private AWS monitoring EC2 instance
+Prometheus monitoring baseline
+Node Exporter host metrics
+Blackbox Exporter service probes
+SNMPv3 monitoring for FRR routers and OVS switches
+Rule-based cloud analyzer
+ML anomaly detection preparation
+Safe remediation preparation
+Multi-page Flask dashboard
+Grafana monitoring and anomaly-evidence dashboards
+Grafana alert-rule preparation
+```
+
+The first EC2-based hybrid connectivity test has been validated.
+
+Validated hybrid path:
+
+```text
+DevOps VM / local tunnel endpoint
+    -> WireGuard tunnel
+AWS EC2 tunnel gateway
+    -> AWS private routing
+Private monitoring EC2
+```
+
+Validated tests:
+
+```text
+DevOps VM -> AWS tunnel gateway: successful ping to 10.255.0.1
+DevOps VM -> private monitoring EC2: successful ping to the monitoring private IP
+DevOps VM -> private monitoring EC2: successful SSH login through the tunnel
+```
+
+## End-to-End Flow
+
+The general automation flow is:
+
+```text
+GitHub push
+    ↓
+GitHub Actions self-hosted runner
+    ↓
+Jenkins pipeline on DevOps VM
+    ↓
+Ansible validation
+    ↓
+Prometheus metrics snapshot export
+    ↓
+Cloud analyzer / ML decision layer
+    ↓
+AWS S3 artifact upload
+    ↓
+/var/lib/pfe-dashboard cache sync
+    ↓
+Flask multi-page dashboard
+```
+
+The hybrid cloud extension adds:
+
+```text
+Local DevOps / GNS3 side
+    ↓
+Local WireGuard endpoint
+    ↓
+AWS EC2 tunnel gateway
+    ↓
+Private monitoring EC2
+```
+
+## Source of Truth Model
+
+The platform follows this artifact model:
+
+```text
+GitHub:
+  Versioned source code, safe configuration templates, examples, scripts and documentation.
+
+Jenkins workspace:
+  Temporary execution and generation area.
+
+AWS S3:
+  Durable source of truth for generated validation reports, metrics snapshots,
+  analyzer outputs, ML outputs and remediation results.
+
+/var/lib/pfe-dashboard:
+  Local dashboard cache synchronized from S3.
+```
+
+Generated outputs and secrets are not committed to GitHub.
+
+Current S3 prefixes used by the platform include:
+
+```text
+latest/validation-artifacts/
+latest/analyzer/
+latest/metrics/
+latest/ml/
+latest/remediation/
+validation-artifacts/
+metrics-snapshots/
+anomaly-results/
+ml-results/
+remediation-results/
+```
+
+Current local dashboard cache model:
 
 ```text
 /var/lib/pfe-dashboard/
 ├── outputs/
-├── metrics/latest/
-├── analyzer/latest/
-├── ml/latest/
-├── ml/data/
-├── ml/models/
-└── remediation/latest/
+├── analyzer/
+│   └── latest/
+├── metrics/
+│   └── latest/
+├── ml/
+│   └── latest/
+└── remediation/
+    └── latest/
 ```
 
----
+## Local GNS3 Architecture
 
-## 4. Jenkins Automation Pipeline
+The local topology is based on a simulated enterprise network in GNS3.
 
-Jenkins is the central automation component of the platform.
-
-The final Jenkins pipeline performs the following sequence:
+It includes:
 
 ```text
-01  Clean Jenkins workspace
-02  Checkout repository
-03  Set runtime build paths
-04  Show execution environment
-05  Detect changed areas
-06  Safety guard for GNS3 apply modes
-07  Safety guard for GNS3 host requirement
-08  Safety guard for safe remediation apply mode
-09  Prepare shared dashboard and ML folders
-10  Prepare Ansible output directory
-11  Check GNS3 host access
-12  Sync repository on GNS3 host
-13  Build Docker images on GNS3 host
-14  Push Docker images to Docker Hub
-15  Check GNS3 host and node status
-16  Bootstrap GNS3 persistent node configurations
-17  Ansible inventory check
-18  Ansible syntax check
-19  Run local topology validation gate
-20  Generate HTML summary report
-21  Validate generated dashboard reports
-22  Upload validation artifacts to AWS S3
-23  Apply Prometheus target configuration
-24  Export Prometheus metrics snapshot
-25  Upload Prometheus metrics snapshot to AWS S3
-26  Run rule-based cloud analyzer
-27  Upload rule-based analyzer results to AWS S3
-28  Prepare ML runtime
-29  Collect historical Prometheus metrics for ML
-30  Build ML feature dataset
-31  Train or reuse Isolation Forest model
-32  Run ML anomaly prediction
-33  Upload ML dataset, model and decision to AWS S3
-34  Merge rule-based and ML decisions
-35  Upload final hybrid decision to AWS S3
-36  Run safe remediation plan
-37  Apply safe remediation, only if explicitly confirmed
-38  Upload remediation results to AWS S3
-39  Sync dashboard cache from AWS S3
-40  Show generated reports
-41  Set Jenkins build description
+Three-tier internal network architecture
+DMZ service zone
+Dedicated out-of-band management network
+DevOps control VM
+FRR routers
+Open vSwitch switches
+Web and DNS service containers
+Endpoint/test hosts
+EdgeRouter-VPNGateway node
 ```
 
-This pipeline provides a full operational workflow, from infrastructure validation to anomaly detection and controlled remediation.
-
----
-
-## 5. Validation Layer
-
-The validation layer is based on Ansible.
-
-Ansible validates the local GNS3 infrastructure by checking:
-
-* FRRouting router configuration and state
-* OVS switch configuration and state
-* DMZ services
-* End-to-end connectivity
-* Security validation
-* Inventory consistency
-* OOB management readiness
-
-The generated validation reports are stored locally during the Jenkins build under:
+The local network uses:
 
 ```text
-ansible/outputs/
+VLAN segmentation
+OSPF dynamic routing
+VRRP-style redundant gateways
+DMZ isolation
+NAT control
+Firewall rules
+OOB management access
+SSH-based infrastructure administration
+SNMPv3 network-device monitoring
+Hybrid cloud routing preparation
 ```
 
-Then Jenkins uploads them to AWS S3:
+## DevOps Control Node
+
+The DevOps server is a dedicated Ubuntu VM with two network interfaces.
+
+| Interface | Role                                        | Configuration           |
+| --------- | ------------------------------------------- | ----------------------- |
+| `ens33`   | Internet, package updates, GitHub, AWS APIs | DHCP through VMware NAT |
+| `ens34`   | Out-of-band management network              | `10.200.0.10/24`        |
+
+The DevOps VM runs or controls:
 
 ```text
-validation-artifacts/<build-label>/
-latest/validation-artifacts/
+Ansible
+Jenkins
+Git/GitHub integration
+Terraform
+AWS CLI
+Prometheus
+SNMP Exporter
+Blackbox Exporter
+Node Exporter
+SSH-based infrastructure administration
+Automated validation
+Dashboard service
+Local WireGuard endpoint for the first hybrid tunnel phase
 ```
 
-These reports are also synchronized to:
+## Management Model
+
+The main management path is the OOB network:
 
 ```text
-/var/lib/pfe-dashboard/outputs/
+OOB subnet: 10.200.0.0/24
+DevOps VM: 10.200.0.10
 ```
 
-The Flask dashboard reads this folder to display validation status and report previews.
+The old VLAN 99 management segment remains part of the simulated enterprise topology as an in-band management VLAN, but it is not the primary DevOps automation path.
 
----
+```text
+VLAN 99:
+  In-band management VLAN inside the simulated enterprise topology.
 
-## 6. Monitoring Layer
+OOB 10.200.0.0/24:
+  Dedicated DevOps automation, monitoring and infrastructure control plane.
+```
 
-The monitoring layer is based on Prometheus, Node Exporter, Blackbox Exporter and SNMP Exporter.
+## OOB IP Plan
 
-Prometheus collects metrics from:
+| Node                  | OOB interface | OOB IP           |
+| --------------------- | ------------- | ---------------- |
+| Core-FRR-1            | `eth3`        | `10.200.0.11/24` |
+| Core-FRR-2            | `eth3`        | `10.200.0.12/24` |
+| Dist-FRR-1            | `eth3`        | `10.200.0.21/24` |
+| Dist-FRR-2            | `eth3`        | `10.200.0.22/24` |
+| EdgeRouter-VPNGateway | `eth4`        | `10.200.0.30/24` |
+| Dist-OVS-1            | `eth4`        | `10.200.0.31/24` |
+| Dist-OVS-2            | `eth4`        | `10.200.0.32/24` |
+| DMZ-OVS-3             | `eth3`        | `10.200.0.33/24` |
+| Access-OVS-4          | `eth3`        | `10.200.0.44/24` |
+| Access-OVS-5          | `eth3`        | `10.200.0.45/24` |
+| Access-OVS-6          | `eth4`        | `10.200.0.46/24` |
 
-* DevOps host
-* Web service
-* DNS service
-* FRRouting routers
-* OVS switches
-* SNMP-monitored network interfaces
+## Main Infrastructure Components
 
-The platform uses these metrics for two purposes:
+### Open vSwitch
 
-1. Live visualization in Grafana.
-2. Runtime analysis by the anomaly detection system.
+Open vSwitch is used for Layer 2 switching, VLAN access ports and trunk links.
 
-Jenkins exports a Prometheus snapshot during each pipeline run and stores it locally under:
+OVS nodes are organized into:
+
+```text
+Access layer switches
+Distribution layer switches
+DMZ switch
+```
+
+OVS provides:
+
+```text
+VLAN access ports
+VLAN trunk links
+VLAN 10 user segment
+VLAN 20 user segment
+VLAN 99 in-band management segment
+RSTP-capable switching baseline
+Dedicated OOB Linux interface for SSH and Ansible access
+SNMPv3 interface monitoring endpoint
+```
+
+The OOB interface on OVS nodes remains outside the main OVS bridge.
+
+### FRRouting
+
+FRRouting is used for Layer 3 routing.
+
+FRR nodes are organized into:
+
+```text
+Distribution routers
+Core routers
+EdgeRouter / VPN gateway
+```
+
+FRR provides:
+
+```text
+OSPF routing
+VRRP-style gateway redundancy
+Routing between internal networks, DMZ and future cloud link
+Routed loopback addresses for validation
+Dedicated OOB Linux interface for SSH and Ansible access
+SNMPv3 interface monitoring endpoint
+```
+
+### EdgeRouter-VPNGateway
+
+The EdgeRouter-VPNGateway is the logical cloud exit point of the local architecture.
+
+In the first validated tunnel phase, the WireGuard process runs on the DevOps VM as the local tunnel endpoint. The EdgeRouter-VPNGateway remains part of the intended path by routing AWS VPC traffic toward the local tunnel endpoint.
+
+Target path:
+
+```text
+GNS3 local topology
+    ↓
+EdgeRouter-VPNGateway
+    ↓
+Local tunnel endpoint
+    ↓
+WireGuard
+    ↓
+AWS EC2 tunnel gateway
+    ↓
+Private monitoring EC2
+```
+
+This approach allows the project to validate a real hybrid communication path without requiring a public static IP address on the local lab side.
+
+## Security Baseline
+
+Security is implemented through versioned scripts using Linux firewall rules and FRR configuration.
+
+Current security controls include:
+
+```text
+SSH/admin access restricted to the DevOps OOB IP 10.200.0.10
+ICMP allowed from the DevOps OOB IP for readiness checks
+Management VLAN protection
+DMZ isolation
+Controlled DMZ service access
+NAT control on the EdgeRouter
+OSPF authentication
+Root key-only SSH access on managed infrastructure containers
+SNMPv3 read-only access restricted to the DevOps OOB IP
+WireGuard peer-key based tunnel access
+Public SSH limited to temporary administration/debugging only
+```
+
+For the EC2 tunnel gateway:
+
+```text
+SSH access is controlled by admin_allowed_cidr.
+WireGuard UDP access is controlled by wireguard_allowed_cidr.
+WireGuard can use 0.0.0.0/0 for UDP only because peer keys are still required.
+Public SSH must not remain open to 0.0.0.0/0.
+```
+
+## Docker Automation
+
+Custom Docker images and entrypoints are used to start and initialize FRR, OVS, Web and DNS containers.
+
+The FRR and OVS entrypoints handle:
+
+```text
+Directory initialization
+SSH host key generation
+DevOps public key installation
+Root key-only SSH preparation
+Interface configuration
+OOB management interface configuration
+FRR or OVS service startup
+Security script execution
+Optional SNMP service startup
+SSH daemon startup
+```
+
+Docker image building is performed on the GNS3 host, not on the DevOps VM.
+
+## Bootstrap Scripts
+
+Two bootstrap modes are provided.
+
+### Running-Container Bootstrap
+
+```bash
+./gns3/scripts/bootstrap-gns3.sh
+```
+
+Use this when all GNS3 Docker nodes are already running. It copies configuration into running containers and immediately applies the required settings.
+
+### Persistent-Volume Bootstrap
+
+```bash
+./gns3/scripts/bootstrap-persistent-gns3.sh
+```
+
+Use this when containers may be stopped or recreated. It writes desired files into GNS3 persistent directories so they are applied on the next container start.
+
+The persistent bootstrap installs:
+
+```text
+FRR router environment files
+FRR interface configuration
+FRR routing configuration
+OVS bridge/VLAN/trunk configuration
+OVS management configuration
+OOB management files
+Security scripts
+SSH authorized keys
+FRR SNMPv3 files
+OVS SNMPv3 files
+```
+
+## Ansible Workflow
+
+Ansible is executed from the dedicated DevOps VM.
+
+The site playbook validates:
+
+```text
+Management readiness
+Ansible SSH connection readiness
+OVS configuration
+FRR configuration
+DMZ Web/DNS services
+Security behavior
+End-to-end connectivity
+Inventory consistency
+Report artifact generation
+Jenkins-ready assertion gates
+```
+
+Ansible outputs are generated locally during the pipeline, uploaded to S3, then synchronized to the local dashboard cache.
+
+## Jenkins and GitHub Actions Integration
+
+Jenkins is the main CI/CD orchestrator.
+
+Because the GitHub repository is public, Jenkins is not exposed directly to the Internet. A GitHub Actions self-hosted runner is installed on the DevOps VM under a limited Linux user:
+
+```text
+gha-runner
+```
+
+The runner only triggers Jenkins through a protected local script:
+
+```text
+/usr/local/sbin/trigger-jenkins-pfe
+```
+
+The runner does not build, deploy or run validation by itself.
+
+## Jenkins Pipeline Modes
+
+The Jenkins pipeline is parameterized and supports several execution modes.
+
+| Mode                 | Purpose                                              |
+| -------------------- | ---------------------------------------------------- |
+| `AUTO`               | Default mode used by GitHub push triggers            |
+| `VALIDATE_ONLY`      | Runs validation, reports and dashboard publishing    |
+| `BUILD_IMAGES`       | Builds custom Docker images on the GNS3 host         |
+| `PUSH_IMAGES`        | Builds and pushes custom Docker images to Docker Hub |
+| `BOOTSTRAP_GNS3`     | Runs the persistent GNS3 bootstrap workflow          |
+| `FULL_LOCAL_REFRESH` | Performs image refresh, bootstrap and validation     |
+
+Topology-changing actions require:
+
+```text
+CONFIRM_APPLY=true
+```
+
+This protects actions that modify the lab environment or persistent node configuration.
+
+## Jenkins Default Workflow
+
+In its default workflow, Jenkins performs:
+
+```text
+1. Clean workspace.
+2. Checkout repository.
+3. Detect changed repository areas.
+4. Prepare output directories.
+5. Validate Ansible inventory.
+6. Run Ansible syntax checks.
+7. Execute topology validation gate.
+8. Export Prometheus metrics snapshot.
+9. Run cloud analyzer.
+10. Run ML anomaly detection when enabled.
+11. Merge rule-based and ML decisions when enabled.
+12. Prepare safe remediation plan when enabled.
+13. Upload validation, analyzer, ML, remediation and metrics outputs to S3.
+14. Sync latest S3 outputs into /var/lib/pfe-dashboard.
+15. Generate HTML summary report.
+16. Archive Jenkins artifacts.
+17. Update Jenkins build description with dashboard and artifact links.
+```
+
+## AWS Cloud Baseline
+
+The project includes an AWS cloud infrastructure baseline provisioned with Terraform.
+
+The cloud layer currently supports:
+
+```text
+VPC
+public subnet
+private subnet
+monitoring/AI subnet
+Internet Gateway
+route tables
+security groups
+private S3 artifact bucket
+optional EC2 tunnel gateway
+optional private monitoring EC2
+optional AI EC2 placeholder
+disabled AWS Site-to-Site VPN module
+```
+
+Current cloud status:
+
+```text
+Network, security and storage baseline created.
+S3 artifact bucket created.
+EC2 tunnel gateway implemented and validated.
+Private monitoring EC2 implemented and validated through the tunnel.
+AWS managed Site-to-Site VPN remains disabled.
+NAT Gateway is not used.
+Cloud monitoring services are not fully installed yet.
+Cloud AI services are not fully installed yet.
+```
+
+### Cloud CIDR Plan
+
+```text
+AWS VPC:            10.50.0.0/16
+Public subnet:      10.50.10.0/24
+Private subnet:     10.50.20.0/24
+Monitoring subnet:  10.50.30.0/24
+WireGuard tunnel:   10.255.0.0/30
+```
+
+### EC2-Based Hybrid Tunnel
+
+The first hybrid tunnel phase uses:
+
+```text
+Public EC2 tunnel gateway
+Private EC2 monitoring instance
+WireGuard tunnel between local DevOps VM and AWS tunnel gateway
+AWS private route tables toward local CIDRs
+source_dest_check disabled on the tunnel gateway
+iptables forwarding rules on the tunnel gateway
+```
+
+Validated tunnel IPs:
+
+```text
+AWS tunnel gateway: 10.255.0.1
+Local tunnel endpoint: 10.255.0.2
+```
+
+Validated commands:
+
+```bash
+ping -c 3 10.255.0.1
+ping -c 3 "$(terraform output -raw monitoring_private_ip)"
+ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@"$(terraform output -raw monitoring_private_ip)"
+```
+
+The monitoring EC2 remains private and is reached through the tunnel.
+
+### S3 Artifact Bucket
+
+The Terraform storage module creates a private S3 bucket used for generated platform artifacts.
+
+The bucket stores:
+
+```text
+validation reports
+metrics snapshots
+analyzer outputs
+ML datasets and decisions
+remediation plans and reports
+future logs
+future datasets
+future AI outputs
+```
+
+The bucket is configured with:
+
+```text
+public access blocking
+bucket owner enforced object ownership
+versioning
+server-side encryption
+lifecycle retention rules
+```
+
+## Monitoring Baseline
+
+The monitoring stack includes:
+
+```text
+Prometheus
+Node Exporter
+Blackbox Exporter
+SNMP Exporter
+Grafana
+```
+
+Prometheus collects:
+
+```text
+DevOps VM host metrics
+GNS3 VM host metrics
+DMZ Web/DNS probe metrics
+FRR router SNMPv3 interface metrics
+OVS switch SNMPv3 interface metrics
+```
+
+Metrics snapshots are exported from the Prometheus HTTP API into:
 
 ```text
 monitoring/outputs/latest/
 ```
 
-Then it uploads the snapshot to AWS S3:
-
-```text
-metrics-snapshots/<build-label>/
-latest/metrics/
-```
-
-The latest metrics are synchronized to:
+Jenkins uploads the latest metrics to S3 and synchronizes them into:
 
 ```text
 /var/lib/pfe-dashboard/metrics/latest/
 ```
 
----
-
-## 7. Grafana Dashboards
-
-Grafana is used to visualize live monitoring evidence.
-
-The Grafana dashboards are provisioned from:
+Future cloud monitoring step:
 
 ```text
-monitoring/grafana/dashboards/
+Deploy Prometheus and Grafana on the private monitoring EC2.
+Scrape selected local exporters through the WireGuard tunnel.
+Keep local remediation execution controlled by Jenkins/Ansible.
 ```
 
-The main dashboards are:
+## SNMPv3 Network-Device Monitoring
+
+SNMPv3 is used to monitor network-device interface state and counters.
+
+Current SNMP scope:
 
 ```text
-PFE - Local Monitoring Overview
-PFE - Network Devices & Interfaces
-PFE - Anomaly Detection & Evidence
+5 FRR routers
+6 OVS switches
+11 total SNMP network devices
 ```
 
-The anomaly detection dashboard does not read Jenkins JSON files directly. Instead, it visualizes live Prometheus metrics that explain why the anomaly detection system may react.
+Current SNMP targets:
 
-It shows:
+| Device       | Target             | Device type |
+| ------------ | ------------------ | ----------- |
+| core-frr-1   | `10.200.0.11:1161` | FRR router  |
+| core-frr-2   | `10.200.0.12:1161` | FRR router  |
+| dist-frr-1   | `10.200.0.21:1161` | FRR router  |
+| dist-frr-2   | `10.200.0.22:1161` | FRR router  |
+| edge-router  | `10.200.0.30:1161` | FRR router  |
+| dist-ovs-1   | `10.200.0.31:1161` | OVS switch  |
+| dist-ovs-2   | `10.200.0.32:1161` | OVS switch  |
+| dmz-ovs-3    | `10.200.0.33:1161` | OVS switch  |
+| access-ovs-4 | `10.200.0.44:1161` | OVS switch  |
+| access-ovs-5 | `10.200.0.45:1161` | OVS switch  |
+| access-ovs-6 | `10.200.0.46:1161` | OVS switch  |
 
-* Estimated anomaly risk
-* ML-style metric signal proxy
-* Failed HTTP/TCP/DNS probes
-* SNMP devices down
-* Admin-up interfaces that are operationally down
-* Interface error and discard rates
-* CPU, memory and disk pressure
-* Network traffic evolution
-* Service latency degradation
-* Target reachability
-
-Grafana is used for metric evidence, while the Flask dashboard is used for final analyzer, ML and remediation decisions.
-
----
-
-## 8. Rule-Based Analyzer
-
-The rule-based analyzer is the deterministic anomaly detection layer.
-
-It consumes:
+SNMP security model:
 
 ```text
-ansible/outputs/
-monitoring/outputs/latest/
+SNMPv3 authPriv
+SHA authentication
+AES privacy
+read-only access
+UDP/1161
+DevOps OOB source restriction
 ```
 
-and produces:
+The SNMP Exporter uses the `if_mib` module to expose interface metrics to Prometheus.
+
+Collected SNMP metrics include:
+
+```text
+SNMP target health
+device uptime
+interface admin status
+interface operational status
+traffic counters
+interface error counters
+interface discard counters
+```
+
+Special/internal interfaces are displayed for visibility but ignored in anomaly scoring:
+
+```text
+lo
+vrrp*
+ovs-system
+```
+
+## Analyzer and Detection Layer
+
+The analyzer combines validation reports with monitoring metrics.
+
+Analyzer inputs:
+
+```text
+Ansible validation reports
+Prometheus scrape target health
+Node Exporter memory/disk metrics
+Blackbox service probe metrics
+SNMPv3 network-device interface metrics
+```
+
+Analyzer outputs:
 
 ```text
 summary.json
@@ -279,530 +755,303 @@ decision.json
 analysis-report.txt
 ```
 
-The rule-based analyzer checks explainable conditions such as:
-
-* Failed validation reports
-* Missing reports
-* Unreachable Prometheus targets
-* Failed Blackbox probes
-* SNMP devices down
-* Interfaces operationally down while administratively enabled
-* Interface errors or discards
-* Host CPU, memory or disk saturation
-
-The output is stored in:
+The analyzer scores:
 
 ```text
-cloud/analyzer/outputs/<build-label>/
+validation failures
+critical or warning report patterns
+Prometheus targets down
+Blackbox probes failed
+memory or disk pressure
+SNMP targets down
+SNMP interfaces unexpectedly down
+SNMP interface errors/discards
 ```
 
-Then uploaded to:
+The current analyzer is rule-based and explainable. It prepares the project for statistical and machine-learning anomaly detection.
+
+## ML and Safe Remediation Preparation
+
+The ML layer uses exported Prometheus metrics as features for anomaly detection.
+
+The ML decision is treated as an advisory signal. It does not directly apply remediation by itself.
+
+The safe remediation model follows this principle:
 
 ```text
-processed-summaries/<build-label>/
-anomaly-results/<build-label>/
-latest/analyzer/
+Grafana alert = live symptom
+Rule-based analyzer = deterministic evidence
+ML layer = statistical suspicion
+Final decision = safety validation
+Jenkins/Ansible = controlled remediation execution
 ```
 
-The rule-based analyzer remains the safety reference for remediation. If it does not confirm an anomaly, the platform does not allow infrastructure-changing remediation.
+Automatic remediation must remain controlled and must not be triggered directly by a raw monitoring spike.
 
----
+## Multi-Page Flask Dashboard
 
-## 9. ML Anomaly Detection Layer
+The Flask dashboard visualizes the latest S3-backed validation, analyzer, ML, remediation and monitoring data.
 
-The ML layer extends the rule-based analyzer with statistical anomaly detection.
+Current routes include:
 
-The ML model used is:
+| Route             | Purpose                                              |
+| ----------------- | ---------------------------------------------------- |
+| `/`               | Overview                                             |
+| `/analyzer`       | Cloud Analyzer Decision                              |
+| `/ml`             | ML anomaly decision                                  |
+| `/remediation`    | Safe remediation status                              |
+| `/monitoring`     | Prometheus, Node Exporter, Blackbox and SNMP metrics |
+| `/validation`     | Validation domains and report previews               |
+| `/infrastructure` | FRR and OVS node table                               |
+| `/services`       | Validated services                                   |
+
+The dashboard displays:
 
 ```text
-Isolation Forest
+global validation status
+cloud analyzer decision
+risk score and recommended action
+ML anomaly signal
+safe remediation status
+Prometheus target health
+host resource usage
+Blackbox service probes
+SNMP per-device interface status
+SNMP interface counters
+validation report domains
+infrastructure node matrix
+validated services
 ```
 
-It is an unsupervised model, which means it can detect unusual behavior without requiring labeled attack data.
-
-The ML pipeline performs the following steps:
-
-```text
-Prometheus query_range
-      ↓
-Raw historical metric windows
-      ↓
-Feature dataset CSV
-      ↓
-Isolation Forest model
-      ↓
-ML decision
-```
-
-The ML collector reads historical Prometheus metrics and writes raw metric files under:
-
-```text
-cloud/analyzer/ml/data/raw/latest/
-```
-
-The feature builder creates:
-
-```text
-cloud/analyzer/ml/data/features/latest_features.csv
-```
-
-The model is stored persistently under:
-
-```text
-/var/lib/pfe-dashboard/ml/models/
-```
-
-Important model files:
-
-```text
-isolation_forest.joblib
-feature_columns.json
-training_metadata.json
-```
-
-The ML decision output is stored under:
-
-```text
-cloud/analyzer/ml/outputs/
-```
-
-Typical ML output files:
-
-```text
-ml-decision.json
-ml-scores.csv
-```
-
-Jenkins uploads ML artifacts to S3:
-
-```text
-ml-datasets/<build-label>/
-ml-results/<build-label>/
-ml-models/latest/
-latest/ml-dataset/
-latest/ml/
-```
-
-The ML layer is advisory. It can detect weak or suspicious signals, but it cannot directly trigger infrastructure-changing remediation.
-
----
-
-## 10. Hybrid Final Decision
-
-After the rule-based analyzer and ML analyzer finish, Jenkins runs the decision merger.
-
-The merger consumes:
-
-```text
-cloud/analyzer/outputs/<build-label>/decision.json
-cloud/analyzer/ml/outputs/ml-decision.json
-```
-
-and produces:
-
-```text
-final-decision.json
-final-decision-report.txt
-```
-
-The final decision includes:
-
-* Classification
-* Final status
-* Final severity
-* Final risk score
-* Confidence
-* Recommended action
-* Whether the rule analyzer detected an anomaly
-* Whether ML detected an anomaly
-* Whether ML produced only a suspicious signal
-* Whether remediation is allowed
-* The reason for the decision
-
-The safety policy is:
-
-```text
-Rule normal + ML weak signal = human review
-Rule anomaly only = explainable anomaly
-Rule anomaly + ML anomaly = strongest confirmed case
-ML-only anomaly = advisory, no automatic infrastructure change
-```
-
-This design avoids blindly trusting the ML model.
-
----
-
-## 11. Safe Remediation Layer
-
-The remediation layer consumes the final hybrid decision.
-
-It reads:
-
-```text
-cloud/analyzer/outputs/<build-label>/final-decision.json
-```
-
-and produces:
-
-```text
-remediation-plan.json
-remediation-report.txt
-```
-
-The remediation system is controlled by an allowlist:
-
-```text
-cloud/analyzer/remediation/safe_actions.json
-```
-
-The runner is:
-
-```text
-cloud/analyzer/remediation/run_safe_remediation.py
-```
-
-Supported modes:
-
-```text
-plan
-apply
-```
-
-Plan mode is the default. It does not execute commands. It only explains what action would be selected.
-
-Apply mode requires explicit confirmation:
-
-```text
-REMEDIATION_MODE=apply
-CONFIRM_APPLY=true
-```
-
-Infrastructure-changing actions are only allowed if:
-
-```text
-remediation_allowed = true
-```
-
-The remediation layer supports safe actions such as:
-
-```text
-no_action
-collect_host_diagnostics
-collect_network_diagnostics
-refresh_monitoring_snapshot
-run_validation_gate
-restart_dmz_web
-restart_dmz_dns
-restart_dmz_services
-```
-
-Diagnostic actions do not modify infrastructure. Restart actions are restricted and only applied when the final decision allows remediation.
-
-Jenkins uploads remediation outputs to:
-
-```text
-remediation-results/<build-label>/
-anomaly-results/<build-label>/remediation/
-latest/remediation/
-```
-
-The latest remediation output is synchronized to:
-
-```text
-/var/lib/pfe-dashboard/remediation/latest/
-```
-
----
-
-## 12. AWS S3 Artifact Structure
-
-AWS S3 is the durable source of truth for generated platform outputs.
-
-The bucket stores both historical archives and latest dashboard-ready files.
-
-Historical folders:
-
-```text
-validation-artifacts/<build-label>/
-metrics-snapshots/<build-label>/
-processed-summaries/<build-label>/
-anomaly-results/<build-label>/
-ml-datasets/<build-label>/
-ml-results/<build-label>/
-remediation-results/<build-label>/
-```
-
-Latest folders:
-
-```text
-latest/validation-artifacts/
-latest/metrics/
-latest/analyzer/
-latest/ml/
-latest/ml-dataset/
-latest/remediation/
-```
-
-The difference is:
-
-```text
-<folder>/<build-label>/ = historical archive for one Jenkins build
-latest/<folder>/        = latest state used by the dashboard
-```
-
-This allows both traceability and real-time visualization.
-
----
-
-## 13. Flask Dashboard
-
-The Flask dashboard is the local web interface used to present the latest platform state.
-
-It reads from:
+The dashboard reads from:
 
 ```text
 /var/lib/pfe-dashboard/
 ```
 
-The dashboard displays:
-
-* Validation report status
-* Rule-based analyzer decision
-* Prometheus monitoring snapshot summary
-* ML anomaly decision
-* Final hybrid decision
-* Safe remediation plan/apply output
-* Infrastructure nodes
-* Validated services
-
-Recommended dashboard routes:
+## Repository Structure
 
 ```text
-/                 Overview
-/analyzer         Rule analyzer and final hybrid decision
-/ml               ML Isolation Forest decision
-/remediation      Safe remediation plan/apply output
-/monitoring       Prometheus metrics snapshot
-/validation       Validation reports
-/infrastructure   FRR and OVS infrastructure nodes
-/services         Validated services
+.
+├── ansible/
+│   ├── group_vars/
+│   ├── host_vars/
+│   ├── inventory/
+│   ├── playbooks/
+│   ├── roles/
+│   └── ansible.cfg
+├── ci-cd/
+│   ├── github-actions-jenkins-bridge.md
+│   ├── trigger-jenkins-pfe.example.sh
+│   ├── jenkins-netrc.example
+│   └── gha-runner-sudoers.example
+├── cloud/
+│   ├── analyzer/
+│   ├── scripts/
+│   ├── terraform/
+│   └── tunnel/
+├── dashboard/
+│   ├── app.py
+│   ├── config.py
+│   ├── dto/
+│   ├── repository/
+│   ├── service/
+│   ├── templates/
+│   ├── web/
+│   └── static/
+├── docker/
+│   ├── dns/
+│   ├── frr-ssh/
+│   ├── ovs-ssh/
+│   └── web-nginx/
+├── frr/
+│   ├── env/
+│   ├── interfaces/
+│   ├── routing/
+│   └── snmp/
+├── gns3/
+│   ├── node-mapping.md
+│   ├── startup-order.md
+│   └── scripts/
+├── hosts/
+├── management/
+├── monitoring/
+│   ├── prometheus/
+│   ├── blackbox/
+│   ├── snmp/
+│   ├── grafana/
+│   └── scripts/
+├── ovs/
+│   ├── access/
+│   ├── distribution/
+│   ├── dmz/
+│   ├── management/
+│   └── snmp/
+├── security/
+├── scripts/
+├── tests/
+└── secrets/
+    └── ospf.env.example
 ```
 
-The dashboard is a visualization layer only. It does not configure the network and does not execute remediation commands. All actions are executed through Jenkins and controlled scripts.
+## Common Commands
 
----
+### Terraform
 
-## 14. Example Build Result
+From the DevOps VM:
 
-An example Jenkins build produced the following result:
+```bash
+cd cloud/terraform/environments/dev
 
-```text
-Rule analyzer:
-  status = normal
-  risk_score = 8/100
-  severity = low
-  recommended_action = no_action
-
-ML analyzer:
-  status = weak_signal
-  risk_score = 49/100
-  severity = low
-  prediction = normal latest sample, but suspicious window
-
-Final decision:
-  classification = ml_suspicious_signal
-  final_status = anomalous
-  final_severity = medium
-  final_risk_score = 49/100
-  confidence = low
-  remediation_allowed = false
-  remediation_mode = human_review_required
+terraform init
+terraform fmt -recursive ../..
+terraform validate
+terraform plan
 ```
 
-Interpretation:
+To apply the cloud baseline or enabled tunnel resources:
 
-The infrastructure was not considered broken by the deterministic analyzer. The ML model detected unusual behavior compared to its learned baseline, mainly around CPU and traffic metrics. Because the anomaly was ML-only and not confirmed by the rule-based analyzer, the platform blocked automatic infrastructure remediation and required human review.
-
-The remediation runner selected:
-
-```text
-collect_host_diagnostics
+```bash
+terraform plan -out=tfplan
+terraform apply tfplan
 ```
 
-but only in plan mode. No commands were executed.
+To inspect deployed identifiers:
 
-This behavior proves the safety design of the platform.
-
----
-
-## 15. Human Review Scenario
-
-When the platform produces an ML-only suspicious signal, a human operator should not immediately restart services or modify the network.
-
-The review process is:
-
-```text
-1. Open final-decision.json
-2. Check whether rule_anomalous is true or false
-3. Check ML suspicious features
-4. Review Grafana metric evidence
-5. Run diagnostic remediation in plan/apply mode if needed
-6. Decide whether the signal is normal activity or a real issue
-7. Approve a predefined safe action only if the issue is confirmed
+```bash
+terraform output
 ```
 
-If the signal is caused by normal Jenkins activity, S3 upload, ML training, or temporary load, the operator closes the event as:
+### WireGuard Tunnel Validation
 
-```text
-No corrective action
-Monitor next window
+From the DevOps VM:
+
+```bash
+sudo wg show
+ping -c 3 10.255.0.1
+
+cd cloud/terraform/environments/dev
+ping -c 3 "$(terraform output -raw monitoring_private_ip)"
+ssh -i ~/.ssh/pfe-aws-tunnel ec2-user@"$(terraform output -raw monitoring_private_ip)"
 ```
 
-If a real service or network issue is confirmed, the operator can approve a safe predefined remediation action through Jenkins.
+### Dashboard
 
----
+From the repository root:
 
-## 16. Security and Safety Controls
+```bash
+python3 -m venv dashboard/.venv
+source dashboard/.venv/bin/activate
 
-The platform includes several safety controls:
+python -m pip install --upgrade pip
+python -m pip install -r dashboard/requirements.txt
 
-* Jenkins is not exposed directly to the Internet.
-* GitHub Actions self-hosted runner only triggers Jenkins locally.
-* Jenkins uses credentials instead of hardcoded secrets.
-* Docker builds are delegated to the GNS3 host through SSH.
-* S3 bucket name and AWS credentials are passed through Jenkins parameters/credentials.
-* ML cannot execute arbitrary commands.
-* Remediation actions are allowlisted.
-* Apply mode requires explicit confirmation.
-* Infrastructure-changing remediation requires rule-based confirmation.
-* Generated outputs are stored in S3, not committed to GitHub.
-* The dashboard is read-only.
-
-These controls make the project closer to an enterprise automation workflow while remaining safe for a student lab.
-
----
-
-## 17. Git Tracking Policy
-
-GitHub should contain:
-
-```text
-Jenkinsfile
-Ansible playbooks
-Monitoring configuration
-Grafana dashboard JSON files
-Cloud analyzer scripts
-ML analyzer scripts
-Safe remediation scripts
-Flask dashboard source code
-Documentation
-Example configuration files
+python dashboard/app.py
 ```
 
-GitHub should not contain:
+Then open:
 
 ```text
+http://localhost:5050
+```
+
+### SNMP Validation
+
+Test Prometheus SNMP target health:
+
+```bash
+curl -fsS --get "http://localhost:9090/api/v1/query" \
+  --data-urlencode 'query=up{job="snmp-network-devices"}' | python3 -m json.tool
+```
+
+### Metrics Snapshot
+
+Export a Prometheus metrics snapshot:
+
+```bash
+./monitoring/scripts/export-prometheus-snapshot.sh
+```
+
+### Analyzer
+
+Run the analyzer locally:
+
+```bash
+python3 cloud/analyzer/analyze_validation_artifacts.py \
+  --input-dir /var/lib/pfe-dashboard/outputs \
+  --metrics-dir monitoring/outputs/latest \
+  --output-dir cloud/analyzer/outputs \
+  --build-label local-test
+```
+
+Check outputs:
+
+```bash
+cat cloud/analyzer/outputs/decision.json | python3 -m json.tool
+cat cloud/analyzer/outputs/analysis-report.txt
+```
+
+## Generated Files Policy
+
+Generated outputs, secrets and local state must not be committed.
+
+Do not commit:
+
+```text
+ansible/outputs/
+monitoring/outputs/
+cloud/analyzer/outputs/
+cloud/analyzer/ml/data/
+cloud/analyzer/ml/models/
+cloud/analyzer/ml/outputs/
+monitoring/snmp/snmp-auth.local.yml
+frr/snmp/env/frr-routers.snmp.env
+ovs/snmp/env/ovs-switches.snmp.env
+/etc/prometheus/snmp.yml
+terraform.tfvars
+terraform.tfstate
+terraform.tfstate.backup
+tfplan
+*.tfplan
+.terraform/
+private SSH keys
+WireGuard private keys
+real wg0.conf files
 AWS credentials
-SSH private keys
-.env files
-Terraform state files
-Generated Ansible reports
-Generated Prometheus snapshots
-Generated ML datasets
-Generated ML models
-Generated analyzer outputs
-Generated remediation outputs
+GitHub tokens
 ```
 
-Recommended generated-output locations:
+Safe files to commit:
 
 ```text
-AWS S3                       = durable artifact storage
-/var/lib/pfe-dashboard       = latest dashboard cache
-Jenkins workspace            = temporary execution area
+source code
+Terraform modules
+safe examples
+README files
+template files
+.tftpl user-data templates without secrets
+.example files
 ```
 
----
+Only safe source code, templates, scripts, examples and documentation are versioned.
 
-## 18. Repository Cleanup Checklist
+## Current Principle
 
-Before closing this phase, verify that the following files are committed:
+The production topology remains the validation target.
+
+The OOB network remains the automation and monitoring control path.
 
 ```text
-Jenkinsfile
+Production topology:
+  VLANs, OSPF, DMZ, NAT, firewall rules and service behavior.
 
-cloud/analyzer/ml/README.md
-cloud/analyzer/ml/features.json
-cloud/analyzer/ml/collect_prometheus_window.py
-cloud/analyzer/ml/build_feature_dataset.py
-cloud/analyzer/ml/train_isolation_forest.py
-cloud/analyzer/ml/predict_anomaly.py
-cloud/analyzer/ml/merge_ml_decision.py
-cloud/analyzer/ml/requirements.txt
+OOB control plane:
+  SSH, Ansible, Jenkins, Prometheus, SNMP Exporter and dashboard synchronization.
 
-cloud/analyzer/remediation/README.md
-cloud/analyzer/remediation/safe_actions.json
-cloud/analyzer/remediation/run_safe_remediation.py
-
-cloud/scripts/sync-dashboard-cache-from-s3.sh
-cloud/scripts/upload-prometheus-snapshot-s3.sh
-cloud/scripts/upload-validation-artifacts-s3.sh
-
-dashboard/config.py
-dashboard/extensions.py
-dashboard/dto/dashboard_dto.py
-dashboard/service/dashboard_service.py
-dashboard/service/runtime_artifact_service.py
-dashboard/web/dashboard_controller.py
-dashboard/web/api_controller.py
-dashboard/templates/base.html
-dashboard/templates/pages/overview.html
-dashboard/templates/pages/analyzer.html
-dashboard/templates/pages/ml.html
-dashboard/templates/pages/remediation.html
-dashboard/templates/pages/monitoring.html
-dashboard/templates/pages/validation.html
-dashboard/templates/pages/infrastructure.html
-dashboard/templates/pages/services.html
-dashboard/static/style.css
-dashboard/README.md
-
-monitoring/grafana/dashboards/pfe-anomaly-detection-demo.json
-monitoring/grafana/dashboards/pfe-local-monitoring-overview.json
-monitoring/grafana/dashboards/pfe-network-devices-interfaces.json
-monitoring/grafana/provisioning/dashboards/pfe-dashboards.yml
-monitoring/grafana/provisioning/datasources/prometheus.yml
+Hybrid cloud extension:
+  EC2 WireGuard tunnel gateway, private monitoring EC2 and AWS S3 artifact storage.
 ```
 
-Files that especially need to be checked because they were added late:
+Validation reports, metrics snapshots, analyzer decisions, ML outputs and remediation plans are generated by Jenkins, stored in S3 and visualized through the Flask dashboard.
 
-```text
-dashboard/templates/pages/ml.html
-dashboard/templates/pages/remediation.html
-dashboard/README.md
-cloud/scripts/README.md
-monitoring/grafana/dashboards/pfe-anomaly-detection-demo.json
-```
-
----
-
-## 19. Final Summary
-
-The final platform demonstrates a complete DevOps, Cloud and AI-based network automation workflow.
-
-It validates the local GNS3 topology using Ansible, exports Prometheus monitoring evidence, stores generated artifacts in AWS S3, applies a rule-based anomaly analyzer, extends detection with an Isolation Forest ML model, merges both decisions into a controlled final decision, and prepares safe remediation actions through Jenkins.
-
-The project remains safe because remediation is not blindly automated. ML is treated as an advisory signal, while the rule-based analyzer remains the deterministic safety layer. Infrastructure-changing actions require both an explainable anomaly and explicit confirmation.
-
-This makes the platform suitable for a master-level PFE because it combines:
-
-```text
-Network virtualization
-DevOps automation
-Cloud artifact storage
-Monitoring and observability
-Machine-learning anomaly detection
-Controlled remediation
-Dashboard visualization
-Security and safety controls
-```
+The first EC2-based tunnel is validated. The next implementation step is to integrate the GNS3 EdgeRouter-VPNGateway route toward the local WireGuard endpoint and then deploy cloud-side monitoring services on the private monitoring EC2.

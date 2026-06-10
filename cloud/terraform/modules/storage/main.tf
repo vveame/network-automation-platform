@@ -131,7 +131,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "artifacts" {
       days_after_initiation = 1
     }
   }
-  
+
   rule {
     id     = "expire-old-latest-validation-artifact-versions"
     status = "Enabled"

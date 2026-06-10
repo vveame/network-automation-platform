@@ -14,8 +14,31 @@ variable "vpc_cidr" {
 }
 
 variable "admin_allowed_cidr" {
-  description = "Public CIDR allowed to access cloud admin services such as SSH."
+  description = "Public CIDR allowed to access SSH on the tunnel gateway. Use a /32."
   type        = string
+}
+
+variable "wireguard_allowed_cidr" {
+  description = "CIDR allowed to reach WireGuard UDP on the tunnel gateway."
+  type        = string
+}
+
+variable "wireguard_port" {
+  description = "UDP port used by the public EC2 tunnel gateway."
+  type        = number
+  default     = 51820
+}
+
+variable "wireguard_tunnel_cidr" {
+  description = "CIDR of the WireGuard tunnel network."
+  type        = string
+  default     = "10.255.0.0/30"
+}
+
+variable "onprem_cidr_blocks" {
+  description = "Local/on-premises CIDR blocks reachable through the EC2 tunnel."
+  type        = list(string)
+  default     = []
 }
 
 variable "common_tags" {

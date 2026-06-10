@@ -59,19 +59,61 @@ variable "monitoring_subnet_cidr" {
 }
 
 variable "admin_allowed_cidr" {
-  description = "Public CIDR allowed to access cloud admin services such as SSH. Use a /32 for a single admin public IP."
+  description = "Public CIDR allowed to access SSH on the tunnel gateway. Use a /32."
   type        = string
   default     = "0.0.0.0/32"
 }
 
+variable "wireguard_allowed_cidr" {
+  description = "CIDR allowed to reach WireGuard UDP on the tunnel gateway. Use 0.0.0.0/0 if the local public IP is unstable."
+  type        = string
+  default     = "0.0.0.0/0"
+}
+
 variable "enable_compute" {
-  description = "Whether to create EC2 placeholder instances. Disabled by default to avoid unnecessary costs."
+  description = "Legacy compute switch. Prefer the separate enable_tunnel_gateway and enable_monitoring_instance variables."
   type        = bool
   default     = false
 }
 
+variable "enable_tunnel_gateway" {
+  description = "Create the public EC2 WireGuard tunnel gateway. Disabled by default to avoid cost."
+  type        = bool
+  default     = false
+}
+
+variable "enable_monitoring_instance" {
+  description = "Create the private cloud monitoring EC2 instance. Disabled by default to avoid cost."
+  type        = bool
+  default     = false
+}
+
+variable "enable_ai_instance" {
+  description = "Create the optional private AI EC2 instance. Disabled by default to avoid cost."
+  type        = bool
+  default     = false
+}
+
+variable "enable_tunnel_gateway_nat_for_monitoring" {
+  description = "Use the tunnel gateway as a low-cost NAT/routing instance for monitoring subnet outbound access."
+  type        = bool
+  default     = true
+}
+
+variable "wireguard_tunnel_cidr" {
+  description = "Small tunnel CIDR used by WireGuard between AWS and the local edge path."
+  type        = string
+  default     = "10.255.0.0/30"
+}
+
+variable "wireguard_port" {
+  description = "WireGuard UDP listen port on the EC2 tunnel gateway."
+  type        = number
+  default     = 51820
+}
+
 variable "compute_instance_type" {
-  description = "EC2 instance type used for placeholder instances."
+  description = "EC2 instance type used for cloud lab instances."
   type        = string
   default     = "t3.micro"
 }
@@ -101,7 +143,7 @@ variable "onprem_public_ip" {
 }
 
 variable "onprem_cidr_blocks" {
-  description = "On-premises CIDR blocks reachable through the VPN."
+  description = "Local/on-premises CIDR blocks reachable through the EC2 tunnel or future VPN."
   type        = list(string)
   default     = ["10.200.0.0/24", "172.16.0.0/16"]
 }
@@ -116,6 +158,12 @@ variable "aws_bgp_asn" {
   description = "AWS side ASN for the virtual private gateway."
   type        = number
   default     = 64512
+}
+
+variable "storage_bucket_name_override" {
+  description = "Optional custom S3 bucket name. If null, the module generates a bucket name."
+  type        = string
+  default     = null
 }
 
 variable "validation_artifact_retention_days" {

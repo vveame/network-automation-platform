@@ -1,6 +1,5 @@
 module "network" {
-  source = "../../modules/network"
-
+  source                 = "../../modules/network"
   name_prefix            = local.name_prefix
   vpc_cidr               = var.vpc_cidr
   public_subnet_cidr     = var.public_subnet_cidr
@@ -11,18 +10,20 @@ module "network" {
 }
 
 module "security" {
-  source = "../../modules/security"
-
-  name_prefix        = local.name_prefix
-  vpc_id             = module.network.vpc_id
-  vpc_cidr           = module.network.vpc_cidr
-  admin_allowed_cidr = var.admin_allowed_cidr
-  common_tags        = local.common_tags
+  source                 = "../../modules/security"
+  name_prefix            = local.name_prefix
+  vpc_id                 = module.network.vpc_id
+  vpc_cidr               = module.network.vpc_cidr
+  admin_allowed_cidr     = var.admin_allowed_cidr
+  wireguard_allowed_cidr = var.wireguard_allowed_cidr
+  wireguard_port         = var.wireguard_port
+  wireguard_tunnel_cidr  = var.wireguard_tunnel_cidr
+  onprem_cidr_blocks     = var.onprem_cidr_blocks
+  common_tags            = local.common_tags
 }
 
 module "storage" {
-  source = "../../modules/storage"
-
+  source                             = "../../modules/storage"
   name_prefix                        = local.name_prefix
   bucket_name_override               = var.storage_bucket_name_override
   validation_artifact_retention_days = var.validation_artifact_retention_days
@@ -33,24 +34,32 @@ module "storage" {
 }
 
 module "compute" {
-  source = "../../modules/compute"
-
-  enable_compute               = var.enable_compute
-  name_prefix                  = local.name_prefix
-  ami_ssm_parameter            = var.compute_ami_ssm_parameter
-  instance_type                = var.compute_instance_type
-  admin_public_key             = var.admin_public_key
-  public_subnet_id             = module.network.public_subnet_id
-  monitoring_subnet_id         = module.network.monitoring_subnet_id
-  admin_security_group_id      = module.security.admin_security_group_id
-  monitoring_security_group_id = module.security.monitoring_security_group_id
-  ai_security_group_id         = module.security.ai_security_group_id
-  common_tags                  = local.common_tags
+  source                                   = "../../modules/compute"
+  enable_compute                           = var.enable_compute
+  enable_tunnel_gateway                    = var.enable_tunnel_gateway
+  enable_monitoring_instance               = var.enable_monitoring_instance
+  enable_ai_instance                       = var.enable_ai_instance
+  enable_tunnel_gateway_nat_for_monitoring = var.enable_tunnel_gateway_nat_for_monitoring
+  name_prefix                              = local.name_prefix
+  ami_ssm_parameter                        = var.compute_ami_ssm_parameter
+  instance_type                            = var.compute_instance_type
+  admin_public_key                         = var.admin_public_key
+  public_subnet_id                         = module.network.public_subnet_id
+  monitoring_subnet_id                     = module.network.monitoring_subnet_id
+  private_route_table_id                   = module.network.private_route_table_id
+  monitoring_route_table_id                = module.network.monitoring_route_table_id
+  vpc_cidr                                 = module.network.vpc_cidr
+  wireguard_port                           = var.wireguard_port
+  monitoring_subnet_cidr                   = var.monitoring_subnet_cidr
+  onprem_cidr_blocks                       = var.onprem_cidr_blocks
+  admin_security_group_id                  = module.security.admin_security_group_id
+  monitoring_security_group_id             = module.security.monitoring_security_group_id
+  ai_security_group_id                     = module.security.ai_security_group_id
+  common_tags                              = local.common_tags
 }
 
 module "vpn" {
-  source = "../../modules/vpn"
-
+  source                    = "../../modules/vpn"
   enable_vpn                = var.enable_vpn
   name_prefix               = local.name_prefix
   vpc_id                    = module.network.vpc_id

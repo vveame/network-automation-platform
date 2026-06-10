@@ -1,0 +1,57 @@
+#!/bin/bash
+set -euxo pipefail
+
+hostnamectl set-hostname ${name_prefix}-tunnel-gateway
+
+cat > /etc/motd <<'MOTD'
+PFE EC2 Tunnel Gateway
+Role: public WireGuard endpoint + AWS VPC routing/NAT gateway for the private monitoring subnet.
+Managed by Terraform.
+
+WireGuard private keys are intentionally NOT stored in Terraform.
+MOTD
+
+cat > /etc/sysctl.d/99-pfe-edge-tunnel.conf <<'SYSCTL'
+net.ipv4.ip_forward = 1
+SYSCTL
+
+sysctl --system
+
+dnf update -y || true
+dnf install -y wireguard-tools iptables-services tcpdump || dnf install -y iptables-services tcpdump || true
+systemctl enable --now iptables || true
+
+DEFAULT_IFACE="$(ip route show default | awk '{print $5; exit}')"
+
+# Allow SSH for initial administration. The AWS security group controls public exposure.
+iptables -C INPUT -p tcp --dport 22 -j ACCEPT 2>/dev/null || iptables -I INPUT 5 -p tcp --dport 22 -j ACCEPT
+
+# Allow WireGuard UDP before any default REJECT rule.
+iptables -C INPUT -p udp --dport ${wireguard_port} -j ACCEPT 2>/dev/null || iptables -I INPUT 5 -p udp --dport ${wireguard_port} -j ACCEPT
+
+# Allow forwarding between WireGuard and the AWS VPC before any default REJECT rule.
+iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -C FORWARD -i wg0 -d ${vpc_cidr} -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -d ${vpc_cidr} -j ACCEPT
+iptables -C FORWARD -o wg0 -s ${vpc_cidr} -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -s ${vpc_cidr} -j ACCEPT
+
+# Optional low-cost NAT for private monitoring subnet outbound access.
+if [ -n "$${DEFAULT_IFACE}" ]; then
+  iptables -t nat -C POSTROUTING -s ${monitoring_subnet_cidr} -o "$${DEFAULT_IFACE}" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s ${monitoring_subnet_cidr} -o "$${DEFAULT_IFACE}" -j MASQUERADE
+  iptables -C FORWARD -s ${monitoring_subnet_cidr} -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -s ${monitoring_subnet_cidr} -j ACCEPT
+  iptables -C FORWARD -d ${monitoring_subnet_cidr} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -d ${monitoring_subnet_cidr} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+fi
+
+mkdir -p /etc/wireguard
+chmod 700 /etc/wireguard
+
+cat > /etc/wireguard/README-PFE.txt <<'README'
+WireGuard is prepared but no private keys are stored by Terraform.
+Create /etc/wireguard/wg0.conf manually from cloud/tunnel/edge-router-path/examples/cloud-wg0.conf.example.
+
+The tunnel was validated with:
+- AWS tunnel IP: 10.255.0.1/30
+- Local tunnel IP: 10.255.0.2/30
+- AWS VPC: 10.50.0.0/16
+README
+
+service iptables save || iptables-save > /etc/sysconfig/iptables || true

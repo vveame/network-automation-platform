@@ -1,0 +1,23 @@
+# Local tunnel endpoint: /etc/wireguard/wg0.conf
+# This can run first on the DevOps VM or GNS3 host.
+# The GNS3 EdgeRouter-VPNGateway must route AWS VPC traffic toward this local tunnel endpoint.
+# Do not commit real private keys.
+
+[Interface]
+Address = 10.255.0.2/30
+PrivateKey = LOCAL_PRIVATE_KEY
+
+PostUp = sysctl -w net.ipv4.ip_forward=1
+
+# Optional lab NAT if the local GNS3 devices do not yet know the return path to AWS.
+# Replace LOCAL_LAB_IFACE with the interface that reaches 10.200.0.0/24 or the GNS3 lab.
+# PostUp = iptables -t nat -A POSTROUTING -s 10.50.0.0/16 -d 10.200.0.0/24 -o LOCAL_LAB_IFACE -j MASQUERADE
+# PostDown = iptables -t nat -D POSTROUTING -s 10.50.0.0/16 -d 10.200.0.0/24 -o LOCAL_LAB_IFACE -j MASQUERADE
+
+[Peer]
+PublicKey = CLOUD_PUBLIC_KEY
+Endpoint = TUNNEL_GATEWAY_PUBLIC_IP:51820
+
+# Split tunnel: only AWS VPC and cloud tunnel IP go through WireGuard.
+AllowedIPs = 10.255.0.1/32, 10.50.0.0/16
+PersistentKeepalive = 25
