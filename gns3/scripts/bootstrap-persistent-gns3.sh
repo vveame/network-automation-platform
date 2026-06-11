@@ -227,7 +227,6 @@ deploy_frr() {
   install_file "$REPO/$FRR_CONF" "$FRR_DIR/frr.conf" "644"
 
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
-  install_cloud_monitoring_access "$LOCAL_DIR"
   install_file "$REPO/security/ospf-auth.sh" "$LOCAL_DIR/security/ospf-auth.sh" "755"
 
   if [ -f "$REPO/secrets/ospf.env" ]; then
@@ -269,7 +268,6 @@ deploy_ovs() {
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
   install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
-  install_cloud_monitoring_access "$LOCAL_DIR"
 
   install_ovs_snmp "$LOCAL_DIR" "$SNMP_ENV"
 }
@@ -300,7 +298,6 @@ deploy_dmz_ovs_persistent() {
   install_file "$REPO/$OVS_CONFIG" "$LOCAL_DIR/ovs-config.sh" "755"
   install_file "$REPO/$OVS_MGMT" "$LOCAL_DIR/ovs-mgmt.sh" "755"
   install_file "$REPO/security/admin-access-control.sh" "$LOCAL_DIR/security/admin-access-control.sh" "755"
-  install_cloud_monitoring_access "$LOCAL_DIR"
 
   install_ovs_snmp "$LOCAL_DIR" "$SNMP_ENV"
 }

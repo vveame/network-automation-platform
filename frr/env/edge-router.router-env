@@ -2,17 +2,11 @@ ROUTER_NAME=edge-router
 ROUTER_HOSTNAME=EdgeRouter-VPNGateway
 ROUTER_ROLE=edge
 
-# Disabled for the validated EC2 WireGuard tunnel architecture.
-#
-# EdgeRouter no longer uses eth3/203.0.113.1 as the internet/cloud path.
-# The current validated underlay is:
-#
-#   EdgeRouter eth4 10.200.0.30
-#     -> DevOps OOB 10.200.0.10
-#     -> DevOps NAT underlay
-#     -> AWS EC2 tunnel gateway UDP/51820
-#
-# Keep security/nat-control.sh in the repo as a legacy/future data-plane NAT
-# script, but do not run it automatically in the current EdgeRouter tunnel setup.
-ENABLE_NAT=false
+# EdgeRouter-VPNGateway direct underlay:
+# eth3 is connected to GNS3 NAT and receives internet via DHCP.
+# eth4 remains OOB/management toward DevOps.
+ENABLE_NAT=true
+UNDERLAY_MODE=direct
+WAN_IF=eth3
 EXTERNAL_IFACE=eth3
+ENABLE_DHCP=true

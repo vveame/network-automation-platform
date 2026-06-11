@@ -737,7 +737,6 @@ pipeline {
                 dir("${ANSIBLE_DIR}") {
                     sh '''
                         set -e
-                        chmod +x scripts/jenkins/generate-html-summary.py
                         python3 ../scripts/jenkins/generate-html-summary.py outputs
                     '''
                 }

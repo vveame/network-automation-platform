@@ -114,6 +114,34 @@ else
   echo "[BOOT] No /etc/local/oob-mgmt.sh found, skipping OOB management."
 fi
 
+# 3A. Start optional EdgeRouter NAT control.
+
+# This only runs on EdgeRouter-VPNGateway when the persistent script exists.
+
+if [ -x /etc/local/security/nat-control.sh ]; then
+
+  echo "[BOOT] Starting optional EdgeRouter NAT control..."
+
+  /etc/local/security/nat-control.sh || echo "[BOOT][WARN] NAT control failed, continuing boot."
+
+fi
+
+
+
+# 3B. Start optional EdgeRouter WireGuard tunnel.
+
+# This only runs when /etc/local/wireguard/wg0.conf exists.
+
+if [ -x /start-wireguard.sh ]; then
+
+  echo "[BOOT] Starting optional WireGuard tunnel..."
+
+  /start-wireguard.sh || echo "[BOOT][WARN] WireGuard startup failed, continuing boot."
+
+fi
+
+
+
 # 4. Start FRR daemons
 
 echo "[BOOT] Starting FRR daemons..."
