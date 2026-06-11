@@ -318,7 +318,7 @@ def execute_action(
 
     if action == "refresh_monitoring_snapshot":
         code = run_command(
-            ["bash", "./monitoring/scripts/export-prometheus-snapshot.sh"],
+            ["bash", "./cloud/scripts/export-cloud-prometheus-snapshot.sh"],
             report_lines,
         )
         result["exit_codes"].append(code)

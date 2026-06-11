@@ -53,11 +53,11 @@ if [ ! -f "$VALIDATION_DIR/validation-summary.txt" ]; then
 fi
 
 echo "[INFO] Exporting cloud Prometheus metrics snapshot..."
-chmod +x monitoring/scripts/export-prometheus-snapshot.sh
+chmod +x cloud/scripts/export-cloud-prometheus-snapshot.sh
 
 PROMETHEUS_URL="$PROMETHEUS_URL" \
 OUTPUT_DIR="$METRICS_DIR" \
-./monitoring/scripts/export-prometheus-snapshot.sh
+./cloud/scripts/export-cloud-prometheus-snapshot.sh
 
 echo "[INFO] Uploading cloud metrics snapshot to S3..."
 aws s3 sync "$METRICS_DIR" \

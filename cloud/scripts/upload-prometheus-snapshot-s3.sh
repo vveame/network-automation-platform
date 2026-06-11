@@ -18,7 +18,7 @@ AWS_PROFILE="${AWS_PROFILE:-}"
 
 if [ ! -d "$METRICS_SNAPSHOT_DIR" ]; then
   echo "[ERROR] Metrics snapshot directory not found: $METRICS_SNAPSHOT_DIR"
-  echo "[INFO] Run monitoring/scripts/export-prometheus-snapshot.sh first."
+  echo "[INFO] Run cloud/scripts/export-cloud-prometheus-snapshot.sh first."
   exit 1
 fi
 

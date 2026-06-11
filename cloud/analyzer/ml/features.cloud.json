@@ -1,7 +1,7 @@
 {
   "description": "Cloud Prometheus query_range feature definitions for ML-based anomaly detection. This profile targets the AWS monitoring EC2 Prometheus instance through the hybrid tunnel.",
   "source_alignment": {
-    "instant_snapshot_script": "monitoring/scripts/export-prometheus-snapshot.sh",
+    "instant_snapshot_script": "cloud/scripts/export-cloud-prometheus-snapshot.sh",
     "rule_based_parser": "cloud/analyzer/parse_prometheus_metrics.py",
     "ml_collection_mode": "Prometheus /api/v1/query_range"
   },

@@ -1,18 +1,41 @@
 # Security Configuration
 
-This folder contains the versioned security scripts used in the GNS3 on-premises infrastructure.
+This folder contains the versioned security scripts used by the GNS3 local infrastructure.
+
+The security design separates:
+
+```text
+Production/data-plane security
+OOB management security
+Cloud monitoring access security
+Hybrid tunnel underlay and tunnel routing
+```
 
 ## Security Objectives
 
-The security design follows these principles:
+The security baseline follows these principles:
 
-- Administrative SSH access is limited to the dedicated DevOps server through the out-of-band management network.
-- OOB management traffic is separated from production/data-plane traffic.
-- User VLANs cannot initiate access to the in-band management VLAN.
-- The DMZ is isolated from internal networks except for explicit service rules.
-- OSPF routing exchanges are authenticated.
-- NAT is enabled only on the EdgeRouter external/cloud-facing interface.
-- Service nodes are validated through health checks instead of SSH.
+```text
+Administrative SSH access is limited to the DevOps OOB IP.
+OOB management traffic is separated from production traffic.
+User VLANs cannot initiate access to the in-band management VLAN.
+The DMZ is isolated from internal networks except explicit service rules.
+OSPF routing exchanges are authenticated.
+NAT is controlled on the EdgeRouter cloud-facing/WAN interface.
+Cloud monitoring access is explicitly allowed for the private AWS monitoring EC2.
+Service nodes are validated through health checks instead of SSH.
+```
+
+## Active Scripts
+
+| File                            | Applied On                       | Purpose                                                           |
+| ------------------------------- | -------------------------------- | ----------------------------------------------------------------- |
+| `admin-access-control.sh`       | FRR and OVS infrastructure nodes | Allows SSH/ICMP administration only from DevOps OOB IP            |
+| `management-vlan-protection.sh` | Distribution routers             | Protects VLAN 99 from user VLANs                                  |
+| `dmz-isolation.sh`              | EdgeRouter-VPNGateway            | Controls internal-to-DMZ and DMZ-to-internal flows                |
+| `nat-control.sh`                | EdgeRouter-VPNGateway            | Enables controlled NAT on the EdgeRouter direct WAN interface     |
+| `ospf-auth.sh`                  | FRR routers                      | Applies OSPF message-digest authentication                        |
+| `cloud-monitoring-access.sh`    | FRR and OVS OOB-managed nodes    | Allows AWS cloud Prometheus/SNMP access through the hybrid tunnel |
 
 ## Management Security Model
 
@@ -20,74 +43,98 @@ The final architecture uses two management concepts:
 
 ```text
 VLAN 99:
-  In-band management VLAN inside the simulated enterprise network
+  In-band management VLAN inside the simulated enterprise topology
 
 OOB 10.200.0.0/24:
   Dedicated DevOps automation and infrastructure control plane
 ```
 
-The OOB network is the primary SSH/Ansible/Jenkins control path.
+The OOB network is the primary SSH, Ansible, Jenkins and monitoring control path.
 
-The VLAN 99 network remains part of the production topology as an in-band management segment, but it is no longer the main DevOps automation path.
-
-## Active Scripts
-
-| File | Applied On | Purpose |
-|---|---|---|
-| `admin-access-control.sh` | All SSH-managed FRR and OVS infrastructure nodes | Allows SSH only from the DevOps OOB IP `10.200.0.10` |
-| `management-vlan-protection.sh` | `Dist-FRR-1`, `Dist-FRR-2` | Protects VLAN 99 from user VLANs |
-| `dmz-isolation.sh` | `EdgeRouter-VPNGateway` | Controls internal-to-DMZ and DMZ-to-internal production flows |
-| `nat-control.sh` | `EdgeRouter-VPNGateway` | Applies controlled NAT on the external/cloud-facing interface |
-| `ospf-auth.sh` | FRR routers | Applies OSPF message-digest authentication on production routing links |
-
-### Administrative Access Control
-
-The DevOps server is the only administrative SSH source:
+The DevOps OOB IP is:
 
 ```text
-DevOps OOB IP: 10.200.0.10
+10.200.0.10
 ```
 
-Allowed:
+The EdgeRouter OOB IP is:
 
 ```text
-10.200.0.10 -> managed infrastructure nodes TCP/22
-10.200.0.10 -> managed infrastructure nodes ICMP
+10.200.0.30
 ```
 
-Denied:
+## EdgeRouter NAT Control
+
+The final topology uses direct EdgeRouter internet underlay.
+
+The EdgeRouter interface model is:
 
 ```text
-Any other source -> managed infrastructure nodes TCP/22
+eth3  Direct WAN / GNS3 NAT / internet underlay
+eth4  OOB management / 10.200.0.30
+wg0   WireGuard tunnel to AWS
 ```
 
-`admin-access-control.sh` uses a dedicated PFE_ADMIN_INPUT chain to avoid duplicate rules when bootstrap scripts are re-run.
-
-The script allows ICMP from the DevOps OOB IP for readiness checks and troubleshooting.
-
-### Management VLAN Protection
-
-VLAN 99 remains the in-band management VLAN inside the production topology:
+`nat-control.sh` is responsible for:
 
 ```text
-192.168.99.0/24
+Bringing eth3 up
+Requesting DHCP on eth3
+Enabling IPv4 forwarding
+Installing idempotent NAT rules
+Installing idempotent forwarding rules
 ```
 
-Policy:
+It is installed persistently under:
 
-| Source | Destination | Action |
-|---|---|---|
-| VLAN 99 | FRR loopbacks `10.255.0.0/24` | Allow |
-| FRR loopbacks `10.255.0.0/24` | VLAN 99 | Allow |
-| VLAN 99 | VLAN 10 / VLAN 20 | Allow if needed for admin/testing |
-| VLAN 10 / VLAN 20 | VLAN 99 | Drop |
-| Established/related traffic | Any | Allow |
+```text
+/etc/local/security/nat-control.sh
+```
 
-`management-vlan-protection.sh` uses the PFE_MGMT_FORWARD chain to keep repeated bootstrap runs clean.
+and is called automatically by the FRR container entrypoint.
 
-The script does not drop ctstate INVALID traffic because the distribution routers can use ECMP/asymmetric routed paths, and conntrack can mark legitimate return traffic as invalid in this lab environment.
+The final model does not require DevOps NAT underlay.
 
-### DMZ Isolation
+## Cloud Monitoring Access
+
+`cloud-monitoring-access.sh` allows cloud Prometheus to scrape local SNMPv3 targets through the hybrid tunnel.
+
+Default sources:
+
+```text
+Primary cloud monitoring EC2: 10.50.30.154
+WireGuard gateway-side source: 10.255.0.1
+```
+
+Default AWS VPC:
+
+```text
+10.50.0.0/16
+```
+
+Default EdgeRouter OOB gateway:
+
+```text
+10.200.0.30
+```
+
+The script installs:
+
+```text
+Return route to AWS VPC through EdgeRouter
+ICMP allow rules from cloud monitoring sources
+UDP/1161 allow rules from cloud monitoring sources
+```
+
+This script is used by:
+
+```text
+scripts/devops/apply-cloud-monitoring-access-to-oob-nodes.sh
+gns3/scripts/bootstrap-persistent-gns3.sh
+FRR and OVS container entrypoints
+```
+
+## DMZ Isolation
 
 DMZ network:
 
@@ -95,54 +142,111 @@ DMZ network:
 172.16.50.0/24
 ```
 
-DMZ nodes:
+DMZ services:
 
-| Node | IP | Role |
-|---|---|---|
-| Web server  | `172.16.50.10` | HTTP service |
-| DNS server  | `172.16.50.20` | DNS service |
-| `DMZ-OVS-3` | `10.200.0.33`  | OOB-managed infrastructure switch |
+| Node       | IP           | Role                   |
+| ---------- | ------------ | ---------------------- |
+| Web server | 172.16.50.10 | HTTP service           |
+| DNS server | 172.16.50.20 | DNS service            |
+| DMZ-OVS-3  | 10.200.0.33  | OOB-managed DMZ switch |
 
-Allowed internal-to-DMZ production flows:
+Allowed internal-to-DMZ flows:
 
-| Source | Destination | Service |
-|---|---|---|
-| `192.168.0.0/16` | `172.16.50.10` | TCP/80, TCP/443 |
-| `192.168.0.0/16` | `172.16.50.20` | UDP/53, TCP/53 |
-
+```text
+192.168.0.0/16 -> 172.16.50.10 TCP/80, TCP/443
+192.168.0.0/16 -> 172.16.50.20 UDP/53, TCP/53
+```
 
 Denied:
 
 ```text
 DMZ -> internal networks by default
-Internal -> DMZ except explicit allowed services above
+Internal -> DMZ except explicit allowed services
 ```
 
-DMZ-OVS-3 is no longer managed through 172.16.50.3 via EdgeRouter firewall exceptions. It is managed through the OOB network using 10.200.0.33.
+DMZ infrastructure is managed through OOB, not through production DMZ exceptions.
 
-### FRR Loopbacks
+## Management VLAN Protection
 
-FRR routers still use loopback addresses advertised by OSPF for routing validation:
+VLAN 99 remains the in-band management VLAN inside the simulated topology.
 
-| Router | Loopback IP |
-|---| ---|
-| Core-FRR-1 | `10.255.0.11/32` |
-| Core-FRR-2 | `10.255.0.12/32` |
-| Dist-FRR-1 | `10.255.0.21/32` |
-| Dist-FRR-2 | `10.255.0.22/32` |
-| EdgeRouter-VPNGateway | `10.255.0.30/32` |
+```text
+VLAN 99: 192.168.99.0/24
+```
 
-These loopbacks are no longer the primary Ansible SSH path. Ansible uses the OOB IPs in 10.200.0.0/24.
+Policy:
 
-### NAT Control
+```text
+VLAN 99 -> FRR loopbacks: allowed
+FRR loopbacks -> VLAN 99: allowed
+VLAN 10 / VLAN 20 -> VLAN 99: denied
+Established/related traffic: allowed
+```
 
-NAT is applied only on the EdgeRouter external/cloud-facing interface.
+## OSPF Authentication
 
-| Source | NAT Interface  |
-|---|---|
-| `192.168.0.0/16` | Edge external interface |
-| `172.16.50.0/24` | Edge external interface |
+`ospf-auth.sh` applies OSPF message-digest authentication on FRR production routing links.
 
-### OSPF Authentication
+OSPF secrets are local-only and should be stored under:
 
-`ospf-auth.sh` applies message-digest authentication only on production routing links.
+```text
+secrets/ospf.env
+```
+
+Do not commit real OSPF secrets.
+
+## Administrative Access Control
+
+`admin-access-control.sh` restricts administrative access to the DevOps OOB IP.
+
+Allowed:
+
+```text
+10.200.0.10 -> managed nodes TCP/22
+10.200.0.10 -> managed nodes ICMP
+```
+
+Denied:
+
+```text
+Any other source -> managed nodes TCP/22
+```
+
+## Persistent Installation
+
+Security scripts are copied into GNS3 persistent node directories by:
+
+```text
+gns3/scripts/bootstrap-persistent-gns3.sh
+```
+
+Live repair can also be performed from DevOps using:
+
+```text
+scripts/devops/apply-cloud-monitoring-access-to-oob-nodes.sh
+scripts/devops/restore-full-hybrid-tunnel.sh
+```
+
+## Secret Policy
+
+Do not commit:
+
+```text
+secrets/ospf.env
+secrets/edge-router-wg0.conf.secret
+frr/wireguard/edge-underlay.env
+frr/wireguard/edge-router-wg0.conf
+SNMP auth local files
+AWS credentials
+private SSH keys
+WireGuard private keys
+```
+
+Safe to commit:
+
+```text
+.example files
+security scripts
+README files
+non-secret templates
+```
