@@ -1,205 +1,183 @@
----
-project_name: "pfe-onprem-devops-platform"
-lab_environment: "gns3-onprem-lab"
-
+project_name: pfe-onprem-devops-platform
+lab_environment: gns3-onprem-lab
 devops_server:
-  name: "devops-server"
-  role: "dedicated-automation-control-node"
-  oob_ip: "10.200.0.10"
-  management_ip: "10.200.0.10"
-  management_network: "10.200.0.0/24"
-
+  name: devops-server
+  role: dedicated-automation-control-node
+  oob_ip: 10.200.0.10
+  management_ip: 10.200.0.10
+  management_network: 10.200.0.0/24
 control_node:
-  type: "dedicated-ubuntu-vm"
-  internet_interface: "ens33"
-  management_interface: "ens34"
-  management_ip: "10.200.0.10"
-  management_network: "10.200.0.0/24"
-
+  type: dedicated-ubuntu-vm
+  internet_interface: ens33
+  management_interface: ens34
+  management_ip: 10.200.0.10
+  management_network: 10.200.0.0/24
 management_model:
-  primary_control_plane: "oob"
-  oob_network: "10.200.0.0/24"
-  inband_management_vlan: "192.168.99.0/24"
-  frr_loopback_prefix: "10.255.0.0/24"
-  note: "Ansible and Jenkins use OOB IPs. VLAN 99 and FRR loopbacks remain validation targets."
-
+  primary_control_plane: oob
+  oob_network: 10.200.0.0/24
+  inband_management_vlan: 192.168.99.0/24
+  frr_loopback_prefix: 10.255.0.0/24
+  note: Ansible and Jenkins use OOB IPs. VLAN 99 remains an in-band network validation
+    target, but access-ovs-6 eth1 is a legacy unused link.
 management_vlan:
   id: 99
-  subnet: "192.168.99.0/24"
-  gateway: "192.168.99.1"
-
+  subnet: 192.168.99.0/24
+  gateway: 192.168.99.1
 vlans:
   vlan10:
-    name: "users-vlan-10"
+    name: users-vlan-10
     id: 10
-    subnet: "192.168.10.0/24"
-    gateway: "192.168.10.1"
-
+    subnet: 192.168.10.0/24
+    gateway: 192.168.10.1
   vlan20:
-    name: "users-vlan-20"
+    name: users-vlan-20
     id: 20
-    subnet: "192.168.20.0/24"
-    gateway: "192.168.20.1"
-
+    subnet: 192.168.20.0/24
+    gateway: 192.168.20.1
   vlan99:
-    name: "inband-management-vlan"
+    name: inband-management-vlan
     id: 99
-    subnet: "192.168.99.0/24"
-    gateway: "192.168.99.1"
-
+    subnet: 192.168.99.0/24
+    gateway: 192.168.99.1
 oob_management:
-  network: "10.200.0.0/24"
-  devops_ip: "10.200.0.10"
+  network: 10.200.0.0/24
+  devops_ip: 10.200.0.10
   targets:
-    - name: "core-frr-1"
-      ip: "10.200.0.11"
-    - name: "core-frr-2"
-      ip: "10.200.0.12"
-    - name: "dist-frr-1"
-      ip: "10.200.0.21"
-    - name: "dist-frr-2"
-      ip: "10.200.0.22"
-    - name: "edge-router"
-      ip: "10.200.0.30"
-    - name: "dist-ovs-1"
-      ip: "10.200.0.31"
-    - name: "dist-ovs-2"
-      ip: "10.200.0.32"
-    - name: "dmz-ovs-3"
-      ip: "10.200.0.33"
-    - name: "access-ovs-4"
-      ip: "10.200.0.44"
-    - name: "access-ovs-5"
-      ip: "10.200.0.45"
-    - name: "access-ovs-6"
-      ip: "10.200.0.46"
-
+  - name: core-frr-1
+    ip: 10.200.0.11
+  - name: core-frr-2
+    ip: 10.200.0.12
+  - name: dist-frr-1
+    ip: 10.200.0.21
+  - name: dist-frr-2
+    ip: 10.200.0.22
+  - name: edge-router
+    ip: 10.200.0.30
+  - name: dist-ovs-1
+    ip: 10.200.0.31
+  - name: dist-ovs-2
+    ip: 10.200.0.32
+  - name: dmz-ovs-3
+    ip: 10.200.0.33
+  - name: access-ovs-4
+    ip: 10.200.0.44
+  - name: access-ovs-5
+    ip: 10.200.0.45
+  - name: access-ovs-6
+    ip: 10.200.0.46
 oob_management_targets:
-  - name: "core-frr-1"
-    ip: "10.200.0.11"
-  - name: "core-frr-2"
-    ip: "10.200.0.12"
-  - name: "dist-frr-1"
-    ip: "10.200.0.21"
-  - name: "dist-frr-2"
-    ip: "10.200.0.22"
-  - name: "edge-router"
-    ip: "10.200.0.30"
-  - name: "dist-ovs-1"
-    ip: "10.200.0.31"
-  - name: "dist-ovs-2"
-    ip: "10.200.0.32"
-  - name: "dmz-ovs-3"
-    ip: "10.200.0.33"
-  - name: "access-ovs-4"
-    ip: "10.200.0.44"
-  - name: "access-ovs-5"
-    ip: "10.200.0.45"
-  - name: "access-ovs-6"
-    ip: "10.200.0.46"
-
+- name: core-frr-1
+  ip: 10.200.0.11
+- name: core-frr-2
+  ip: 10.200.0.12
+- name: dist-frr-1
+  ip: 10.200.0.21
+- name: dist-frr-2
+  ip: 10.200.0.22
+- name: edge-router
+  ip: 10.200.0.30
+- name: dist-ovs-1
+  ip: 10.200.0.31
+- name: dist-ovs-2
+  ip: 10.200.0.32
+- name: dmz-ovs-3
+  ip: 10.200.0.33
+- name: access-ovs-4
+  ip: 10.200.0.44
+- name: access-ovs-5
+  ip: 10.200.0.45
+- name: access-ovs-6
+  ip: 10.200.0.46
 expected_ovs_nodes:
   access-ovs-4:
-    oob_interface: "eth3"
-    oob_ip: "10.200.0.44"
-    inband_mgmt_ip: "192.168.99.44"
-    inband_mgmt_mac: "02:99:00:00:00:44"
-
+    oob_interface: eth3
+    oob_ip: 10.200.0.44
+    inband_mgmt_ip: 192.168.99.44
+    inband_mgmt_mac: 02:99:00:00:00:44
   access-ovs-5:
-    oob_interface: "eth3"
-    oob_ip: "10.200.0.45"
-    inband_mgmt_ip: "192.168.99.45"
-    inband_mgmt_mac: "02:99:00:00:00:45"
-
+    oob_interface: eth3
+    oob_ip: 10.200.0.45
+    inband_mgmt_ip: 192.168.99.45
+    inband_mgmt_mac: 02:99:00:00:00:45
   access-ovs-6:
-    oob_interface: "eth4"
-    oob_ip: "10.200.0.46"
-    inband_mgmt_ip: "192.168.99.46"
-    inband_mgmt_mac: "02:99:00:00:00:46"
-
+    oob_interface: eth4
+    oob_ip: 10.200.0.46
+    legacy_inband_mgmt_ip: 192.168.99.46
+    legacy_inband_mgmt_mac: 02:99:00:00:00:46
+    unused_legacy_interface: eth1
+    management_note: Dedicated OOB management uses eth4. Old VLAN 99 eth1 link is
+      unused.
   dist-ovs-1:
-    oob_interface: "eth4"
-    oob_ip: "10.200.0.31"
-    inband_mgmt_ip: "192.168.99.31"
-    inband_mgmt_mac: "02:99:00:00:00:31"
-
+    oob_interface: eth4
+    oob_ip: 10.200.0.31
+    inband_mgmt_ip: 192.168.99.31
+    inband_mgmt_mac: 02:99:00:00:00:31
   dist-ovs-2:
-    oob_interface: "eth4"
-    oob_ip: "10.200.0.32"
-    inband_mgmt_ip: "192.168.99.32"
-    inband_mgmt_mac: "02:99:00:00:00:32"
-
+    oob_interface: eth4
+    oob_ip: 10.200.0.32
+    inband_mgmt_ip: 192.168.99.32
+    inband_mgmt_mac: 02:99:00:00:00:32
   dmz-ovs-3:
-    oob_interface: "eth3"
-    oob_ip: "10.200.0.33"
-    legacy_dmz_mgmt_ip: "172.16.50.3"
-
+    oob_interface: eth3
+    oob_ip: 10.200.0.33
+    legacy_dmz_mgmt_ip: 172.16.50.3
 expected_frr_nodes:
   core-frr-1:
-    oob_interface: "eth3"
-    oob_ip: "10.200.0.11"
-    loopback_ip: "10.255.0.11/32"
-
+    oob_interface: eth3
+    oob_ip: 10.200.0.11
+    loopback_ip: 10.255.0.11/32
   core-frr-2:
-    oob_interface: "eth3"
-    oob_ip: "10.200.0.12"
-    loopback_ip: "10.255.0.12/32"
-
+    oob_interface: eth3
+    oob_ip: 10.200.0.12
+    loopback_ip: 10.255.0.12/32
   dist-frr-1:
-    oob_interface: "eth3"
-    oob_ip: "10.200.0.21"
-    loopback_ip: "10.255.0.21/32"
-
+    oob_interface: eth3
+    oob_ip: 10.200.0.21
+    loopback_ip: 10.255.0.21/32
   dist-frr-2:
-    oob_interface: "eth3"
-    oob_ip: "10.200.0.22"
-    loopback_ip: "10.255.0.22/32"
-
+    oob_interface: eth3
+    oob_ip: 10.200.0.22
+    loopback_ip: 10.255.0.22/32
   edge-router:
-    oob_interface: "eth4"
-    oob_ip: "10.200.0.30"
-    loopback_ip: "10.255.0.30/32"
-
+    oob_interface: eth4
+    oob_ip: 10.200.0.30
+    loopback_ip: 10.255.0.30/32
 routed_management:
-  description: "FRR loopbacks are kept for routing validation, not for primary Ansible SSH."
-  subnet: "10.255.0.0/24"
-  routing_protocol: "ospf"
+  description: FRR loopbacks are kept for routing validation, not for primary Ansible
+    SSH.
+  subnet: 10.255.0.0/24
+  routing_protocol: ospf
   loopbacks:
-    core_frr_1: "10.255.0.11"
-    core_frr_2: "10.255.0.12"
-    dist_frr_1: "10.255.0.21"
-    dist_frr_2: "10.255.0.22"
-    edge_router: "10.255.0.30"
-
+    core_frr_1: 10.255.0.11
+    core_frr_2: 10.255.0.12
+    dist_frr_1: 10.255.0.21
+    dist_frr_2: 10.255.0.22
+    edge_router: 10.255.0.30
 dmz:
-  name: "dmz-network"
-  subnet: "172.16.50.0/24"
-  gateway: "172.16.50.1"
-  web_ip: "172.16.50.10"
-  dns_ip: "172.16.50.20"
-  dmz_ovs_oob_ip: "10.200.0.33"
-  legacy_dmz_ovs_ip: "172.16.50.3"
-
+  name: dmz-network
+  subnet: 172.16.50.0/24
+  gateway: 172.16.50.1
+  web_ip: 172.16.50.10
+  dns_ip: 172.16.50.20
+  dmz_ovs_oob_ip: 10.200.0.33
+  legacy_dmz_ovs_ip: 172.16.50.3
 dmz_management_policy:
-  description: "DMZ-OVS is managed through the OOB management plane."
-  devops_source: "10.200.0.10"
-  managed_node: "10.200.0.33"
+  description: DMZ-OVS is managed through the OOB management plane.
+  devops_source: 10.200.0.10
+  managed_node: 10.200.0.33
   allowed_protocols:
-    - "tcp/22"
-    - "icmp for readiness/troubleshooting"
-
+  - tcp/22
+  - icmp for readiness/troubleshooting
 expected_services:
   web:
-    ip: "172.16.50.10"
+    ip: 172.16.50.10
     port: 80
-    url: "http://172.16.50.10"
-
+    url: http://172.16.50.10
   dns:
-    ip: "172.16.50.20"
+    ip: 172.16.50.20
     port: 53
-    test_domain: "web.pfe.local"
-    expected_answer: "172.16.50.10"
-
+    test_domain: web.pfe.local
+    expected_answer: 172.16.50.10
 validation:
   ping_count: 2
   ping_timeout: 2

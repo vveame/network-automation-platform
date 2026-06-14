@@ -1,9 +1,27 @@
-output "tunnel_gateway_instance_id" { value = try(aws_instance.tunnel_gateway[0].id, null) }
-output "tunnel_gateway_public_ip" { value = try(aws_instance.tunnel_gateway[0].public_ip, null) }
-output "tunnel_gateway_private_ip" { value = try(aws_instance.tunnel_gateway[0].private_ip, null) }
-output "monitoring_instance_id" { value = try(aws_instance.monitoring[0].id, null) }
-output "monitoring_private_ip" { value = try(aws_instance.monitoring[0].private_ip, null) }
-output "ai_instance_id" { value = try(aws_instance.ai[0].id, null) }
-output "ai_private_ip" { value = try(aws_instance.ai[0].private_ip, null) }
-output "bastion_instance_id" { value = try(aws_instance.tunnel_gateway[0].id, null) }
-output "bastion_public_ip" { value = try(aws_instance.tunnel_gateway[0].public_ip, null) }
+output "tunnel_gateway_instance_id" {
+  value = try(aws_instance.tunnel_gateway[0].id, null)
+}
+
+output "tunnel_gateway_public_ip" {
+  value = try(aws_instance.tunnel_gateway[0].public_ip, null)
+}
+
+output "tunnel_gateway_private_ip" {
+  value = try(aws_instance.tunnel_gateway[0].private_ip, null)
+}
+
+output "monitoring_instance_id" {
+  value = try(aws_instance.monitoring[0].id, null)
+}
+
+output "monitoring_private_ip" {
+  value = try(aws_instance.monitoring[0].private_ip, null)
+}
+
+output "bastion_instance_id" {
+  value = try(aws_instance.tunnel_gateway[0].id, null)
+}
+
+output "bastion_public_ip" {
+  value = try(aws_instance.tunnel_gateway[0].public_ip, null)
+}

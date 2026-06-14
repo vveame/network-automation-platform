@@ -50,9 +50,16 @@
   changed_when: false
   when: ovs_node_validation.required_ports is defined
 
+- name: Validate OVS ignored legacy ports are not present in bridge
+  ansible.builtin.raw: "ovs-vsctl list-ports {{ ovs_validation.expected_bridge }} | grep -w '{{ item }}'"
+  loop: "{{ ovs_node_validation.ignored_ports | default([]) }}"
+  register: ovs_ignored_ports_check
+  changed_when: false
+  failed_when: ovs_ignored_ports_check.rc == 0
+
 - name: Validate OVS access port tags
   ansible.builtin.raw: "ovs-vsctl get port {{ item.key }} tag"
-  loop: "{{ ovs_node_validation.access_ports | dict2items }}"
+  loop: "{{ ovs_node_validation.access_ports | default({}) | dict2items }}"
   register: ovs_access_tag_results
   changed_when: false
 
@@ -66,7 +73,7 @@
 
 - name: Validate OVS trunk port VLANs
   ansible.builtin.raw: "ovs-vsctl get port {{ item.key }} trunks"
-  loop: "{{ ovs_node_validation.trunk_ports | dict2items }}"
+  loop: "{{ ovs_node_validation.trunk_ports | default({}) | dict2items }}"
   register: ovs_trunk_results
   changed_when: false
 
@@ -107,13 +114,13 @@
       HOST: {{ inventory_hostname }}
 
       === HOSTNAME ===
-      {{ ovs_hostname.stdout }}
+      {{ ovs_hostname.stdout | default('N/A') }}
 
       === BRIDGE EXISTS CHECK ===
       rc={{ ovs_bridge_exists.rc }}
 
       === OOB CHECK ===
-      {{ ovs_oob_check.stdout }}
+      {{ ovs_oob_check.stdout | default('N/A') }}
 
       === OOB NOT IN br0 CHECK ===
       rc={{ ovs_oob_bridge_check.rc }}
@@ -126,6 +133,16 @@
       {% else %}
       RSTP not required for this node.
       {% endif %}
+
+      === REQUIRED PORT CHECKS ===
+      {% for result in ovs_required_ports_check.results | default([]) %}
+      {{ result.item }} rc={{ result.rc }} stdout={{ result.stdout | default('') }} stderr={{ result.stderr | default('') }}
+      {% endfor %}
+
+      === IGNORED LEGACY PORT CHECKS ===
+      {% for result in ovs_ignored_ports_check.results | default([]) %}
+      {{ result.item }} absent_from_bridge_rc={{ result.rc }} stdout={{ result.stdout | default('') }} stderr={{ result.stderr | default('') }}
+      {% endfor %}
 
       === ACCESS PORT CHECKS ===
       {% for result in ovs_access_tag_results.results | default([]) %}
@@ -143,13 +160,13 @@
       stderr={{ ovs_inband_check.stderr | default('') }}
 
       === IP CONFIGURATION ===
-      {{ ovs_ip.stdout }}
+      {{ ovs_ip.stdout | default('N/A') }}
 
       === ROUTING TABLE ===
-      {{ ovs_route.stdout }}
+      {{ ovs_route.stdout | default('N/A') }}
 
       === OVS CONFIGURATION ===
-      {{ ovs_bridge_config.stdout }}
+      {{ ovs_bridge_config.stdout | default('N/A') }}
 
       === FDB TABLE ===
       {{ ovs_fdb.stdout | default('N/A') }}

@@ -1,16 +1,17 @@
 module "network" {
-  source                 = "../../modules/network"
+  source = "../../modules/network"
+
   name_prefix            = local.name_prefix
   vpc_cidr               = var.vpc_cidr
   public_subnet_cidr     = var.public_subnet_cidr
-  private_subnet_cidr    = var.private_subnet_cidr
   monitoring_subnet_cidr = var.monitoring_subnet_cidr
   availability_zone      = var.availability_zone
   common_tags            = local.common_tags
 }
 
 module "security" {
-  source                 = "../../modules/security"
+  source = "../../modules/security"
+
   name_prefix            = local.name_prefix
   vpc_id                 = module.network.vpc_id
   vpc_cidr               = module.network.vpc_cidr
@@ -24,9 +25,10 @@ module "security" {
 }
 
 module "storage" {
-  source                             = "../../modules/storage"
-  name_prefix                        = local.name_prefix
-  bucket_name_override               = var.storage_bucket_name_override
+  source = "../../modules/storage"
+
+  name_prefix                       = local.name_prefix
+  bucket_name_override              = var.storage_bucket_name_override
   validation_artifact_retention_days = var.validation_artifact_retention_days
   processed_summary_retention_days   = var.processed_summary_retention_days
   anomaly_result_retention_days      = var.anomaly_result_retention_days
@@ -35,41 +37,29 @@ module "storage" {
 }
 
 module "compute" {
-  source                                   = "../../modules/compute"
+  source = "../../modules/compute"
+
   enable_compute                           = var.enable_compute
   enable_tunnel_gateway                    = var.enable_tunnel_gateway
   enable_monitoring_instance               = var.enable_monitoring_instance
-  enable_ai_instance                       = var.enable_ai_instance
   enable_tunnel_gateway_nat_for_monitoring = var.enable_tunnel_gateway_nat_for_monitoring
-  name_prefix                              = local.name_prefix
-  ami_ssm_parameter                        = var.compute_ami_ssm_parameter
-  instance_type                            = var.compute_instance_type
-  admin_public_key                         = var.admin_public_key
-  public_subnet_id                         = module.network.public_subnet_id
-  monitoring_subnet_id                     = module.network.monitoring_subnet_id
-  private_route_table_id                   = module.network.private_route_table_id
-  monitoring_route_table_id                = module.network.monitoring_route_table_id
-  vpc_cidr                                 = module.network.vpc_cidr
-  wireguard_port                           = var.wireguard_port
-  monitoring_subnet_cidr                   = var.monitoring_subnet_cidr
-  onprem_cidr_blocks                       = var.onprem_cidr_blocks
-  admin_security_group_id                  = module.security.admin_security_group_id
-  monitoring_security_group_id             = module.security.monitoring_security_group_id
-  ai_security_group_id                     = module.security.ai_security_group_id
-  common_tags                              = local.common_tags
-}
 
-module "vpn" {
-  source                    = "../../modules/vpn"
-  enable_vpn                = var.enable_vpn
-  name_prefix               = local.name_prefix
-  vpc_id                    = module.network.vpc_id
-  public_route_table_id     = module.network.public_route_table_id
-  private_route_table_id    = module.network.private_route_table_id
+  name_prefix       = local.name_prefix
+  ami_ssm_parameter = var.compute_ami_ssm_parameter
+  instance_type     = var.compute_instance_type
+  admin_public_key  = var.admin_public_key
+
+  public_subnet_id          = module.network.public_subnet_id
+  monitoring_subnet_id      = module.network.monitoring_subnet_id
   monitoring_route_table_id = module.network.monitoring_route_table_id
-  onprem_public_ip          = var.onprem_public_ip
-  onprem_cidr_blocks        = var.onprem_cidr_blocks
-  onprem_bgp_asn            = var.onprem_bgp_asn
-  aws_bgp_asn               = var.aws_bgp_asn
-  common_tags               = local.common_tags
+
+  vpc_cidr               = module.network.vpc_cidr
+  wireguard_port         = var.wireguard_port
+  monitoring_subnet_cidr = var.monitoring_subnet_cidr
+  onprem_cidr_blocks     = var.onprem_cidr_blocks
+
+  admin_security_group_id      = module.security.admin_security_group_id
+  monitoring_security_group_id = module.security.monitoring_security_group_id
+
+  common_tags = local.common_tags
 }

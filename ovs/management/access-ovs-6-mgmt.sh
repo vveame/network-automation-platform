@@ -1,28 +1,15 @@
 #!/bin/sh
-
-# Management IP for Access-OVS-6
-# Requires br0 to already exist.
-# Management VLAN: 99
-
 set -e
 
-MGMT_IF="mgmt0"
-MGMT_IP="192.168.99.46/24"
-MGMT_GW="192.168.99.1"
-MGMT_MAC="02:99:00:00:00:46"
+# Access-OVS-6 no longer uses VLAN 99 as the automation path.
+# Final management is provided by the dedicated OOB interface:
+# eth4 -> 10.200.0.46/24
+#
+# This script is kept as a compatibility hook because bootstrap still installs
+# ovs-mgmt.sh for OVS nodes, but it must not recreate mgmt0 or set a VLAN 99
+# default route.
 
-ip link delete "$MGMT_IF" 2>/dev/null || true
-
-ovs-vsctl --may-exist add-port br0 "$MGMT_IF" tag=99 -- set Interface "$MGMT_IF" type=internal
-
-ip link set br0 up 2>/dev/null || true
-
-ip addr flush dev "$MGMT_IF" 2>/dev/null || true
-ip link set "$MGMT_IF" address "$MGMT_MAC" 2>/dev/null || true
-ip addr add "$MGMT_IP" dev "$MGMT_IF"
-ip link set "$MGMT_IF" up
-
-ip route replace default via "$MGMT_GW"
-
-ip addr
-ip route
+echo "[INFO] Access-OVS-6 uses dedicated OOB management on eth4."
+echo "[INFO] Skipping legacy VLAN 99 mgmt0 configuration."
+ip -br addr show eth4 2>/dev/null || true
+ip route || true

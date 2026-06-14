@@ -1,114 +1,144 @@
----
-node_family: "openvswitch"
-access_method: "ssh"
+node_family: openvswitch
+access_method: ssh
 python_required: false
-ansible_module_preference: "raw"
-
-ovs_bridge: "br0"
-ovs_management_interface: "mgmt0"
-
+ansible_module_preference: raw
+ovs_bridge: br0
+ovs_management_interface: mgmt0
 ovs_common_validation_commands:
-  - "hostname"
-  - "ip addr"
-  - "ip route"
-  - "ovs-vsctl show"
-  - "ovs-appctl fdb/show br0"
-
+- hostname
+- ip addr
+- ip route
+- ovs-vsctl show
+- ovs-appctl fdb/show br0
 expected_ovs_nodes:
   access-ovs-4:
-    oob_ip: "10.200.0.44"
-    oob_interface: "eth3"
-    inband_mgmt_ip: "192.168.99.44"
-    inband_mgmt_mac: "02:99:00:00:00:44"
-
+    oob_ip: 10.200.0.44
+    oob_interface: eth3
+    inband_mgmt_ip: 192.168.99.44
+    inband_mgmt_mac: 02:99:00:00:00:44
   access-ovs-5:
-    oob_ip: "10.200.0.45"
-    oob_interface: "eth3"
-    inband_mgmt_ip: "192.168.99.45"
-    inband_mgmt_mac: "02:99:00:00:00:45"
-
+    oob_ip: 10.200.0.45
+    oob_interface: eth3
+    inband_mgmt_ip: 192.168.99.45
+    inband_mgmt_mac: 02:99:00:00:00:45
   access-ovs-6:
-    oob_ip: "10.200.0.46"
-    oob_interface: "eth4"
-    inband_mgmt_ip: "192.168.99.46"
-    inband_mgmt_mac: "02:99:00:00:00:46"
-
+    oob_ip: 10.200.0.46
+    oob_interface: eth4
+    legacy_inband_mgmt_ip: 192.168.99.46
+    legacy_inband_mgmt_mac: 02:99:00:00:00:46
+    unused_legacy_interface: eth1
+    management_note: Dedicated OOB management uses eth4. Old VLAN 99 eth1 link is
+      unused.
   dist-ovs-1:
-    oob_ip: "10.200.0.31"
-    oob_interface: "eth4"
-    inband_mgmt_ip: "192.168.99.31"
-    inband_mgmt_mac: "02:99:00:00:00:31"
-
+    oob_ip: 10.200.0.31
+    oob_interface: eth4
+    inband_mgmt_ip: 192.168.99.31
+    inband_mgmt_mac: 02:99:00:00:00:31
   dist-ovs-2:
-    oob_ip: "10.200.0.32"
-    oob_interface: "eth4"
-    inband_mgmt_ip: "192.168.99.32"
-    inband_mgmt_mac: "02:99:00:00:00:32"
-
+    oob_ip: 10.200.0.32
+    oob_interface: eth4
+    inband_mgmt_ip: 192.168.99.32
+    inband_mgmt_mac: 02:99:00:00:00:32
   dmz-ovs-3:
-    oob_ip: "10.200.0.33"
-    oob_interface: "eth3"
-    legacy_dmz_mgmt_ip: "172.16.50.3"
-    legacy_dmz_mgmt_mac: "02:50:00:00:00:03"
-
+    oob_ip: 10.200.0.33
+    oob_interface: eth3
+    legacy_dmz_mgmt_ip: 172.16.50.3
+    legacy_dmz_mgmt_mac: 02:50:00:00:00:03
 ovs_validation:
-  expected_bridge: "br0"
-
+  expected_bridge: br0
   nodes:
     access-ovs-4:
       rstp_required: true
-      oob_interface: "eth3"
+      oob_interface: eth3
       access_ports:
         eth0: 10
       trunk_ports:
-        eth1: [10, 20, 99]
-        eth2: [10, 20, 99]
-
+        eth1:
+        - 10
+        - 20
+        - 99
+        eth2:
+        - 10
+        - 20
+        - 99
     access-ovs-5:
       rstp_required: true
-      oob_interface: "eth3"
+      oob_interface: eth3
       access_ports:
         eth0: 10
       trunk_ports:
-        eth1: [10, 20, 99]
-        eth2: [10, 20, 99]
-
+        eth1:
+        - 10
+        - 20
+        - 99
+        eth2:
+        - 10
+        - 20
+        - 99
     access-ovs-6:
       rstp_required: true
-      oob_interface: "eth4"
+      oob_interface: eth4
       access_ports:
         eth0: 20
-        eth1: 99
       trunk_ports:
-        eth2: [10, 20, 99]
-        eth3: [10, 20, 99]
-
+        eth2:
+        - 10
+        - 20
+        - 99
+        eth3:
+        - 10
+        - 20
+        - 99
+      ignored_ports:
+      - eth1
     dist-ovs-1:
       rstp_required: true
-      oob_interface: "eth4"
+      oob_interface: eth4
       access_ports: {}
       trunk_ports:
-        eth0: [10, 20, 99]
-        eth1: [10, 20, 99]
-        eth2: [10, 20, 99]
-        eth3: [10, 20, 99]
-
+        eth0:
+        - 10
+        - 20
+        - 99
+        eth1:
+        - 10
+        - 20
+        - 99
+        eth2:
+        - 10
+        - 20
+        - 99
+        eth3:
+        - 10
+        - 20
+        - 99
     dist-ovs-2:
       rstp_required: true
-      oob_interface: "eth4"
+      oob_interface: eth4
       access_ports: {}
       trunk_ports:
-        eth0: [10, 20, 99]
-        eth1: [10, 20, 99]
-        eth2: [10, 20, 99]
-        eth3: [10, 20, 99]
-
+        eth0:
+        - 10
+        - 20
+        - 99
+        eth1:
+        - 10
+        - 20
+        - 99
+        eth2:
+        - 10
+        - 20
+        - 99
+        eth3:
+        - 10
+        - 20
+        - 99
     dmz-ovs-3:
       rstp_required: false
-      oob_interface: "eth3"
+      oob_interface: eth3
       access_ports: {}
       trunk_ports: {}
       required_ports:
-        - eth0
-        - eth1
-        - eth2
+      - eth0
+      - eth1
+      - eth2

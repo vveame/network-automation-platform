@@ -41,19 +41,13 @@ variable "availability_zone" {
 }
 
 variable "public_subnet_cidr" {
-  description = "CIDR block for the public subnet."
+  description = "CIDR block for the public tunnel subnet."
   type        = string
   default     = "10.50.10.0/24"
 }
 
-variable "private_subnet_cidr" {
-  description = "CIDR block for the private subnet."
-  type        = string
-  default     = "10.50.20.0/24"
-}
-
 variable "monitoring_subnet_cidr" {
-  description = "CIDR block for the monitoring and AI subnet."
+  description = "CIDR block for the private monitoring and AI subnet."
   type        = string
   default     = "10.50.30.0/24"
 }
@@ -71,31 +65,25 @@ variable "wireguard_allowed_cidr" {
 }
 
 variable "enable_compute" {
-  description = "Legacy compute switch. Prefer the separate enable_tunnel_gateway and enable_monitoring_instance variables."
+  description = "Legacy compute switch. Prefer enable_tunnel_gateway and enable_monitoring_instance."
   type        = bool
   default     = false
 }
 
 variable "enable_tunnel_gateway" {
-  description = "Create the public EC2 WireGuard tunnel gateway. Disabled by default to avoid cost."
+  description = "Create the public EC2 WireGuard tunnel gateway."
   type        = bool
   default     = false
 }
 
 variable "enable_monitoring_instance" {
-  description = "Create the private cloud monitoring EC2 instance. Disabled by default to avoid cost."
-  type        = bool
-  default     = false
-}
-
-variable "enable_ai_instance" {
-  description = "Create the optional private AI EC2 instance. Disabled by default to avoid cost."
+  description = "Create the private EC2 instance hosting both monitoring and AI."
   type        = bool
   default     = false
 }
 
 variable "enable_tunnel_gateway_nat_for_monitoring" {
-  description = "Use the tunnel gateway as a low-cost NAT/routing instance for monitoring subnet outbound access."
+  description = "Use the tunnel gateway as a low-cost NAT/routing instance for monitoring/AI subnet outbound access."
   type        = bool
   default     = true
 }
@@ -130,34 +118,10 @@ variable "admin_public_key" {
   default     = null
 }
 
-variable "enable_vpn" {
-  description = "Whether to create AWS Site-to-Site VPN resources. Disabled by default."
-  type        = bool
-  default     = false
-}
-
-variable "onprem_public_ip" {
-  description = "Public IP address of the on-prem customer gateway device. Required only when enable_vpn is true."
-  type        = string
-  default     = null
-}
-
 variable "onprem_cidr_blocks" {
-  description = "Local/on-premises CIDR blocks reachable through the EC2 tunnel or future VPN."
+  description = "Local/on-premises CIDR blocks reachable through the EC2 WireGuard tunnel."
   type        = list(string)
   default     = ["10.200.0.0/24", "172.16.0.0/16"]
-}
-
-variable "onprem_bgp_asn" {
-  description = "BGP ASN for the on-prem customer gateway."
-  type        = number
-  default     = 65010
-}
-
-variable "aws_bgp_asn" {
-  description = "AWS side ASN for the virtual private gateway."
-  type        = number
-  default     = 64512
 }
 
 variable "storage_bucket_name_override" {

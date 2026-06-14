@@ -341,10 +341,7 @@ class PrometheusMetricsService:
             nodes.append(
                 PrometheusNodeMetricDTO(
                     instance=instance,
-                    node_name=uname_metric.get(
-                        "node_name",
-                        uname_metric.get("nodename", instance),
-                    ),
+                    node_name=uname_metric.get("node", uname_metric.get("node_name", uname_metric.get("nodename", instance))),
                     role=uname_metric.get("role", self._guess_role(instance)),
                     system_name=uname_metric.get("sysname", "unknown"),
                     kernel_release=uname_metric.get("release", "unknown"),
@@ -394,7 +391,7 @@ class PrometheusMetricsService:
 
             probes.append(
                 BlackboxProbeDTO(
-                    service_name=metric.get("service_name", metric.get("instance", "unknown")),
+                    service_name=self._metric_service_name(metric),
                     job=metric.get("job", "unknown"),
                     instance=metric.get("instance", "unknown"),
                     role=metric.get("role", "unknown"),
@@ -457,7 +454,7 @@ class PrometheusMetricsService:
             key = self._snmp_interface_key(metric)
 
             if_name = metric.get("ifName", metric.get("ifDescr", "unknown"))
-
+            node_name = self._metric_node_name(metric)
             admin_value = int(admin_by_key.get(key, 0))
             oper_value = int(self._item_value(item))
 
@@ -478,7 +475,7 @@ class PrometheusMetricsService:
 
             interfaces.append(
                 SNMPInterfaceDTO(
-                    node_name=metric.get("node_name", metric.get("instance", "unknown")),
+                    node_name=node_name,
                     instance=metric.get("instance", "unknown"),
                     role=metric.get("role", "unknown"),
                     device_type=metric.get("device_type", "unknown"),
@@ -489,7 +486,10 @@ class PrometheusMetricsService:
 
                     admin_status=SNMP_STATUS_MAP.get(admin_value, f"unknown_{admin_value}"),
                     oper_status=SNMP_STATUS_MAP.get(oper_value, f"unknown_{oper_value}"),
-                    health_relevant=self._is_health_relevant_snmp_interface(if_name),
+                    health_relevant=(
+                    self._is_health_relevant_snmp_interface(if_name)
+                    and not self._is_ignored_snmp_interface(node_name, if_name)
+                ),
 
                     in_octets=int(in_octets_by_key.get(key, 0)),
                     out_octets=int(out_octets_by_key.get(key, 0)),
@@ -530,7 +530,7 @@ class PrometheusMetricsService:
                     job=metric.get("job", "unknown"),
                     instance=metric.get("instance", "unknown"),
                     status="up" if value == 1 else "down",
-                    node_name=metric.get("node_name", "unknown"),
+                    node_name=self._metric_node_name(metric),
                     role=metric.get("role", "unknown"),
                     device_type=metric.get("device_type", "unknown"),
                 )
@@ -578,7 +578,7 @@ class PrometheusMetricsService:
         return (
             metric.get("job", "unknown"),
             metric.get("instance", "unknown"),
-            metric.get("service_name", "unknown"),
+            self._metric_service_name(metric),
         )
 
     def _snmp_interface_key(self, metric):
@@ -606,6 +606,18 @@ class PrometheusMetricsService:
 
         used = max(total - available, 0)
         return round((used / total) * 100, 2)
+
+
+    def _metric_node_name(self, metric):
+        return metric.get("node", metric.get("node_name", metric.get("instance", "unknown")))
+
+    def _metric_service_name(self, metric):
+        return metric.get("service", metric.get("service_name", metric.get("instance", "unknown")))
+
+    def _is_ignored_snmp_interface(self, node_name, if_name):
+        return (node_name, if_name) in {
+            ("access-ovs-6", "eth1"),
+        }
 
     def _is_health_relevant_snmp_interface(self, if_name):
         if not if_name:
