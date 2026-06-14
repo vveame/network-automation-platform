@@ -30,24 +30,13 @@ resource "aws_subnet" "public" {
   })
 }
 
-resource "aws_subnet" "private" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = var.private_subnet_cidr
-  availability_zone = var.availability_zone
-
-  tags = merge(var.common_tags, {
-    Name = "${var.name_prefix}-private-subnet"
-    Tier = "private"
-  })
-}
-
 resource "aws_subnet" "monitoring" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.monitoring_subnet_cidr
   availability_zone = var.availability_zone
 
   tags = merge(var.common_tags, {
-    Name = "${var.name_prefix}-monitoring-subnet"
+    Name = "${var.name_prefix}-monitoring-ai-subnet"
     Tier = "monitoring-ai"
   })
 }
@@ -71,25 +60,11 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-
-  tags = merge(var.common_tags, {
-    Name = "${var.name_prefix}-private-rt"
-    Tier = "private"
-  })
-}
-
-resource "aws_route_table_association" "private" {
-  subnet_id      = aws_subnet.private.id
-  route_table_id = aws_route_table.private.id
-}
-
 resource "aws_route_table" "monitoring" {
   vpc_id = aws_vpc.main.id
 
   tags = merge(var.common_tags, {
-    Name = "${var.name_prefix}-monitoring-rt"
+    Name = "${var.name_prefix}-monitoring-ai-rt"
     Tier = "monitoring-ai"
   })
 }

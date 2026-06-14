@@ -1,5 +1,5 @@
-project_name = "network-automation-platform"
-environment  = "dev"
+project_name      = "network-automation-platform"
+environment       = "dev"
 aws_region        = "eu-north-1"
 availability_zone = "eu-north-1a"
 aws_profile       = null
@@ -7,7 +7,6 @@ owner             = "wiam"
 
 vpc_cidr               = "10.50.0.0/16"
 public_subnet_cidr     = "10.50.10.0/24"
-private_subnet_cidr    = "10.50.20.0/24"
 monitoring_subnet_cidr = "10.50.30.0/24"
 
 admin_allowed_cidr = "YOUR_PUBLIC_IP/32"
@@ -15,26 +14,23 @@ admin_allowed_cidr = "YOUR_PUBLIC_IP/32"
 # Keep this open for UDP only when the local public IP is unstable.
 # WireGuard is still protected by peer public keys.
 wireguard_allowed_cidr = "0.0.0.0/0"
-admin_public_key   = null
 
-enable_compute = false
-enable_tunnel_gateway = false
-enable_monitoring_instance = false
-enable_ai_instance = false
+admin_public_key = null
+
+enable_compute                           = false
+enable_tunnel_gateway                    = false
+enable_monitoring_instance               = false
 enable_tunnel_gateway_nat_for_monitoring = true
 
-enable_vpn = false
 wireguard_tunnel_cidr = "10.255.0.0/30"
-wireguard_port = 51820
-compute_instance_type = "t3.micro"
-compute_ami_ssm_parameter = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+wireguard_port        = 51820
+
+compute_instance_type      = "t3.micro"
+compute_ami_ssm_parameter  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 
 onprem_cidr_blocks = ["10.200.0.0/24", "172.16.0.0/16"]
-onprem_public_ip = null
-onprem_bgp_asn = 65010
-aws_bgp_asn = 64512
 
 validation_artifact_retention_days = 30
-noncurrent_version_retention_days = 7
-processed_summary_retention_days = 90
-anomaly_result_retention_days = 90
+noncurrent_version_retention_days  = 7
+processed_summary_retention_days   = 90
+anomaly_result_retention_days      = 90

@@ -81,6 +81,23 @@ def is_health_relevant_snmp_interface(if_name: str) -> bool:
     return True
 
 
+
+IGNORED_SNMP_INTERFACES = {
+    ("access-ovs-6", "eth1"),
+}
+
+
+def normalize_metric_node_name(metric: dict[str, Any]) -> str:
+    return metric.get("node", metric.get("node_name", metric.get("instance", "unknown")))
+
+
+def normalize_metric_service_name(metric: dict[str, Any]) -> str:
+    return metric.get("service", metric.get("service_name", metric.get("instance", "unknown")))
+
+
+def is_ignored_snmp_interface(node_name: str, if_name: str) -> bool:
+    return (node_name, if_name) in IGNORED_SNMP_INTERFACES
+
 def load_metric(metrics_dir: Path, filename: str) -> dict[str, Any] | None:
     return load_json(metrics_dir / filename)
 
@@ -96,7 +113,7 @@ def parse_targets(up_query: dict[str, Any] | None) -> list[dict[str, str]]:
             {
                 "job": metric.get("job", "unknown"),
                 "instance": metric.get("instance", "unknown"),
-                "node_name": metric.get("node_name", "unknown"),
+                "node_name": normalize_metric_node_name(metric),
                 "role": metric.get("role", "unknown"),
                 "device_type": metric.get("device_type", "unknown"),
                 "status": "up" if value == 1 else "down",
@@ -116,7 +133,7 @@ def parse_uname(uname_query: dict[str, Any] | None) -> dict[str, dict[str, str]]
         by_instance[instance] = {
             "system_name": metric.get("nodename", metric.get("sysname", "unknown")),
             "kernel_release": metric.get("release", "unknown"),
-            "node_name": metric.get("node_name", metric.get("nodename", instance)),
+            "node_name": metric.get("node", metric.get("node_name", metric.get("nodename", instance))),
             "role": metric.get("role", "unknown"),
         }
 
@@ -207,7 +224,7 @@ def blackbox_key(metric: dict[str, Any]) -> tuple[str, str, str]:
     return (
         metric.get("job", "unknown"),
         metric.get("instance", "unknown"),
-        metric.get("service_name", "unknown"),
+        normalize_metric_service_name(metric),
     )
 
 
@@ -240,7 +257,7 @@ def parse_blackbox_probes(
 
         probes.append(
             {
-                "service_name": metric.get("service_name", metric.get("instance", "unknown")),
+                "service_name": normalize_metric_service_name(metric),
                 "job": metric.get("job", "unknown"),
                 "instance": metric.get("instance", "unknown"),
                 "role": metric.get("role", "unknown"),
@@ -318,6 +335,7 @@ def parse_snmp_interfaces(
         key = snmp_interface_key(metric)
 
         if_name = metric.get("ifName", metric.get("ifDescr", "unknown"))
+        node_name = normalize_metric_node_name(metric)
         admin_value = int(admin_by_key.get(key, 0))
         oper_value = int(item_value(item))
 
@@ -336,7 +354,7 @@ def parse_snmp_interfaces(
 
         interfaces.append(
             {
-                "node_name": metric.get("node_name", metric.get("instance", "unknown")),
+                "node_name": node_name,
                 "instance": metric.get("instance", "unknown"),
                 "role": metric.get("role", "unknown"),
                 "device_type": metric.get("device_type", "unknown"),
@@ -346,7 +364,10 @@ def parse_snmp_interfaces(
 
                 "admin_status": SNMP_STATUS_MAP.get(admin_value, f"unknown_{admin_value}"),
                 "oper_status": SNMP_STATUS_MAP.get(oper_value, f"unknown_{oper_value}"),
-                "health_relevant": is_health_relevant_snmp_interface(if_name),
+                "health_relevant": (
+                is_health_relevant_snmp_interface(if_name)
+                and not is_ignored_snmp_interface(node_name, if_name)
+            ),
 
                 "in_octets": int(in_octets_by_key.get(key, 0)),
                 "out_octets": int(out_octets_by_key.get(key, 0)),

@@ -1,5 +1,5 @@
 variable "enable_compute" {
-  description = "Legacy switch. If true, creates tunnel gateway, monitoring and AI instances. Prefer separate enable_* variables."
+  description = "Legacy switch. If true, creates the tunnel gateway and the combined monitoring/AI instance. Prefer separate enable_* variables."
   type        = bool
   default     = false
 }
@@ -11,19 +11,13 @@ variable "enable_tunnel_gateway" {
 }
 
 variable "enable_monitoring_instance" {
-  description = "Create the private monitoring EC2 instance."
-  type        = bool
-  default     = false
-}
-
-variable "enable_ai_instance" {
-  description = "Create the optional private AI EC2 instance."
+  description = "Create the private EC2 instance hosting both monitoring and AI analysis."
   type        = bool
   default     = false
 }
 
 variable "enable_tunnel_gateway_nat_for_monitoring" {
-  description = "Use the tunnel gateway as a low-cost NAT/routing instance for the monitoring subnet."
+  description = "Use the tunnel gateway as a low-cost NAT/routing instance for the monitoring/AI subnet."
   type        = bool
   default     = true
 }
@@ -57,22 +51,17 @@ variable "public_subnet_id" {
 }
 
 variable "monitoring_subnet_id" {
-  description = "Monitoring subnet ID for monitoring and AI instances."
-  type        = string
-}
-
-variable "private_route_table_id" {
-  description = "Private route table ID. Used to route private subnet traffic toward local CIDRs through the tunnel gateway."
+  description = "Monitoring/AI subnet ID for the combined monitoring and AI instance."
   type        = string
 }
 
 variable "monitoring_route_table_id" {
-  description = "Monitoring route table ID. Used to route monitoring subnet traffic through the tunnel gateway."
+  description = "Monitoring/AI route table ID."
   type        = string
 }
 
 variable "monitoring_subnet_cidr" {
-  description = "Monitoring subnet CIDR used by the NAT/routing bootstrap on the tunnel gateway."
+  description = "Monitoring/AI subnet CIDR used by the NAT/routing bootstrap on the tunnel gateway."
   type        = string
 }
 
@@ -88,12 +77,7 @@ variable "admin_security_group_id" {
 }
 
 variable "monitoring_security_group_id" {
-  description = "Security group ID for the monitoring instance."
-  type        = string
-}
-
-variable "ai_security_group_id" {
-  description = "Security group ID for the AI analysis instance."
+  description = "Security group ID for the combined monitoring and AI instance."
   type        = string
 }
 

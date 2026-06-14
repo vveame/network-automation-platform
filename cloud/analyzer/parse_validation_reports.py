@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Any
 
 
@@ -112,9 +113,62 @@ def filter_expected_security_matches(
     return filtered_critical, filtered_warning
 
 
+
+def parse_jenkins_html_summary(filename: str, content: str) -> str | None:
+    """Interpret the structured Jenkins summary without substring false positives."""
+    if filename != "jenkins-html-summary.txt":
+        return None
+
+    overall_match = re.search(
+        r"(?im)^\s*Overall status:\s*([A-Za-z_]+)\s*$",
+        content,
+    )
+    failed_match = re.search(
+        r"(?im)^\s*Failed:\s*(\d+)\s*$",
+        content,
+    )
+    missing_match = re.search(
+        r"(?im)^\s*Missing/empty:\s*(\d+)\s*$",
+        content,
+    )
+
+    # Fail safely if the expected structured fields are absent.
+    if not (overall_match and failed_match and missing_match):
+        return "failed"
+
+    overall_status = overall_match.group(1).upper()
+    failed_count = int(failed_match.group(1))
+    missing_count = int(missing_match.group(1))
+
+    if (
+        overall_status == "PASSED"
+        and failed_count == 0
+        and missing_count == 0
+    ):
+        return "passed"
+
+    return "failed"
+
 def analyze_report(path: Path) -> dict[str, Any]:
     content = path.read_text(errors="replace")
     lines = content.splitlines()
+
+    summary_status = parse_jenkins_html_summary(path.name, content)
+    if summary_status is not None:
+        return {
+            "file": path.name,
+            "category": detect_category(path.name),
+            "status": summary_status,
+            "line_count": len(lines),
+            "size_bytes": path.stat().st_size,
+            "critical_matches": (
+                ["jenkins_summary_failed"]
+                if summary_status == "failed"
+                else []
+            ),
+            "warning_matches": [],
+        }
+
     lower_content = content.lower()
 
     critical_matches = [

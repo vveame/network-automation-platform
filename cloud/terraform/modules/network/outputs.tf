@@ -9,17 +9,12 @@ output "vpc_cidr" {
 }
 
 output "public_subnet_id" {
-  description = "ID of the public subnet."
+  description = "ID of the public subnet used by the tunnel gateway."
   value       = aws_subnet.public.id
 }
 
-output "private_subnet_id" {
-  description = "ID of the private subnet."
-  value       = aws_subnet.private.id
-}
-
 output "monitoring_subnet_id" {
-  description = "ID of the monitoring subnet."
+  description = "ID of the monitoring and AI subnet."
   value       = aws_subnet.monitoring.id
 }
 
@@ -33,12 +28,7 @@ output "public_route_table_id" {
   value       = aws_route_table.public.id
 }
 
-output "private_route_table_id" {
-  description = "ID of the private route table."
-  value       = aws_route_table.private.id
-}
-
 output "monitoring_route_table_id" {
-  description = "ID of the monitoring route table."
+  description = "ID of the monitoring and AI route table."
   value       = aws_route_table.monitoring.id
 }
