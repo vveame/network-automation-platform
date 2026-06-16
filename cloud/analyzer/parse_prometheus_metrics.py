@@ -490,41 +490,60 @@ def parse_prometheus_metrics(metrics_dir: Path | None) -> dict[str, Any]:
         iface for iface in snmp_interfaces if iface["health_relevant"]
     ]
 
-    snmp_interfaces_total = len(health_interfaces)
-    snmp_interfaces_up = len(
-        [iface for iface in health_interfaces if iface["oper_status"] == "up"]
-    )
+    # Only administratively enabled interfaces are part of the active health view.
+    # Admin-down interfaces are intentionally disabled and must not generate
+    # discard/error false positives in the baseline.
+    monitored_interfaces = [
+        iface
+        for iface in health_interfaces
+        if iface["admin_status"] == "up"
+    ]
+
+    ignored_admin_down_interfaces = [
+        iface
+        for iface in health_interfaces
+        if iface["admin_status"] != "up"
+    ]
+
+    active_interfaces = [
+        iface
+        for iface in monitored_interfaces
+        if iface["oper_status"] == "up"
+    ]
+
+    snmp_interfaces_total = len(monitored_interfaces)
+    snmp_interfaces_up = len(active_interfaces)
     snmp_interfaces_down = len(
-        [iface for iface in health_interfaces if iface["oper_status"] != "up"]
+        [iface for iface in monitored_interfaces if iface["oper_status"] != "up"]
     )
 
     snmp_interfaces_unexpected_down = [
         iface
-        for iface in health_interfaces
-        if iface["admin_status"] == "up" and iface["oper_status"] != "up"
+        for iface in monitored_interfaces
+        if iface["oper_status"] != "up"
     ]
 
     snmp_interfaces_with_errors = [
         iface
-        for iface in health_interfaces
+        for iface in active_interfaces
         if iface["total_errors"] > 0
     ]
 
     snmp_interfaces_with_error_rate = [
         iface
-        for iface in health_interfaces
+        for iface in active_interfaces
         if iface["total_error_rate"] > 0
     ]
 
     snmp_interfaces_with_discards = [
         iface
-        for iface in health_interfaces
+        for iface in active_interfaces
         if iface["total_discards"] > 0
     ]
 
     snmp_interfaces_with_discard_rate = [
         iface
-        for iface in health_interfaces
+        for iface in active_interfaces
         if iface["total_discard_rate"] > 0
     ]
 
@@ -579,6 +598,9 @@ def parse_prometheus_metrics(metrics_dir: Path | None) -> dict[str, Any]:
         "snmp_interfaces_with_discard_rate_count": len(snmp_interfaces_with_discard_rate),
         "snmp_interfaces_with_discard_rate": snmp_interfaces_with_discard_rate,
 
+        "snmp_interfaces_admin_down_ignored_count": len(ignored_admin_down_interfaces),
+        "snmp_interfaces_admin_down_ignored": ignored_admin_down_interfaces,
+
         "snmp_interfaces_all": snmp_interfaces,
-        "snmp_interfaces": health_interfaces,
+        "snmp_interfaces": monitored_interfaces,
     }
