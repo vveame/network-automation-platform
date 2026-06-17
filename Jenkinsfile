@@ -170,6 +170,16 @@ pipeline {
             defaultValue: 'auto',
             description: 'Safe remediation action to run. Use auto for decision-based selection.'
         )
+
+        booleanParam(
+            name: 'EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE',
+            defaultValue: false,
+            description: '''
+        Experimental use only. If the Ansible validation gate fails,
+        continue the monitoring, analysis, artifact and remediation-plan stages.
+        The build remains UNSTABLE. Normal builds must leave this disabled.
+        '''
+        )
     }
 
     environment {
@@ -717,16 +727,54 @@ pipeline {
         stage('19 - Run Local Topology Validation Gate') {
             steps {
                 dir("${ANSIBLE_DIR}") {
-                    withCredentials([sshUserPrivateKey(
-                        credentialsId: 'pfe-oob-root-key',
-                        keyFileVariable: 'PFE_SSH_KEY',
-                        usernameVariable: 'PFE_SSH_USER'
-                    )]) {
-                        sh '''
-                            set -e
-                            ansible-playbook playbooks/site.yml \
-                              -e "ansible_user=${PFE_SSH_USER} ansible_ssh_private_key_file=${PFE_SSH_KEY}"
-                        '''
+                    withCredentials([
+                        sshUserPrivateKey(
+                            credentialsId: 'pfe-oob-root-key',
+                            keyFileVariable: 'PFE_SSH_KEY',
+                            usernameVariable: 'PFE_SSH_USER'
+                        )
+                    ]) {
+                        script {
+                            int validationRc = sh(
+                                label: 'Execute Ansible validation gate',
+                                returnStatus: true,
+                                script: '''
+                                    ansible-playbook playbooks/site.yml \
+                                      -e "ansible_user=${PFE_SSH_USER} ansible_ssh_private_key_file=${PFE_SSH_KEY}"
+                                '''
+                            )
+        
+                            env.VALIDATION_GATE_EXIT_CODE = "${validationRc}"
+        
+                            writeFile(
+                                file: 'outputs/validation-gate-exit-code.txt',
+                                text: "${validationRc}\n"
+                            )
+        
+                            if (validationRc == 0) {
+                                echo '[OK] Local topology validation gate passed.'
+                            } else if (params.EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE) {
+                                echo """
+        [EXPERIMENT] Validation gate failed with exit code ${validationRc}.
+        [EXPERIMENT] Continuing monitoring, analysis and artifact stages.
+        [EXPERIMENT] The build will remain UNSTABLE.
+        """
+        
+                                catchError(
+                                    buildResult: 'UNSTABLE',
+                                    stageResult: 'UNSTABLE',
+                                    message: 'Expected validation failure during an experimental anomaly scenario.'
+                                ) {
+                                    error(
+                                        "Experimental validation failure: exit code ${validationRc}"
+                                    )
+                                }
+                            } else {
+                                error(
+                                    "Local topology validation gate failed with exit code ${validationRc}."
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -747,11 +795,49 @@ pipeline {
             steps {
                 sh '''
                     set -e
+
                     echo "[INFO] Validating generated report files in Jenkins workspace..."
+
                     test -d ansible/outputs
                     test -n "$(ls -A ansible/outputs 2>/dev/null)"
-                    test -f ansible/outputs/validation-summary.txt
-                    echo "[OK] Jenkins workspace validation reports are ready."
+
+                    if [ ! -f ansible/outputs/jenkins-html-summary.txt ]; then
+                        echo "[ERROR] Missing Jenkins HTML summary:"
+                        echo "        ansible/outputs/jenkins-html-summary.txt"
+                        exit 1
+                    fi
+
+                    if [ ! -f ansible/outputs/validation-gate-exit-code.txt ]; then
+                        echo "[ERROR] Missing validation gate exit-code evidence:"
+                        echo "        ansible/outputs/validation-gate-exit-code.txt"
+                        exit 1
+                    fi
+
+                    VALIDATION_RC="$(
+                        tr -d '[:space:]'                           < ansible/outputs/validation-gate-exit-code.txt
+                    )"
+
+                    echo "[INFO] Validation gate exit code: ${VALIDATION_RC}"
+
+                    if [ -f ansible/outputs/validation-summary.txt ]; then
+                        echo "[OK] Standard validation summary is present."
+
+                    elif                         [ "${EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE}" = "true" ]                         && [ "${VALIDATION_RC}" != "0" ]; then
+
+                        echo "[EXPERIMENT] validation-summary.txt was not generated."
+                        echo "[EXPERIMENT] This is expected because Ansible stopped"
+                        echo "[EXPERIMENT] after detecting the injected anomaly."
+                        echo "[EXPERIMENT] Partial reports and the HTML summary"
+                        echo "[EXPERIMENT] will be preserved for analysis."
+
+                    else
+                        echo "[ERROR] Missing ansible/outputs/validation-summary.txt"
+                        echo "[ERROR] No expected experimental validation failure"
+                        echo "[ERROR] justifies its absence."
+                        exit 1
+                    fi
+
+                    echo "[OK] Jenkins workspace validation evidence is ready."
                     ls -lah ansible/outputs
                 '''
             }
@@ -916,6 +1002,7 @@ export AWS_REGION='$CLOUD_AWS_REGION'
 export AWS_DEFAULT_REGION='$CLOUD_AWS_REGION'
 export ARTIFACTS_BUCKET='$S3_ARTIFACTS_BUCKET'
 export BUILD_TAG='$BUILD_LABEL'
+export EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE='$EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE'
 export PROMETHEUS_URL='$CLOUD_PROMETHEUS_URL'
 export ENABLE_ML_ANALYZER='$ENABLE_ML_ANALYZER'
 export TRAIN_ML_MODEL='$TRAIN_ML_MODEL'

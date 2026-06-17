@@ -9,6 +9,7 @@ PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 
 ENABLE_ML_ANALYZER="${ENABLE_ML_ANALYZER:-true}"
 TRAIN_ML_MODEL="${TRAIN_ML_MODEL:-false}"
+EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE="${EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE:-false}"
 ML_DURATION_MINUTES="${ML_DURATION_MINUTES:-60}"
 ML_STEP="${ML_STEP:-60s}"
 ML_CONTAMINATION="${ML_CONTAMINATION:-0.05}"
@@ -34,6 +35,7 @@ echo "[INFO] Build tag: $BUILD_TAG"
 echo "[INFO] Prometheus URL: $PROMETHEUS_URL"
 echo "[INFO] S3 bucket: $ARTIFACTS_BUCKET"
 echo "[INFO] AWS region: $AWS_REGION"
+echo "[INFO] Experimental continuation: $EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE"
 
 echo "[INFO] Checking cloud Prometheus readiness..."
 curl -fsS "${PROMETHEUS_URL}/-/ready"
@@ -46,9 +48,48 @@ aws s3 sync \
   --region "$AWS_REGION" \
   --delete
 
-if [ ! -f "$VALIDATION_DIR/validation-summary.txt" ]; then
-  echo "[ERROR] validation-summary.txt not found in downloaded validation artifacts."
-  echo "[INFO] Expected: s3://${ARTIFACTS_BUCKET}/validation-artifacts/${BUILD_TAG}/"
+if [ ! -f "$VALIDATION_DIR/jenkins-html-summary.txt" ]; then
+  echo "[ERROR] jenkins-html-summary.txt not found in downloaded artifacts."
+  exit 1
+fi
+
+if [ ! -f "$VALIDATION_DIR/validation-gate-exit-code.txt" ]; then
+  echo "[ERROR] validation-gate-exit-code.txt not found in downloaded artifacts."
+  exit 1
+fi
+
+VALIDATION_RC="$(
+  tr -d '[:space:]' \
+    < "$VALIDATION_DIR/validation-gate-exit-code.txt"
+)"
+
+case "$VALIDATION_RC" in
+  ''|*[!0-9]*)
+    echo "[ERROR] Invalid validation gate exit code: $VALIDATION_RC"
+    exit 1
+    ;;
+esac
+
+echo "[INFO] Downloaded validation gate exit code: $VALIDATION_RC"
+
+if [ -f "$VALIDATION_DIR/validation-summary.txt" ]; then
+  echo "[OK] Complete validation artifact set downloaded."
+
+elif \
+  [ "$EXPERIMENT_CONTINUE_AFTER_VALIDATION_FAILURE" = "true" ] \
+  && [ "$VALIDATION_RC" != "0" ]; then
+
+  echo "[EXPERIMENT] Partial validation artifact set accepted."
+  echo "[EXPERIMENT] validation-summary.txt is absent because Ansible"
+  echo "[EXPERIMENT] stopped after detecting the injected anomaly."
+  echo "[EXPERIMENT] Monitoring and analysis will continue."
+
+else
+  echo "[ERROR] validation-summary.txt not found in downloaded artifacts."
+  echo "[ERROR] Partial artifacts are accepted only after an explicit"
+  echo "[ERROR] experimental validation failure."
+  echo "[INFO] Expected prefix:"
+  echo "       s3://${ARTIFACTS_BUCKET}/validation-artifacts/${BUILD_TAG}/"
   exit 1
 fi
 

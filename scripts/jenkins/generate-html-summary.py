@@ -10,7 +10,15 @@ outputs.mkdir(parents=True, exist_ok=True)
 html_file = outputs / "index.html"
 summary_file = outputs / "jenkins-html-summary.txt"
 
-reports = sorted(outputs.glob("*.txt"))
+excluded_report_files = {
+    "validation-gate-exit-code.txt",
+}
+
+reports = sorted(
+    report
+    for report in outputs.glob("*.txt")
+    if report.name not in excluded_report_files
+)
 
 critical_patterns = [
     "FAILED!",

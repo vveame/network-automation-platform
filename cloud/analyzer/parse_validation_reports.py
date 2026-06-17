@@ -209,7 +209,15 @@ def analyze_report(path: Path) -> dict[str, Any]:
 
 
 def parse_validation_reports(input_dir: Path) -> list[dict[str, Any]]:
-    reports = sorted(input_dir.glob("*.txt"))
+    excluded_report_files = {
+        "validation-gate-exit-code.txt",
+    }
+
+    reports = sorted(
+        report
+        for report in input_dir.glob("*.txt")
+        if report.name not in excluded_report_files
+    )
 
     if not reports:
         raise FileNotFoundError(f"No .txt validation reports found in: {input_dir}")
