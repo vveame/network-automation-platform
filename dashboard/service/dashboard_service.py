@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List
+from typing import Any, Dict, List, Set
 
 from dto.dashboard_dto import DashboardDTO
 from dto.domain_dto import DomainDTO
@@ -9,6 +9,21 @@ from service.service_health_service import ServiceHealthService
 
 
 class DashboardService:
+    # Fixed-name reports produced by playbooks/roles that are not tied to a
+    # specific FRR/OVS node (see ansible/playbooks/*.yml and
+    # ansible/roles/*/tasks/main.yml for the "dest: ../outputs/<name>.txt"
+    # entries this list mirrors). Keep this in sync if a role's output
+    # filename changes.
+    FIXED_EXPECTED_REPORTS = [
+        "oob-management-readiness.txt",
+        "end-to-end-validation.txt",
+        "security-validation.txt",
+        "report-artifacts-validation.txt",
+        "validation-summary.txt",
+        "inventory-consistency.txt",
+        "dmz-services.txt",
+    ]
+
     def __init__(
         self,
         report_repository,
@@ -27,8 +42,9 @@ class DashboardService:
 
     def build_dashboard(self) -> DashboardDTO:
         vars_data = self.vars_repository.load_all_vars()
-        reports = self.report_service.get_all_reports()
-        report_status_map = self.report_service.get_report_status_map()
+        expected_filenames = self._compute_expected_report_filenames(vars_data)
+        reports = self.report_service.get_all_reports(expected_filenames=expected_filenames)
+        report_status_map = {report.filename: report.status for report in reports}
 
         domains = self._build_domains(reports)
         nodes = self.node_service.build_nodes(vars_data, report_status_map)
@@ -74,6 +90,17 @@ class DashboardService:
 
     def get_report_content(self, filename: str):
         return self.report_service.get_report_content(filename)
+
+    def _compute_expected_report_filenames(self, vars_data: Dict[str, Any]) -> Set[str]:
+        expected = set(self.FIXED_EXPECTED_REPORTS)
+
+        for name in vars_data.get("expected_frr_nodes", {}):
+            expected.add(f"{name}-frr.txt")
+
+        for name in vars_data.get("expected_ovs_nodes", {}):
+            expected.add(f"{name}-ovs.txt")
+
+        return expected
 
     def _build_domains(self, reports) -> List[DomainDTO]:
         grouped = defaultdict(list)

@@ -201,6 +201,16 @@ body {
   border: 1px solid #e5e7eb;
 }
 
+.report-line-missing {
+  cursor: default;
+  border-style: dashed;
+  color: #6b7280;
+}
+
+.preview-card-missing {
+  background: #fffdf7;
+}
+
 .search-input {
   padding: 12px 14px;
   border: 1px solid #d1d5db;
